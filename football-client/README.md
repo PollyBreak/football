@@ -46,5 +46,5 @@ When the app is served behind a same-origin `/api` proxy, leave `VITE_API_BASE_U
 ## Notes
 
 - In Docker, nginx proxies `/api` to `football-core`.
-- In Netlify production, set `VITE_API_BASE_URL` to the public backend origin.
+- In Railway/Netlify production, set `VITE_API_BASE_URL` to the public backend origin.
 - Real authentication requires opening the app inside Telegram so `window.Telegram.WebApp.initData` is present.

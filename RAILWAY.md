@@ -87,3 +87,5 @@ The existing Docker Compose flow remains unchanged:
 - postgres: `localhost:5432`
 
 In Docker Compose the frontend build keeps `VITE_API_BASE_URL` empty, so browser requests go to `/api/...` on the frontend origin and nginx proxies them to `football-core`.
+
+The Railway frontend image uses `nginx.static.conf.template` and does not proxy `/api` internally. In Railway, frontend API calls must use the public backend URL from `VITE_API_BASE_URL`.
