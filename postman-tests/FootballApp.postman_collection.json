@@ -1,0 +1,1612 @@
+{
+  "info": {
+    "_postman_id": "288dccfd-ebb5-4971-820e-698dbe6250dc",
+    "name": "FootballApp",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "_exporter_id": "25589762"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:8080"
+    },
+    {
+      "key": "player1Id",
+      "value": ""
+    },
+    {
+      "key": "player2Id",
+      "value": ""
+    },
+    {
+      "key": "player3Id",
+      "value": ""
+    },
+    {
+      "key": "player4Id",
+      "value": ""
+    },
+    {
+      "key": "player5Id",
+      "value": ""
+    },
+    {
+      "key": "player6Id",
+      "value": ""
+    },
+    {
+      "key": "sessionId",
+      "value": ""
+    },
+    {
+      "key": "teamRedId",
+      "value": ""
+    },
+    {
+      "key": "teamGreenId",
+      "value": ""
+    },
+    {
+      "key": "teamBlueId",
+      "value": ""
+    },
+    {
+      "key": "match1Id",
+      "value": ""
+    },
+    {
+      "key": "match2Id",
+      "value": ""
+    },
+    {
+      "key": "match3Id",
+      "value": ""
+    },
+    {
+      "key": "goal1Id",
+      "value": ""
+    },
+    {
+      "key": "goal2Id",
+      "value": ""
+    },
+    {
+      "key": "assistStandaloneId",
+      "value": ""
+    }
+  ],
+  "item": [
+    {
+      "name": "01 Players",
+      "item": [
+        {
+          "name": "Create player 1",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const json = pm.response.json();",
+                  "pm.collectionVariables.set('player1Id', json.playerId);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"telegramId\": 1001,\n  \"username\": \"ivan10\",\n  \"displayName\": \"Ivan\",\n  \"firstName\": \"Ivan\",\n  \"lastName\": \"Petrov\",\n  \"nickname\": \"Vanya\",\n  \"homeCity\": \"Almaty\",\n  \"birthDate\": \"1999-05-21\",\n  \"defaultPosition\": \"FORWARD\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/players",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "players"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Create player 2",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const json = pm.response.json();",
+                  "pm.collectionVariables.set('player2Id', json.playerId);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"telegramId\": 1002,\n  \"username\": \"misha7\",\n  \"displayName\": \"Misha\",\n  \"firstName\": \"Mikhail\",\n  \"lastName\": \"Sidorov\",\n  \"nickname\": \"Misha\",\n  \"homeCity\": \"Astana\",\n  \"birthDate\": \"2000-03-14\",\n  \"defaultPosition\": \"MIDFIELDER\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/players",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "players"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Create player 3",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const json = pm.response.json();",
+                  "pm.collectionVariables.set('player3Id', json.playerId);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"telegramId\": 1003,\n  \"username\": \"sergey_gk\",\n  \"displayName\": \"Sergey\",\n  \"firstName\": \"Sergey\",\n  \"lastName\": \"Volkov\",\n  \"nickname\": \"Ser\",\n  \"homeCity\": \"Shymkent\",\n  \"birthDate\": \"1998-11-09\",\n  \"defaultPosition\": \"GOALKEEPER\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/players",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "players"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Create player 4",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const json = pm.response.json();",
+                  "pm.collectionVariables.set('player4Id', json.playerId);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"telegramId\": 1004,\n  \"username\": \"arsen9\",\n  \"displayName\": \"Arsen\",\n  \"firstName\": \"Arsen\",\n  \"lastName\": \"Kim\",\n  \"nickname\": \"Ars\",\n  \"homeCity\": \"Karaganda\",\n  \"birthDate\": \"2001-07-18\",\n  \"defaultPosition\": \"DEFENDER\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/players",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "players"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Create player 5",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const json = pm.response.json();",
+                  "pm.collectionVariables.set('player5Id', json.playerId);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"telegramId\": 1005,\n  \"username\": \"roma11\",\n  \"displayName\": \"Roma\",\n  \"firstName\": \"Roman\",\n  \"lastName\": \"Lee\",\n  \"nickname\": \"Roma\",\n  \"homeCity\": \"Aktobe\",\n  \"birthDate\": \"1997-01-30\",\n  \"defaultPosition\": \"FORWARD\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/players",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "players"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Create player 6",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const json = pm.response.json();",
+                  "pm.collectionVariables.set('player6Id', json.playerId);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"telegramId\": 1006,\n  \"username\": \"timur6\",\n  \"displayName\": \"Timur\",\n  \"firstName\": \"Timur\",\n  \"lastName\": \"Akhmetov\",\n  \"nickname\": \"Tim\",\n  \"homeCity\": \"Taraz\",\n  \"birthDate\": \"2002-09-12\",\n  \"defaultPosition\": \"MIDFIELDER\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/players",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "players"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Update player 1",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"displayName\": \"Ivan Petrov\",\n  \"nickname\": \"Vanya10\",\n  \"homeCity\": \"Almaty\",\n  \"birthDate\": \"1999-05-21\",\n  \"defaultPosition\": \"MIDFIELDER\",\n  \"active\": true\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/players/{{player1Id}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "players",
+                "{{player1Id}}"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get all players",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/api/players?activeOnly=true",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "players"
+              ],
+              "query": [
+                {
+                  "key": "activeOnly",
+                  "value": "true"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get player 1",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/api/players/{{player1Id}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "players",
+                "{{player1Id}}"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "02 Sessions",
+      "item": [
+        {
+          "name": "Create session",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const json = pm.response.json();",
+                  "pm.collectionVariables.set('sessionId', json.id);",
+                  "if (json.teams && json.teams.length >= 3) {",
+                  "  pm.collectionVariables.set('teamRedId', json.teams[0].id);",
+                  "  pm.collectionVariables.set('teamGreenId', json.teams[1].id);",
+                  "  pm.collectionVariables.set('teamBlueId', json.teams[2].id);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Sunday Football\",\n  \"sessionDate\": \"2026-04-28\",\n  \"location\": \"School Arena\",\n  \"formatType\": \"ROUND_ROBIN\",\n  \"plannedMatchDurationMinutes\": 6,\n  \"notes\": \"3 teams, short matches\",\n  \"createdByUserId\": {{player1Id}},\n  \"teams\": [\n    { \"name\": \"Red\", \"color\": \"red\", \"displayOrder\": 1 },\n    { \"name\": \"Green\", \"color\": \"green\", \"displayOrder\": 2 },\n    { \"name\": \"Blue\", \"color\": \"blue\", \"displayOrder\": 3 }\n  ]\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/sessions",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "sessions"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get all sessions",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/api/sessions",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "sessions"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get session by id",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/api/sessions/{{sessionId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "sessions",
+                "{{sessionId}}"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get session teams",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/api/sessions/{{sessionId}}/teams",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "sessions",
+                "{{sessionId}}",
+                "teams"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Add player 1 to session",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"playerId\": {{player1Id}},\n  \"position\": \"MIDFIELDER\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/sessions/{{sessionId}}/players",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "sessions",
+                "{{sessionId}}",
+                "players"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Add player 2 to session",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"playerId\": {{player2Id}},\n  \"position\": \"FORWARD\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/sessions/{{sessionId}}/players",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "sessions",
+                "{{sessionId}}",
+                "players"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Add player 3 to session",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"playerId\": {{player3Id}},\n  \"position\": \"GOALKEEPER\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/sessions/{{sessionId}}/players",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "sessions",
+                "{{sessionId}}",
+                "players"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Add player 4 to session",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"playerId\": {{player4Id}},\n  \"position\": \"DEFENDER\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/sessions/{{sessionId}}/players",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "sessions",
+                "{{sessionId}}",
+                "players"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Add player 5 to session",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"playerId\": {{player5Id}},\n  \"position\": \"FORWARD\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/sessions/{{sessionId}}/players",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "sessions",
+                "{{sessionId}}",
+                "players"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Add player 6 to session",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"playerId\": {{player6Id}},\n  \"position\": \"MIDFIELDER\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/sessions/{{sessionId}}/players",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "sessions",
+                "{{sessionId}}",
+                "players"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get session players",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/api/sessions/{{sessionId}}/players",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "sessions",
+                "{{sessionId}}",
+                "players"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "03 Teams",
+      "item": [
+        {
+          "name": "Bulk add players to Red team",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"playerIds\": [{{player1Id}}, {{player3Id}}]\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/session-teams/{{teamRedId}}/players/bulk",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "session-teams",
+                "{{teamRedId}}",
+                "players",
+                "bulk"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Bulk add players to Green team",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"playerIds\": [{{player2Id}}, {{player4Id}}]\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/session-teams/{{teamGreenId}}/players/bulk",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "session-teams",
+                "{{teamGreenId}}",
+                "players",
+                "bulk"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Bulk add players to Blue team",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"playerIds\": [{{player5Id}}, {{player6Id}}]\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/session-teams/{{teamBlueId}}/players/bulk",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "session-teams",
+                "{{teamBlueId}}",
+                "players",
+                "bulk"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get Red team players",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/api/session-teams/{{teamRedId}}/players",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "session-teams",
+                "{{teamRedId}}",
+                "players"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get Green team players",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/api/session-teams/{{teamGreenId}}/players",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "session-teams",
+                "{{teamGreenId}}",
+                "players"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get Blue team players",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/api/session-teams/{{teamBlueId}}/players",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "session-teams",
+                "{{teamBlueId}}",
+                "players"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "04 Matches",
+      "item": [
+        {
+          "name": "Create match 1 Red vs Green",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const json = pm.response.json();",
+                  "pm.collectionVariables.set('match1Id', json.id);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"teamAId\": {{teamRedId}},\n  \"teamBId\": {{teamGreenId}},\n  \"plannedDurationMinutes\": 6\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/sessions/{{sessionId}}/matches",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "sessions",
+                "{{sessionId}}",
+                "matches"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Create match 2 Green vs Blue",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const json = pm.response.json();",
+                  "pm.collectionVariables.set('match2Id', json.id);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"teamAId\": {{teamGreenId}},\n  \"teamBId\": {{teamBlueId}},\n  \"plannedDurationMinutes\": 6\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/sessions/{{sessionId}}/matches",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "sessions",
+                "{{sessionId}}",
+                "matches"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Create match 3 Blue vs Red",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const json = pm.response.json();",
+                  "pm.collectionVariables.set('match3Id', json.id);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"teamAId\": {{teamBlueId}},\n  \"teamBId\": {{teamRedId}},\n  \"plannedDurationMinutes\": 6\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/sessions/{{sessionId}}/matches",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "sessions",
+                "{{sessionId}}",
+                "matches"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get matches by session",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/api/sessions/{{sessionId}}/matches",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "sessions",
+                "{{sessionId}}",
+                "matches"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get match 1 by id",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/api/sessions/{{sessionId}}/matches/{{match1Id}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "sessions",
+                "{{sessionId}}",
+                "matches",
+                "{{match1Id}}"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Start match 1",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"startedAt\": \"2026-04-28T19:00:00Z\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/sessions/{{sessionId}}/matches/{{match1Id}}/start",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "sessions",
+                "{{sessionId}}",
+                "matches",
+                "{{match1Id}}",
+                "start"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Update match 1 score manually",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"teamAScore\": 1,\n  \"teamBScore\": 0\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/sessions/{{sessionId}}/matches/{{match1Id}}/score",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "sessions",
+                "{{sessionId}}",
+                "matches",
+                "{{match1Id}}",
+                "score"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Finish match 1",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"endedAt\": \"2026-04-28T19:06:00Z\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/sessions/{{sessionId}}/matches/{{match1Id}}/finish",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "sessions",
+                "{{sessionId}}",
+                "matches",
+                "{{match1Id}}",
+                "finish"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Start match 2",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"startedAt\": \"2026-04-28T19:10:00Z\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/sessions/{{sessionId}}/matches/{{match2Id}}/start",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "sessions",
+                "{{sessionId}}",
+                "matches",
+                "{{match2Id}}",
+                "start"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Finish match 2 as draw",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"endedAt\": \"2026-04-28T19:16:00Z\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/sessions/{{sessionId}}/matches/{{match2Id}}/finish",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "sessions",
+                "{{sessionId}}",
+                "matches",
+                "{{match2Id}}",
+                "finish"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Start match 3",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"startedAt\": \"2026-04-28T19:20:00Z\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/sessions/{{sessionId}}/matches/{{match3Id}}/start",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "sessions",
+                "{{sessionId}}",
+                "matches",
+                "{{match3Id}}",
+                "start"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Finish match 3",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"endedAt\": \"2026-04-28T19:26:00Z\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/sessions/{{sessionId}}/matches/{{match3Id}}/finish",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "sessions",
+                "{{sessionId}}",
+                "matches",
+                "{{match3Id}}",
+                "finish"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "05 Match Events",
+      "item": [
+        {
+          "name": "Match 1 goal with assist",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const json = pm.response.json();",
+                  "pm.collectionVariables.set('goal1Id', json.goalEvent.id);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"teamId\": {{teamRedId}},\n  \"scorerPlayerId\": {{player1Id}},\n  \"assistPlayerId\": {{player3Id}},\n  \"createdByUserId\": 1,\n  \"minuteInMatch\": 2,\n  \"secondInMatch\": 15\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/session-matches/{{match1Id}}/events/goals",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "session-matches",
+                "{{match1Id}}",
+                "events",
+                "goals"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Match 1 second goal without assist",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const json = pm.response.json();",
+                  "pm.collectionVariables.set('goal2Id', json.goalEvent.id);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"teamId\": {{teamGreenId}},\n  \"scorerPlayerId\": {{player2Id}},\n  \"createdByUserId\": 1,\n  \"minuteInMatch\": 4,\n  \"secondInMatch\": 5\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/session-matches/{{match1Id}}/events/goals",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "session-matches",
+                "{{match1Id}}",
+                "events",
+                "goals"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Match 1 standalone assist",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const json = pm.response.json();",
+                  "pm.collectionVariables.set('assistStandaloneId', json.id);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"teamId\": {{teamRedId}},\n  \"playerId\": {{player1Id}},\n  \"relatedPlayerId\": {{player3Id}},\n  \"createdByUserId\": 1,\n  \"minuteInMatch\": 5,\n  \"secondInMatch\": 1\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/session-matches/{{match1Id}}/events/assists",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "session-matches",
+                "{{match1Id}}",
+                "events",
+                "assists"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get match 1 events",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/api/session-matches/{{match1Id}}/events",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "session-matches",
+                "{{match1Id}}",
+                "events"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Delete standalone assist",
+          "request": {
+            "method": "DELETE",
+            "url": {
+              "raw": "{{baseUrl}}/api/session-matches/{{match1Id}}/events/{{assistStandaloneId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "session-matches",
+                "{{match1Id}}",
+                "events",
+                "{{assistStandaloneId}}"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Delete goal 2 and rollback score",
+          "request": {
+            "method": "DELETE",
+            "url": {
+              "raw": "{{baseUrl}}/api/session-matches/{{match1Id}}/events/{{goal2Id}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "session-matches",
+                "{{match1Id}}",
+                "events",
+                "{{goal2Id}}"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get match 1 events after deletions",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/api/session-matches/{{match1Id}}/events",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "session-matches",
+                "{{match1Id}}",
+                "events"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Match 2 goal by Green",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"teamId\": {{teamGreenId}},\n  \"scorerPlayerId\": {{player2Id}},\n  \"createdByUserId\": 1\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/session-matches/{{match2Id}}/events/goals",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "session-matches",
+                "{{match2Id}}",
+                "events",
+                "goals"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Match 2 goal by Blue",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"teamId\": {{teamBlueId}},\n  \"scorerPlayerId\": {{player5Id}},\n  \"createdByUserId\": 1\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/session-matches/{{match2Id}}/events/goals",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "session-matches",
+                "{{match2Id}}",
+                "events",
+                "goals"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get match 2 events",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/api/session-matches/{{match2Id}}/events",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "session-matches",
+                "{{match2Id}}",
+                "events"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Match 3 goal with assist",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"teamId\": {{teamBlueId}},\n  \"scorerPlayerId\": {{player5Id}},\n  \"assistPlayerId\": {{player6Id}},\n  \"createdByUserId\": 1\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/session-matches/{{match3Id}}/events/goals",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "session-matches",
+                "{{match3Id}}",
+                "events",
+                "goals"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Match 3 second goal",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"teamId\": {{teamBlueId}},\n  \"scorerPlayerId\": {{player6Id}},\n  \"createdByUserId\": 1\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/session-matches/{{match3Id}}/events/goals",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "session-matches",
+                "{{match3Id}}",
+                "events",
+                "goals"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get match 3 events",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/api/session-matches/{{match3Id}}/events",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "session-matches",
+                "{{match3Id}}",
+                "events"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "06 Final Checks",
+      "item": [
+        {
+          "name": "Get matches after all updates",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/api/sessions/{{sessionId}}/matches",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "sessions",
+                "{{sessionId}}",
+                "matches"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get session standings",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/api/sessions/{{sessionId}}/standings",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "sessions",
+                "{{sessionId}}",
+                "standings"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get session players final",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/api/sessions/{{sessionId}}/players",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "sessions",
+                "{{sessionId}}",
+                "players"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get player 1 final",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/api/players/{{player1Id}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "players",
+                "{{player1Id}}"
+              ]
+            }
+          }
+        }
+      ]
+    }
+  ]
+}

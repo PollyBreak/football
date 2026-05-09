@@ -1,0 +1,41 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: football-postgres
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-football_app}
+      POSTGRES_USER: ${POSTGRES_USER:-football_user}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-football_password}
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+  football-core:
+    build:
+      context: ./football-core
+    container_name: football-core
+    environment:
+      DB_URL: jdbc:postgresql://postgres:5432/${POSTGRES_DB:-football_app}
+      DB_USERNAME: ${POSTGRES_USER:-football_user}
+      DB_PASSWORD: ${POSTGRES_PASSWORD:-football_password}
+      TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN:?TELEGRAM_BOT_TOKEN is required}
+      CORS_ALLOWED_ORIGIN_PATTERNS: ${CORS_ALLOWED_ORIGIN_PATTERNS:-http://localhost:*,http://127.0.0.1:*,https://localhost:*,https://127.0.0.1:*}
+    depends_on:
+      - postgres
+    ports:
+      - "8080:8080"
+
+  football-client:
+    build:
+      context: ./football-client
+      args:
+        VITE_API_BASE_URL: ""
+    container_name: football-client
+    depends_on:
+      - football-core
+    ports:
+      - "5173:80"
+
+volumes:
+  postgres_data:

@@ -1,0 +1,32 @@
+spring:
+  application:
+    name: football-core
+  datasource:
+    url: ${DB_URL:jdbc:postgresql://localhost:5432/football_app}
+    username: ${DB_USERNAME:football_user}
+    password: ${DB_PASSWORD:football_password}
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    properties:
+      hibernate:
+        format_sql: true
+    open-in-view: false
+
+  flyway:
+    enabled: true
+
+logging:
+  level:
+    org.flywaydb: info
+
+telegram:
+  bot:
+    token: ${TELEGRAM_BOT_TOKEN:}
+
+app:
+  cors:
+    allowed-origin-patterns: ${CORS_ALLOWED_ORIGIN_PATTERNS:http://localhost:*,http://127.0.0.1:*,https://localhost:*,https://127.0.0.1:*}
+
+server:
+  port: ${PORT:8080}

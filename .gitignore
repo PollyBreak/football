@@ -1,0 +1,19 @@
+.env
+.env.*
+!.env.example
+
+# Frontend dependencies and build output
+node_modules/
+dist/
+
+# Backend build output
+target/
+
+# Logs and local tooling
+*.log
+.idea/
+.vscode/
+.DS_Store
+
+# Local backups created during repo cleanup
+.git-backups/
