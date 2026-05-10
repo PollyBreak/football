@@ -53,12 +53,15 @@ https://football-core-production.up.railway.app/api/health
 Set this on the `football-client` service:
 
 ```text
+PORT=8080
 VITE_API_BASE_URL=https://your-backend-domain.up.railway.app
 ```
 
 Use the backend origin only. Do not add `/api`, because the frontend already calls `/api/...` paths.
 
 Generate a public Railway domain for `football-client`. This is the Telegram Mini App URL unless you attach a custom domain.
+
+In the frontend service's public domain settings, make sure the domain target port is `8080`. Railway can auto-detect ports, but if the app opens with "Application failed to respond", edit the domain target port manually to `8080`.
 
 After the frontend domain exists, update the backend variable:
 
