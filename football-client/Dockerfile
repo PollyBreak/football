@@ -13,7 +13,7 @@ ENV NGINX_CONF_TEMPLATE=${NGINX_CONF_TEMPLATE}
 COPY nginx.conf.template /etc/nginx/nginx.conf.template
 COPY nginx.static.conf.template /etc/nginx/nginx.static.conf.template
 COPY docker-entrypoint.sh /docker-entrypoint.sh
-RUN chmod +x /docker-entrypoint.sh
+RUN sed -i 's/\r$//' /docker-entrypoint.sh && chmod +x /docker-entrypoint.sh
 COPY --from=build /app/dist /usr/share/nginx/html
 EXPOSE 8080
-CMD ["/docker-entrypoint.sh"]
+CMD ["/bin/sh", "/docker-entrypoint.sh"]
