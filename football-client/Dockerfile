@@ -12,6 +12,8 @@ ARG NGINX_CONF_TEMPLATE=nginx.static.conf.template
 ENV NGINX_CONF_TEMPLATE=${NGINX_CONF_TEMPLATE}
 COPY nginx.conf.template /etc/nginx/nginx.conf.template
 COPY nginx.static.conf.template /etc/nginx/nginx.static.conf.template
+COPY docker-entrypoint.sh /docker-entrypoint.sh
+RUN chmod +x /docker-entrypoint.sh
 COPY --from=build /app/dist /usr/share/nginx/html
 EXPOSE 8080
-CMD ["/bin/sh", "-c", ": ${PORT:=8080}; export PORT; envsubst '${PORT}' < /etc/nginx/${NGINX_CONF_TEMPLATE} > /etc/nginx/conf.d/default.conf && nginx -g 'daemon off;'"]
+CMD ["/docker-entrypoint.sh"]
