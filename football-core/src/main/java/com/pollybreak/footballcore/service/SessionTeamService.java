@@ -110,8 +110,7 @@ public class SessionTeamService {
         SessionTeamPlayer membership = sessionTeamPlayerRepository
                 .findBySessionTeamIdAndPlayerIdAndActiveTrue(sessionTeamId, playerId)
                 .orElseThrow(() -> new IllegalArgumentException("Active team membership not found"));
-        membership.setActive(false);
-        membership.setLeftAt(OffsetDateTime.now());
+        membership.setSessionTeam(null);
     }
 
     @Transactional
