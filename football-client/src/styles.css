@@ -857,6 +857,10 @@ textarea {
   font-weight: 600;
 }
 
+.event-time-label {
+  color: var(--muted);
+}
+
 .match-goal-summary {
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);

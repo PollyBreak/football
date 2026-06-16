@@ -85,6 +85,7 @@
           <div>
             <strong>{{ matchEventLabel(event.eventType) }}</strong>
             <p class="muted">
+              <span v-if="eventTimeLabel(event)" class="event-time-label">{{ eventTimeLabel(event) }}</span>
               {{ ownGoalEventLabel(event) }} • {{ event.teamName || 'Команда не указана' }}
               <span v-if="event.relatedPlayerName"> • передача: {{ event.relatedPlayerName }}</span>
             </p>
@@ -208,6 +209,19 @@ function goalTimeLabel(goal: MatchEvent): string | null {
 function ownGoalEventLabel(event: MatchEvent): string {
   const playerName = event.playerName || 'Игрок не указан';
   return event.eventType === 'OWN_GOAL' ? `${playerName} (А)` : playerName;
+}
+
+function eventTimeLabel(event: MatchEvent): string | null {
+  if (event.minuteInMatch == null) {
+    return null;
+  }
+
+  const minutes = event.minuteInMatch.toString();
+  if (event.secondInMatch == null || event.secondInMatch === 0) {
+    return `${minutes}' `;
+  }
+
+  return `${minutes}'${event.secondInMatch.toString().padStart(2, '0')}" `;
 }
 
 function matchStatusClass(status: SessionMatch['status']): string {
