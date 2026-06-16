@@ -245,35 +245,42 @@
           </select>
         </label>
       </div>
-      <div class="list">
-        <article v-for="match in matches" :key="match.id" class="match-card">
-          <div class="match-card__top">
-            <strong>#{{ match.matchNumber }} {{ match.teamAName }} против {{ match.teamBName }}</strong>
-            <span class="status-pill">{{ matchStatusLabel(match.status) }}</span>
+      <div class="stack-sm">
+        <section v-for="round in matchRounds" :key="round.roundNumber" class="match-round-group">
+          <div class="match-round-group__header">
+            <strong>{{ round.roundNumber }} круг</strong>
           </div>
-          <p class="score-line">{{ match.teamAScore }} : {{ match.teamBScore }}</p>
-          <div v-if="matchGoalSummaries(match).length" class="match-goal-summary">
-            <div class="match-goal-summary__column match-goal-summary__column--left">
-              <p v-for="goal in teamMatchGoals(match, match.teamAId)" :key="goal.id" class="match-goal-summary__row">
-                <img v-if="goal.playerPhotoUrl" :src="goal.playerPhotoUrl" alt="Р¤РѕС‚Рѕ РёРіСЂРѕРєР°" class="scoreboard-goal-avatar" />
-                <span v-if="goal.timeLabel" class="scoreboard-goal-time">{{ goal.timeLabel }}</span>
-                <span class="scoreboard-goal-name">{{ goal.label }}</span>
-              </p>
-            </div>
-            <div class="match-goal-summary__column match-goal-summary__column--right">
-              <p v-for="goal in teamMatchGoals(match, match.teamBId)" :key="goal.id" class="match-goal-summary__row">
-                <img v-if="goal.playerPhotoUrl" :src="goal.playerPhotoUrl" alt="Р¤РѕС‚Рѕ РёРіСЂРѕРєР°" class="scoreboard-goal-avatar" />
-                <span v-if="goal.timeLabel" class="scoreboard-goal-time">{{ goal.timeLabel }}</span>
-                <span class="scoreboard-goal-name">{{ goal.label }}</span>
-              </p>
-            </div>
+          <div class="list">
+            <article v-for="match in round.matches" :key="match.id" class="match-card">
+              <div class="match-card__top">
+                <strong>#{{ match.matchNumber }} {{ match.teamAName }} против {{ match.teamBName }}</strong>
+                <span class="status-pill">{{ matchStatusLabel(match.status) }}</span>
+              </div>
+              <p class="score-line">{{ match.teamAScore }} : {{ match.teamBScore }}</p>
+              <div v-if="matchGoalSummaries(match).length" class="match-goal-summary">
+                <div class="match-goal-summary__column match-goal-summary__column--left">
+                  <p v-for="goal in teamMatchGoals(match, match.teamAId)" :key="goal.id" class="match-goal-summary__row">
+                    <img v-if="goal.playerPhotoUrl" :src="goal.playerPhotoUrl" alt="Р¤РѕС‚Рѕ РёРіСЂРѕРєР°" class="scoreboard-goal-avatar" />
+                    <span v-if="goal.timeLabel" class="scoreboard-goal-time">{{ goal.timeLabel }}</span>
+                    <span class="scoreboard-goal-name">{{ goal.label }}</span>
+                  </p>
+                </div>
+                <div class="match-goal-summary__column match-goal-summary__column--right">
+                  <p v-for="goal in teamMatchGoals(match, match.teamBId)" :key="goal.id" class="match-goal-summary__row">
+                    <img v-if="goal.playerPhotoUrl" :src="goal.playerPhotoUrl" alt="Р¤РѕС‚Рѕ РёРіСЂРѕРєР°" class="scoreboard-goal-avatar" />
+                    <span v-if="goal.timeLabel" class="scoreboard-goal-time">{{ goal.timeLabel }}</span>
+                    <span class="scoreboard-goal-name">{{ goal.label }}</span>
+                  </p>
+                </div>
+              </div>
+              <div class="button-row">
+                <button class="ghost-button" @click="startMatch(match.id)" :disabled="match.status !== 'PLANNED'">Начать</button>
+                <button class="ghost-button" @click="openMatch(match.id)">Открыть</button>
+                <button class="ghost-button" @click="finishMatch(match.id)" :disabled="match.status === 'FINISHED'">Завершить</button>
+              </div>
+            </article>
           </div>
-          <div class="button-row">
-            <button class="ghost-button" @click="startMatch(match.id)" :disabled="match.status !== 'PLANNED'">Начать</button>
-            <button class="ghost-button" @click="openMatch(match.id)">Открыть</button>
-            <button class="ghost-button" @click="finishMatch(match.id)" :disabled="match.status === 'FINISHED'">Завершить</button>
-          </div>
-        </article>
+        </section>
       </div>
     </div>
 
@@ -311,6 +318,83 @@
             </tr>
           </tbody>
         </table>
+      </div>
+      <div class="standings-chart">
+        <div class="section-header">
+          <h4 class="section-title">Очки по кругам</h4>
+        </div>
+        <p v-if="!standingsProgressChart.rounds.length" class="muted">График появится после завершения матчей.</p>
+        <template v-else>
+          <div class="standings-chart__legend">
+            <span
+              v-for="series in standingsProgressChart.series"
+              :key="series.teamId"
+              class="standings-chart__legend-item"
+            >
+              <span class="standings-chart__legend-dot" :style="{ backgroundColor: series.color }"></span>
+              <span>{{ series.teamName }}</span>
+            </span>
+          </div>
+          <svg
+            class="standings-chart__svg"
+            viewBox="0 0 320 180"
+            role="img"
+            aria-label="График изменения очков команд по кругам"
+          >
+            <line
+              v-for="tick in standingsProgressChart.yTicks"
+              :key="`grid-${tick.value}`"
+              :x1="28"
+              :y1="tick.y"
+              :x2="308"
+              :y2="tick.y"
+              class="standings-chart__grid-line"
+            />
+            <line x1="28" y1="12" x2="28" y2="152" class="standings-chart__axis-line" />
+            <line x1="28" y1="152" x2="308" y2="152" class="standings-chart__axis-line" />
+
+            <text
+              v-for="tick in standingsProgressChart.yTicks"
+              :key="`label-${tick.value}`"
+              x="22"
+              :y="tick.y + 4"
+              class="standings-chart__axis-label standings-chart__axis-label--y"
+            >
+              {{ tick.value }}
+            </text>
+
+            <text
+              v-for="round in standingsProgressChart.rounds"
+              :key="`round-${round.roundNumber}`"
+              :x="round.x"
+              y="170"
+              class="standings-chart__axis-label"
+              text-anchor="middle"
+            >
+              {{ round.label }}
+            </text>
+
+            <path
+              v-for="series in standingsProgressChart.series"
+              :key="`line-${series.teamId}`"
+              :d="series.path"
+              class="standings-chart__line"
+              :style="{ stroke: series.color }"
+            />
+
+            <g v-for="series in standingsProgressChart.series" :key="`points-${series.teamId}`">
+              <circle
+                v-for="point in series.points"
+                :key="point.roundNumber"
+                :cx="point.x"
+                :cy="point.y"
+                r="4"
+                class="standings-chart__point"
+                :style="{ fill: series.color }"
+              />
+            </g>
+          </svg>
+        </template>
       </div>
     </div>
 
@@ -466,6 +550,145 @@ const groupedSessionPlayers = computed(() => {
 
   return groups;
 });
+const matchRounds = computed(() => {
+  const groups = new Map<number, SessionMatch[]>();
+
+  matches.value.forEach((match) => {
+    const roundNumber = match.roundNumber ?? fallbackRoundNumber(match.matchNumber);
+    const existing = groups.get(roundNumber) ?? [];
+    existing.push(match);
+    groups.set(roundNumber, existing);
+  });
+
+  return Array.from(groups.entries())
+    .sort((left, right) => left[0] - right[0])
+    .map(([roundNumber, roundMatches]) => ({
+      roundNumber,
+      matches: roundMatches.sort((left, right) => left.matchNumber - right.matchNumber)
+    }));
+});
+const standingsProgressChart = computed(() => {
+  if (!session.value) {
+    return {
+      rounds: [] as Array<{ roundNumber: number; label: string; x: number }>,
+      series: [] as Array<{
+        teamId: number;
+        teamName: string;
+        color: string;
+        path: string;
+        points: Array<{ roundNumber: number; x: number; y: number; points: number }>;
+      }>,
+      yTicks: [] as Array<{ value: number; y: number }>
+    };
+  }
+
+  const chartWidth = 320;
+  const chartHeight = 180;
+  const paddingLeft = 28;
+  const paddingRight = 12;
+  const paddingTop = 12;
+  const paddingBottom = 28;
+  const innerWidth = chartWidth - paddingLeft - paddingRight;
+  const innerHeight = chartHeight - paddingTop - paddingBottom;
+
+  const finishedMatches = matches.value
+    .filter((match) => match.status === 'FINISHED')
+    .slice()
+    .sort((left, right) => {
+      const leftRound = left.roundNumber ?? fallbackRoundNumber(left.matchNumber);
+      const rightRound = right.roundNumber ?? fallbackRoundNumber(right.matchNumber);
+      return leftRound - rightRound || left.matchNumber - right.matchNumber;
+    });
+
+  const roundNumbers = Array.from(new Set(finishedMatches.map((match) => match.roundNumber ?? fallbackRoundNumber(match.matchNumber))));
+  if (!roundNumbers.length) {
+    return {
+      rounds: [],
+      series: [],
+      yTicks: []
+    };
+  }
+
+  const cumulativePoints = new Map<number, number>();
+  session.value.teams.forEach((team) => cumulativePoints.set(team.id, 0));
+
+  const roundSnapshots = roundNumbers.map((roundNumber) => {
+    const roundMatches = finishedMatches.filter((match) => (match.roundNumber ?? fallbackRoundNumber(match.matchNumber)) === roundNumber);
+    roundMatches.forEach((match) => {
+      const currentA = cumulativePoints.get(match.teamAId) ?? 0;
+      const currentB = cumulativePoints.get(match.teamBId) ?? 0;
+
+      if (match.teamAScore > match.teamBScore) {
+        cumulativePoints.set(match.teamAId, currentA + 3);
+        return;
+      }
+
+      if (match.teamBScore > match.teamAScore) {
+        cumulativePoints.set(match.teamBId, currentB + 3);
+        return;
+      }
+
+      cumulativePoints.set(match.teamAId, currentA + 1);
+      cumulativePoints.set(match.teamBId, currentB + 1);
+    });
+
+    return {
+      roundNumber,
+      pointsByTeam: Object.fromEntries(Array.from(cumulativePoints.entries()))
+    };
+  });
+
+  const maxPoints = Math.max(
+    3,
+    ...roundSnapshots.flatMap((snapshot) => Object.values(snapshot.pointsByTeam))
+  );
+
+  const xForIndex = (index: number) => {
+    if (roundSnapshots.length === 1) {
+      return paddingLeft + innerWidth / 2;
+    }
+    return paddingLeft + (innerWidth * index) / (roundSnapshots.length - 1);
+  };
+  const yForPoints = (points: number) => paddingTop + innerHeight - (points / maxPoints) * innerHeight;
+
+  const rounds = roundSnapshots.map((snapshot, index) => ({
+    roundNumber: snapshot.roundNumber,
+    label: `${snapshot.roundNumber}`,
+    x: xForIndex(index)
+  }));
+
+  const palette = ['#d95d5d', '#2d9bd3', '#2f8f57', '#c08b2d', '#7b61c8', '#28727a'];
+  const series = session.value.teams.map((team, teamIndex) => {
+    const color = team.color || palette[teamIndex % palette.length];
+    const points = roundSnapshots.map((snapshot, roundIndex) => ({
+      roundNumber: snapshot.roundNumber,
+      x: xForIndex(roundIndex),
+      y: yForPoints(snapshot.pointsByTeam[team.id] ?? 0),
+      points: snapshot.pointsByTeam[team.id] ?? 0
+    }));
+
+    return {
+      teamId: team.id,
+      teamName: team.name,
+      color,
+      path: points.map((point, index) => `${index === 0 ? 'M' : 'L'} ${point.x} ${point.y}`).join(' '),
+      points
+    };
+  });
+
+  const yTicks = Array.from(new Set([0, Math.ceil(maxPoints / 2), maxPoints]))
+    .sort((left, right) => left - right)
+    .map((value) => ({
+      value,
+      y: yForPoints(value)
+    }));
+
+  return {
+    rounds,
+    series,
+    yTicks
+  };
+});
 const roundRobinPairOptions = computed(() => {
   if (!session.value) return [];
   return buildTeamPairs(session.value.teams).map(([teamA, teamB]) => ({
@@ -502,6 +725,12 @@ function sessionPersonDetails(person: SessionPlayer | SessionWaitlistEntry): str
 
 function playerSessionStats(playerId: number): { goals: number; assists: number } {
   return sessionPlayerStats.value[playerId] ?? { goals: 0, assists: 0 };
+}
+
+function fallbackRoundNumber(matchNumber: number): number {
+  const teamCount = session.value?.teams.length ?? 0;
+  const matchesPerRound = Math.max(1, (teamCount * (teamCount - 1)) / 2);
+  return Math.floor((Math.max(1, matchNumber) - 1) / matchesPerRound) + 1;
 }
 
 function teamGroupHeaderStyle(color: string | null) {

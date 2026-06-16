@@ -104,7 +104,9 @@ public class SessionMatchService {
         match.setSession(session);
         match.setTeamA(teamA);
         match.setTeamB(teamB);
-        match.setMatchNumber(request.matchNumber() != null ? request.matchNumber() : getNextMatchNumber(session.getId()));
+        int matchNumber = request.matchNumber() != null ? request.matchNumber() : getNextMatchNumber(session.getId());
+        match.setMatchNumber(matchNumber);
+        match.setRoundNumber(resolveRoundNumber(session.getId(), matchNumber));
         match.setStatus(request.status() != null ? request.status() : MatchStatus.PLANNED);
         match.setPlannedDurationMinutes(request.plannedDurationMinutes() != null
                 ? request.plannedDurationMinutes()
@@ -155,6 +157,12 @@ public class SessionMatchService {
     @Transactional
     public SessionMatch save(SessionMatch sessionMatch) {
         return sessionMatchRepository.save(sessionMatch);
+    }
+
+    private int resolveRoundNumber(Long sessionId, int matchNumber) {
+        long teamCount = sessionTeamRepository.countBySessionId(sessionId);
+        long matchesPerRound = Math.max(1, teamCount * (teamCount - 1) / 2);
+        return (int) (((Math.max(1, matchNumber) - 1) / matchesPerRound) + 1);
     }
 
     private void syncWinningTeam(SessionMatch match) {

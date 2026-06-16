@@ -7,4 +7,6 @@ import org.springframework.data.jpa.repository.JpaRepository;
 public interface SessionTeamRepository extends JpaRepository<SessionTeam, Long> {
 
     List<SessionTeam> findAllBySessionIdOrderByDisplayOrderAsc(Long sessionId);
+
+    long countBySessionId(Long sessionId);
 }

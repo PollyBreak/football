@@ -3,7 +3,10 @@
     <header class="app-header">
       <div>
         <p class="eyebrow">Мини-приложение Telegram</p>
-        <h1>Pozitiv</h1>
+        <div class="brand-title">
+          <img src="/pozitiv.png" alt="Логотип Pozitiv" class="brand-title__logo" />
+          <h1>Pozitiv</h1>
+        </div>
         <p class="header-subtitle" v-if="authState.user">
           <img v-if="authState.user.photoUrl" :src="authState.user.photoUrl" alt="Аватар Telegram" class="avatar" />
           <span>{{ authState.user.displayName }}</span>

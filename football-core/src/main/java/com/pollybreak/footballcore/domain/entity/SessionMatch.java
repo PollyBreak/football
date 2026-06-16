@@ -43,6 +43,9 @@ public class SessionMatch {
     @Column(name = "match_number", nullable = false)
     private Integer matchNumber;
 
+    @Column(name = "round_number")
+    private Integer roundNumber;
+
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 50)
     private MatchStatus status = MatchStatus.PLANNED;

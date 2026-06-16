@@ -141,6 +141,7 @@ export interface SessionMatch {
   teamBId: number;
   teamBName: string;
   matchNumber: number;
+  roundNumber: number | null;
   status: MatchStatus;
   plannedDurationMinutes: number | null;
   teamAScore: number;

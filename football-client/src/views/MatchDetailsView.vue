@@ -118,6 +118,7 @@ let timerId: number | undefined;
 
 const sessionIdNumber = computed(() => Number(props.sessionId));
 const matchIdNumber = computed(() => Number(props.matchId));
+const matchStartStorageKey = computed(() => `football-match-start-${matchIdNumber.value}`);
 
 const goalForm = reactive({
   teamId: undefined as number | undefined,
@@ -208,6 +209,25 @@ function ownGoalEventLabel(event: MatchEvent): string {
   return event.eventType === 'OWN_GOAL' ? `${playerName} (А)` : playerName;
 }
 
+function readStoredMatchStart(): number | null {
+  const rawValue = window.localStorage.getItem(matchStartStorageKey.value);
+  if (!rawValue) {
+    return null;
+  }
+
+  const parsedValue = Number(rawValue);
+  return Number.isFinite(parsedValue) ? parsedValue : null;
+}
+
+function persistMatchStart(timestamp: number | null) {
+  if (timestamp == null) {
+    window.localStorage.removeItem(matchStartStorageKey.value);
+    return;
+  }
+
+  window.localStorage.setItem(matchStartStorageKey.value, String(timestamp));
+}
+
 async function loadSession() {
   session.value = await api.getSession(sessionIdNumber.value);
   const entries = await Promise.all(
@@ -220,6 +240,9 @@ async function loadMatch() {
   match.value = await api.getMatch(sessionIdNumber.value, matchIdNumber.value);
   if (match.value.status !== 'IN_PROGRESS') {
     localStartedAt.value = null;
+    persistMatchStart(null);
+  } else {
+    localStartedAt.value = readStoredMatchStart();
   }
   goalForm.teamId = goalForm.teamId ?? match.value.teamAId;
 }
@@ -230,14 +253,18 @@ async function loadEvents() {
 
 async function startMatch() {
   if (!match.value) return;
-  localStartedAt.value = Date.now();
-  now.value = Date.now();
+  const clientStartTimestamp = Date.now();
+  localStartedAt.value = clientStartTimestamp;
+  persistMatchStart(clientStartTimestamp);
+  now.value = clientStartTimestamp;
   match.value = await api.startMatch(sessionIdNumber.value, match.value.id);
 }
 
 async function finishMatch() {
   if (!match.value) return;
   match.value = await api.finishMatch(sessionIdNumber.value, match.value.id);
+  localStartedAt.value = null;
+  persistMatchStart(null);
 }
 
 async function addGoal() {
