@@ -26,7 +26,7 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
 
   if (!response.ok) {
     const text = await response.text();
-    throw new Error(text || `Запрос не выполнен: ${response.status}`);
+    throw new Error(parseErrorMessage(text, response.status));
   }
 
   if (response.status === 204) {
@@ -34,6 +34,26 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
   }
 
   return response.json() as Promise<T>;
+}
+
+function parseErrorMessage(text: string, status: number): string {
+  if (!text) {
+    return `Запрос не выполнен: ${status}`;
+  }
+
+  try {
+    const payload = JSON.parse(text) as { message?: unknown; error?: unknown };
+    if (typeof payload.message === 'string' && payload.message.trim()) {
+      return payload.message;
+    }
+    if (typeof payload.error === 'string' && payload.error.trim()) {
+      return payload.error;
+    }
+  } catch {
+    // Keep the plain response text below.
+  }
+
+  return text;
 }
 
 export const api = {

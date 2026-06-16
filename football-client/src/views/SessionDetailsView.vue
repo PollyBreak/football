@@ -4,7 +4,10 @@
       <div>
         <p class="eyebrow">Сессия</p>
         <h2 class="section-title">{{ session.title }}</h2>
-        <p class="muted">{{ session.sessionDate }} • {{ session.location || 'Место не указано' }}</p>
+        <p class="muted">{{ session.sessionDate }} {{ session.sessionTime?.slice(0, 5) }} • {{ session.location || 'Место не указано' }}</p>
+        <a v-if="session.locationUrl" class="muted map-link" :href="session.locationUrl" target="_blank" rel="noreferrer">
+          Открыть поле на карте
+        </a>
         <p class="muted">Игроки: {{ sessionPlayers.length }} / {{ session.maxPlayers || 'без лимита' }}</p>
       </div>
       <div class="hero-actions">
@@ -27,8 +30,36 @@
             <h3 class="section-title">Сессия</h3>
           </div>
           <label class="field-label">
+            <span>Название сессии</span>
+            <input v-model="sessionSettings.title" class="input" placeholder="Название сессии" />
+          </label>
+          <label class="field-label">
+            <span>Дата сессии</span>
+            <input v-model="sessionSettings.sessionDate" class="input" type="date" />
+          </label>
+          <label class="field-label">
+            <span>Время сессии</span>
+            <input v-model="sessionSettings.sessionTime" class="input" type="time" />
+          </label>
+          <label class="field-label">
+            <span>Место</span>
+            <input v-model="sessionSettings.location" class="input" placeholder="Место" />
+          </label>
+          <label class="field-label">
+            <span>Ссылка на поле на 2GIS / Google Maps / Яндекс картах</span>
+            <input v-model="sessionSettings.locationUrl" class="input" type="url" placeholder="https://..." />
+          </label>
+          <label class="field-label">
+            <span>Длительность матча, минут</span>
+            <input v-model.number="sessionSettings.plannedMatchDurationMinutes" class="input" type="number" min="1" />
+          </label>
+          <label class="field-label">
             <span>Максимум игроков</span>
             <input v-model.number="sessionSettings.maxPlayers" class="input" type="number" min="1" />
+          </label>
+          <label class="field-label">
+            <span>Заметки</span>
+            <textarea v-model="sessionSettings.notes" class="input textarea" placeholder="Заметки"></textarea>
           </label>
         </div>
       </div>
@@ -159,7 +190,23 @@
     <div v-if="activeTab === 'Matches'" class="card stack-sm">
       <div class="section-header">
         <h3 class="section-title">Матчи</h3>
-        <button class="primary-button" @click="createNextMatch">Создать следующий</button>
+        <button class="primary-button" @click="createNextMatch">{{ createMatchButtonLabel }}</button>
+      </div>
+      <div v-if="session.formatType === 'KNOCKOUT'" class="grid-form">
+        <label class="field-label">
+          <span>Первая команда</span>
+          <select v-model.number="knockoutMatchForm.teamAId" class="input">
+            <option :value="undefined">Выберите команду</option>
+            <option v-for="team in session.teams" :key="team.id" :value="team.id">{{ team.name }}</option>
+          </select>
+        </label>
+        <label class="field-label">
+          <span>Вторая команда</span>
+          <select v-model.number="knockoutMatchForm.teamBId" class="input">
+            <option :value="undefined">Выберите команду</option>
+            <option v-for="team in session.teams" :key="team.id" :value="team.id">{{ team.name }}</option>
+          </select>
+        </label>
       </div>
       <div class="list">
         <article v-for="match in matches" :key="match.id" class="match-card">
@@ -288,8 +335,22 @@ const sessionPlayerForm = reactive({
   playerId: undefined as number | undefined,
   position: 'MIDFIELDER' as PlayerPosition
 });
+const knockoutMatchForm = reactive({
+  teamAId: undefined as number | undefined,
+  teamBId: undefined as number | undefined
+});
 const sessionSettings = reactive({
+  title: '',
+  sessionDate: '',
+  sessionTime: '',
+  location: '',
+  locationUrl: '',
+  plannedMatchDurationMinutes: 6 as number | null,
+  notes: '',
   maxPlayers: 15 as number | null
+});
+const createMatchButtonLabel = computed(() => {
+  return session.value?.formatType === 'KNOCKOUT' ? 'Создать матч' : 'Создать следующий';
 });
 
 function playerInitials(player: SessionPlayer): string {
@@ -341,8 +402,20 @@ async function refreshAll() {
 
 async function loadSession() {
   session.value = await api.getSession(sessionIdNumber.value);
-  sessionSettings.maxPlayers = session.value.maxPlayers ?? null;
+  fillSessionSettings();
   session.value.teams.forEach((team) => ensureTeamSelection(team.id));
+}
+
+function fillSessionSettings() {
+  if (!session.value) return;
+  sessionSettings.title = session.value.title;
+  sessionSettings.sessionDate = session.value.sessionDate;
+  sessionSettings.sessionTime = session.value.sessionTime?.slice(0, 5) ?? '';
+  sessionSettings.location = session.value.location ?? '';
+  sessionSettings.locationUrl = session.value.locationUrl ?? '';
+  sessionSettings.plannedMatchDurationMinutes = session.value.plannedMatchDurationMinutes ?? null;
+  sessionSettings.notes = session.value.notes ?? '';
+  sessionSettings.maxPlayers = session.value.maxPlayers ?? null;
 }
 
 async function loadPlayers() {
@@ -375,12 +448,29 @@ async function loadTeamPlayers() {
 }
 
 async function saveSessionSettings() {
+  if (!sessionSettings.title.trim()) {
+    error.value = 'Заполните название сессии';
+    return;
+  }
+  if (!sessionSettings.sessionDate || !sessionSettings.sessionTime) {
+    error.value = 'Укажите дату и время сессии';
+    return;
+  }
+
   pendingSessionUpdate.value = true;
   error.value = '';
   try {
     session.value = await api.updateSession(sessionIdNumber.value, {
+      title: sessionSettings.title.trim(),
+      sessionDate: sessionSettings.sessionDate,
+      sessionTime: sessionSettings.sessionTime,
+      location: sessionSettings.location.trim() || null,
+      locationUrl: sessionSettings.locationUrl.trim() || null,
+      plannedMatchDurationMinutes: sessionSettings.plannedMatchDurationMinutes || null,
+      notes: sessionSettings.notes.trim() || null,
       maxPlayers: sessionSettings.maxPlayers || null
     });
+    fillSessionSettings();
     await Promise.all([loadSessionPlayers(), loadWaitlist()]);
     settingsOpen.value = false;
   } catch (err) {
@@ -437,15 +527,29 @@ async function assignSelectedPlayers(teamId: number) {
 
 async function createNextMatch() {
   if (!session.value || session.value.teams.length < 2) return;
-  const teamA = session.value.teams[matches.value.length % session.value.teams.length];
-  const teamB = session.value.teams[(matches.value.length + 1) % session.value.teams.length];
-  if (teamA.id === teamB.id) return;
+
+  const teamA = session.value.formatType === 'KNOCKOUT'
+    ? session.value.teams.find((team) => team.id === knockoutMatchForm.teamAId)
+    : session.value.teams[matches.value.length % session.value.teams.length];
+  const teamB = session.value.formatType === 'KNOCKOUT'
+    ? session.value.teams.find((team) => team.id === knockoutMatchForm.teamBId)
+    : session.value.teams[(matches.value.length + 1) % session.value.teams.length];
+  if (!teamA || !teamB) {
+    error.value = 'Выберите две команды для матча';
+    return;
+  }
+  if (teamA.id === teamB.id) {
+    error.value = 'Выберите разные команды';
+    return;
+  }
 
   await api.createMatch(sessionIdNumber.value, {
     teamAId: teamA.id,
     teamBId: teamB.id,
     plannedDurationMinutes: session.value.plannedMatchDurationMinutes ?? 6
   });
+  knockoutMatchForm.teamAId = undefined;
+  knockoutMatchForm.teamBId = undefined;
   await loadMatches();
 }
 

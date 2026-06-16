@@ -25,7 +25,7 @@
         >
           <div>
             <strong>{{ session.title }}</strong>
-            <p class="muted">{{ session.sessionDate }} • {{ session.location || 'Место не указано' }}</p>
+            <p class="muted">{{ session.sessionDate }} {{ session.sessionTime?.slice(0, 5) }} • {{ session.location || 'Место не указано' }}</p>
           </div>
           <span class="status-pill">{{ sessionStatusLabel(session.status) }}</span>
         </RouterLink>

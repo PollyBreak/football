@@ -6,15 +6,31 @@
       <div class="section-header">
         <h2 class="section-title">Создать сессию</h2>
       </div>
-      <div class="grid-form">
-        <input v-model="form.title" class="input" placeholder="Название сессии" />
-        <input v-model="form.sessionDate" class="input" type="date" />
+      <form id="create-session-form" class="grid-form" novalidate @submit.prevent="createSession">
+        <label class="field-label" :class="{ 'is-invalid': shouldShowFieldError('title') }">
+          <span>Название сессии *</span>
+          <input v-model="form.title" class="input" placeholder="Название сессии" required />
+        </label>
+        <label class="field-label" :class="{ 'is-invalid': shouldShowFieldError('sessionDate') }">
+          <span>Дата сессии *</span>
+          <input v-model="form.sessionDate" class="input" type="date" required />
+        </label>
+        <label class="field-label" :class="{ 'is-invalid': shouldShowFieldError('sessionTime') }">
+          <span>Время сессии *</span>
+          <input v-model="form.sessionTime" class="input" type="time" required />
+        </label>
         <input v-model="form.location" class="input" placeholder="Место" />
-        <select v-model="form.formatType" class="input">
-          <option value="ROUND_ROBIN">{{ sessionFormatLabel('ROUND_ROBIN') }}</option>
-          <option value="KING_OF_THE_HILL">{{ sessionFormatLabel('KING_OF_THE_HILL') }}</option>
-          <option value="CUSTOM">{{ sessionFormatLabel('CUSTOM') }}</option>
-        </select>
+        <label class="field-label">
+          <span>Ссылка на поле на 2GIS / Google Maps / Яндекс картах</span>
+          <input v-model="form.locationUrl" class="input" type="url" placeholder="https://..." />
+        </label>
+        <label class="field-label" :class="{ 'is-invalid': shouldShowFieldError('formatType') }">
+          <span>Формат игр *</span>
+          <select v-model="form.formatType" class="input" required>
+            <option value="ROUND_ROBIN">{{ sessionFormatLabel('ROUND_ROBIN') }}</option>
+            <option value="KNOCKOUT">{{ sessionFormatLabel('KNOCKOUT') }}</option>
+          </select>
+        </label>
         <label class="field-label">
           <span>Длительность матча, минут</span>
           <input v-model.number="form.plannedMatchDurationMinutes" class="input" type="number" min="1" />
@@ -24,8 +40,8 @@
           <input v-model.number="form.maxPlayers" class="input" type="number" min="1" />
         </label>
         <textarea v-model="form.notes" class="input textarea" placeholder="Заметки"></textarea>
-      </div>
-      <button class="primary-button form-submit" @click="createSession" :disabled="pending">Создать</button>
+        <button class="primary-button form-submit" type="button" @click="createSession" :disabled="pending">Создать</button>
+      </form>
       <p v-if="error" class="error-text">{{ error }}</p>
     </div>
   </section>
@@ -41,25 +57,55 @@ import type { SessionFormatType } from '../types';
 const router = useRouter();
 const pending = ref(false);
 const error = ref('');
+type RequiredField = 'title' | 'sessionDate' | 'sessionTime' | 'formatType';
 
 const form = reactive({
   title: '',
   sessionDate: new Date().toISOString().slice(0, 10),
+  sessionTime: '20:00',
   location: '',
+  locationUrl: '',
   formatType: 'ROUND_ROBIN' as SessionFormatType,
   plannedMatchDurationMinutes: 6,
   maxPlayers: 15,
   notes: ''
 });
 
+function fieldError(field: RequiredField): string {
+  if (field === 'title' && !form.title.trim()) return 'Заполните название сессии';
+  if (field === 'sessionDate' && !form.sessionDate) return 'Укажите дату сессии';
+  if (field === 'sessionTime' && !form.sessionTime) return 'Укажите время сессии';
+  if (field === 'formatType' && !form.formatType) return 'Выберите формат игр';
+  return '';
+}
+
+function shouldShowFieldError(field: RequiredField): boolean {
+  return Boolean(fieldError(field));
+}
+
+function validateForm(): boolean {
+  const requiredFields: RequiredField[] = ['title', 'sessionDate', 'sessionTime', 'formatType'];
+  const firstError = requiredFields
+    .map((field) => fieldError(field))
+    .find(Boolean);
+  error.value = firstError || '';
+  return !firstError;
+}
+
 async function createSession() {
+  if (!validateForm()) {
+    return;
+  }
+
   pending.value = true;
   error.value = '';
   try {
     const session = await api.createSession({
       title: form.title,
       sessionDate: form.sessionDate,
+      sessionTime: form.sessionTime,
       location: form.location || null,
+      locationUrl: form.locationUrl || null,
       formatType: form.formatType,
       plannedMatchDurationMinutes: form.plannedMatchDurationMinutes,
       maxPlayers: form.maxPlayers || null,

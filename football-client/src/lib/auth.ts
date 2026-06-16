@@ -1,6 +1,11 @@
 import { reactive } from 'vue';
 import { api } from './api';
-import type { PlayerProfile, TelegramAuthResponse } from '../types';
+import type { AuthUser, PlayerProfile, TelegramAuthResponse } from '../types';
+
+const telegramAuthRequired = import.meta.env.VITE_TELEGRAM_AUTH_REQUIRED !== 'false';
+const mockTelegramId = Number(import.meta.env.VITE_DEV_AUTH_TELEGRAM_ID ?? 1001);
+const mockPlayerId = Number(import.meta.env.VITE_DEV_AUTH_PLAYER_ID ?? 0);
+const mockDisplayName = import.meta.env.VITE_DEV_AUTH_DISPLAY_NAME?.trim() || 'Local Dev Player';
 
 export const authState = reactive({
   ready: false,
@@ -23,6 +28,20 @@ export function bootstrapTelegramAuth(): Promise<void> {
 
 async function doBootstrapTelegramAuth(): Promise<void> {
   const initData = window.Telegram?.WebApp?.initData;
+
+  if (!telegramAuthRequired && !initData) {
+    try {
+      await authenticateAsLocalDevUser();
+    } catch (error) {
+      authState.ready = true;
+      authState.authenticated = false;
+      authState.onboardingRequired = false;
+      authState.user = null;
+      authState.player = null;
+      authState.error = error instanceof Error ? error.message : 'Failed to load local dev player';
+    }
+    return;
+  }
 
   if (!initData) {
     authState.ready = true;
@@ -50,6 +69,26 @@ async function doBootstrapTelegramAuth(): Promise<void> {
     authState.player = null;
     authState.error = error instanceof Error ? error.message : 'Не удалось войти через Telegram';
   }
+}
+
+async function authenticateAsLocalDevUser(): Promise<void> {
+  const createdAt = new Date().toISOString();
+  const player = mockPlayerId > 0 ? await api.getPlayer(mockPlayerId) : null;
+  const user: AuthUser = {
+    id: player?.userId ?? mockTelegramId,
+    telegramId: player?.telegramId ?? mockTelegramId,
+    username: player?.username ?? 'local_dev',
+    displayName: player?.displayName ?? mockDisplayName,
+    photoUrl: player?.photoUrl ?? null,
+    createdAt: player?.createdAt ?? createdAt
+  };
+
+  authState.ready = true;
+  authState.authenticated = true;
+  authState.onboardingRequired = !player;
+  authState.user = user;
+  authState.player = player;
+  authState.error = '';
 }
 
 export function setRegisteredPlayer(player: PlayerProfile): void {

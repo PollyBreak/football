@@ -6,12 +6,15 @@ import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import java.time.LocalDate;
+import java.time.LocalTime;
 import java.util.List;
 
 public record CreateGameSessionRequest(
         @NotBlank String title,
         @NotNull LocalDate sessionDate,
+        @NotNull LocalTime sessionTime,
         String location,
+        String locationUrl,
         @NotNull SessionFormatType formatType,
         SessionStatus status,
         Integer plannedMatchDurationMinutes,

@@ -391,6 +391,8 @@ textarea {
 
 .settings-window {
   width: min(100%, 520px);
+  max-height: calc(100vh - 36px - env(safe-area-inset-top) - env(safe-area-inset-bottom));
+  overflow-y: auto;
   display: flex;
   flex-direction: column;
   gap: 16px;
@@ -435,7 +437,12 @@ textarea {
 
 .error-text {
   margin: 0;
+  padding: 10px 12px;
+  border: 1px solid rgba(217, 93, 93, 0.24);
+  border-radius: 12px;
+  background: rgba(217, 93, 93, 0.08);
   color: var(--danger);
+  font-size: 0.92rem;
 }
 
 .banner {
@@ -462,6 +469,11 @@ textarea {
   background: var(--input-bg);
 }
 
+.input[readonly] {
+  opacity: 0.72;
+  cursor: default;
+}
+
 .textarea {
   min-height: 96px;
   resize: vertical;
@@ -482,6 +494,15 @@ textarea {
 
 .field-label .input {
   color: inherit;
+}
+
+.field-label.is-invalid {
+  color: var(--danger);
+}
+
+.field-label.is-invalid .input {
+  border-color: var(--danger);
+  box-shadow: 0 0 0 3px rgba(217, 93, 93, 0.12);
 }
 
 .search-row {
@@ -695,13 +716,35 @@ textarea {
 
 .tabs {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 8px;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 6px;
+  min-width: 0;
+  overflow-x: hidden;
+}
+
+.tabs .tab-button {
+  min-width: 0;
+  padding: 10px 6px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 0.9rem;
 }
 
 .tab-button.is-active {
   color: white;
   background: linear-gradient(135deg, var(--accent), var(--accent-dark));
+}
+
+@media (max-width: 380px) {
+  .tabs {
+    gap: 4px;
+  }
+
+  .tabs .tab-button {
+    padding: 9px 4px;
+    font-size: 0.82rem;
+  }
 }
 
 .team-block {

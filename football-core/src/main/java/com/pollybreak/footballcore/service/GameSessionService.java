@@ -50,7 +50,9 @@ public class GameSessionService {
         GameSession session = new GameSession();
         session.setTitle(request.title());
         session.setSessionDate(request.sessionDate());
+        session.setSessionTime(request.sessionTime());
         session.setLocation(request.location());
+        session.setLocationUrl(request.locationUrl());
         session.setFormatType(request.formatType());
         session.setStatus(request.status() != null ? request.status() : SessionStatus.PLANNED);
         session.setPlannedMatchDurationMinutes(request.plannedMatchDurationMinutes());
@@ -82,9 +84,29 @@ public class GameSessionService {
     @Transactional
     public GameSessionResponse update(Long sessionId, UpdateGameSessionRequest request) {
         GameSession session = getById(sessionId);
+        if (request.title() != null && request.title().isBlank()) {
+            throw new IllegalArgumentException("title must not be blank");
+        }
+        if (request.plannedMatchDurationMinutes() != null && request.plannedMatchDurationMinutes() < 1) {
+            throw new IllegalArgumentException("plannedMatchDurationMinutes must be greater than zero");
+        }
         if (request.maxPlayers() != null && request.maxPlayers() < 1) {
             throw new IllegalArgumentException("maxPlayers must be greater than zero");
         }
+
+        if (request.title() != null) {
+            session.setTitle(request.title());
+        }
+        if (request.sessionDate() != null) {
+            session.setSessionDate(request.sessionDate());
+        }
+        if (request.sessionTime() != null) {
+            session.setSessionTime(request.sessionTime());
+        }
+        session.setLocation(request.location());
+        session.setLocationUrl(request.locationUrl());
+        session.setPlannedMatchDurationMinutes(request.plannedMatchDurationMinutes());
+        session.setNotes(request.notes());
         session.setMaxPlayers(request.maxPlayers());
         sessionPlayerService.fillAvailableSlots(sessionId);
         return GameSessionResponse.fromEntity(session, sessionTeamRepository.findAllBySessionIdOrderByDisplayOrderAsc(sessionId));

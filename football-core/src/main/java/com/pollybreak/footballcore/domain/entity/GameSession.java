@@ -14,6 +14,7 @@ import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
 import java.time.LocalDate;
+import java.time.LocalTime;
 import java.time.OffsetDateTime;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -36,8 +37,14 @@ public class GameSession {
     @Column(name = "session_date", nullable = false)
     private LocalDate sessionDate;
 
+    @Column(name = "session_time", nullable = false)
+    private LocalTime sessionTime;
+
     @Column(length = 200)
     private String location;
+
+    @Column(name = "location_url", length = 500)
+    private String locationUrl;
 
     @Enumerated(EnumType.STRING)
     @Column(name = "format_type", nullable = false, length = 100)

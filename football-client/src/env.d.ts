@@ -2,6 +2,10 @@
 
 interface ImportMetaEnv {
   readonly VITE_API_BASE_URL?: string;
+  readonly VITE_TELEGRAM_AUTH_REQUIRED?: string;
+  readonly VITE_DEV_AUTH_TELEGRAM_ID?: string;
+  readonly VITE_DEV_AUTH_PLAYER_ID?: string;
+  readonly VITE_DEV_AUTH_DISPLAY_NAME?: string;
 }
 
 interface TelegramWebAppUser {

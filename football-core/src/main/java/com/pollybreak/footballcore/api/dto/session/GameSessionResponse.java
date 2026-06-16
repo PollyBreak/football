@@ -5,6 +5,7 @@ import com.pollybreak.footballcore.domain.entity.SessionTeam;
 import com.pollybreak.footballcore.domain.enums.SessionFormatType;
 import com.pollybreak.footballcore.domain.enums.SessionStatus;
 import java.time.LocalDate;
+import java.time.LocalTime;
 import java.time.OffsetDateTime;
 import java.util.List;
 
@@ -12,7 +13,9 @@ public record GameSessionResponse(
         Long id,
         String title,
         LocalDate sessionDate,
+        LocalTime sessionTime,
         String location,
+        String locationUrl,
         SessionFormatType formatType,
         SessionStatus status,
         Integer plannedMatchDurationMinutes,
@@ -29,7 +32,9 @@ public record GameSessionResponse(
                 session.getId(),
                 session.getTitle(),
                 session.getSessionDate(),
+                session.getSessionTime(),
                 session.getLocation(),
+                session.getLocationUrl(),
                 session.getFormatType(),
                 session.getStatus(),
                 session.getPlannedMatchDurationMinutes(),

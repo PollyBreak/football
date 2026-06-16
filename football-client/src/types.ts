@@ -5,7 +5,7 @@ export type PlayerPosition =
   | 'FORWARD'
   | 'UNIVERSAL';
 
-export type SessionFormatType = 'ROUND_ROBIN' | 'KING_OF_THE_HILL' | 'CUSTOM';
+export type SessionFormatType = 'ROUND_ROBIN' | 'KNOCKOUT' | 'KING_OF_THE_HILL' | 'CUSTOM';
 export type SessionStatus = 'PLANNED' | 'IN_PROGRESS' | 'FINISHED' | 'CANCELLED';
 export type MatchStatus = 'PLANNED' | 'IN_PROGRESS' | 'FINISHED' | 'CANCELLED';
 
@@ -55,7 +55,9 @@ export interface GameSession {
   id: number;
   title: string;
   sessionDate: string;
+  sessionTime: string;
   location: string | null;
+  locationUrl: string | null;
   formatType: SessionFormatType;
   status: SessionStatus;
   plannedMatchDurationMinutes: number | null;

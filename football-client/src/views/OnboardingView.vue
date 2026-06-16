@@ -11,15 +11,32 @@
 
     <div class="card stack-sm">
       <div class="grid-form">
-        <input v-model="form.firstName" class="input" placeholder="Имя" />
-        <input v-model="form.lastName" class="input" placeholder="Фамилия" />
-        <input v-model="form.displayName" class="input" placeholder="Отображаемое имя" />
-        <input v-model="form.nickname" class="input" placeholder="Никнейм" />
-        <input v-model="form.homeCity" class="input" placeholder="Город" />
-        <input v-model="form.birthDate" class="input" type="date" />
-        <select v-model="form.defaultPosition" class="input">
-          <option v-for="position in positions" :key="position" :value="position">{{ playerPositionLabel(position) }}</option>
-        </select>
+        <label class="field-label">
+          <span>Имя</span>
+          <input v-model="form.firstName" class="input" placeholder="Имя" required />
+        </label>
+        <label class="field-label">
+          <span>Фамилия</span>
+          <input v-model="form.lastName" class="input" placeholder="Фамилия" />
+        </label>
+        <label class="field-label">
+          <span>Отображаемое имя в приложении</span>
+          <input v-model="form.displayName" class="input" placeholder="Username" required />
+        </label>
+        <label class="field-label">
+          <span>Откуда ты?</span>
+          <input v-model="form.homeCity" class="input" placeholder="Родной город" />
+        </label>
+        <label class="field-label">
+          <span>Дата рождения</span>
+          <input v-model="form.birthDate" class="input" type="date" />
+        </label>
+        <label class="field-label">
+          <span>Позиция</span>
+          <select v-model="form.defaultPosition" class="input" required>
+            <option v-for="position in positions" :key="position" :value="position">{{ playerPositionLabel(position) }}</option>
+          </select>
+        </label>
       </div>
 
       <button class="primary-button form-submit" @click="completeRegistration" :disabled="pending">
@@ -47,7 +64,6 @@ const form = reactive({
   firstName: '',
   lastName: '',
   displayName: '',
-  nickname: '',
   homeCity: '',
   birthDate: '',
   defaultPosition: 'MIDFIELDER' as PlayerPosition
@@ -59,17 +75,24 @@ async function completeRegistration() {
     return;
   }
 
+  const firstName = form.firstName.trim();
+  const displayName = form.displayName.trim();
+  if (!firstName || !displayName || !form.defaultPosition) {
+    error.value = 'Заполните имя, Username и позицию';
+    return;
+  }
+
   pending.value = true;
   error.value = '';
   try {
     const player = await api.createPlayer({
       telegramId: authState.user.telegramId,
       username: authState.user.username,
-      displayName: form.displayName,
-      firstName: form.firstName,
-      lastName: form.lastName || null,
-      nickname: form.nickname || null,
-      homeCity: form.homeCity || null,
+      displayName,
+      firstName,
+      lastName: form.lastName.trim() || null,
+      nickname: null,
+      homeCity: form.homeCity.trim() || null,
       birthDate: form.birthDate || null,
       defaultPosition: form.defaultPosition
     });
@@ -85,12 +108,6 @@ async function completeRegistration() {
 onMounted(() => {
   if (authState.player) {
     router.replace('/sessions');
-    return;
   }
-
-  const user = authState.user;
-  form.displayName = user?.displayName ?? '';
-  form.firstName = user?.displayName?.split(' ')[0] ?? '';
-  form.lastName = user?.displayName?.split(' ').slice(1).join(' ') ?? '';
 });
 </script>

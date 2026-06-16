@@ -18,16 +18,36 @@
       </div>
 
       <div class="grid-form">
-        <input v-model="profileForm.firstName" class="input" placeholder="Имя" />
-        <input v-model="profileForm.lastName" class="input" placeholder="Фамилия" />
-        <input v-model="profileForm.displayName" class="input" placeholder="Отображаемое имя" />
-        <input v-model="profileForm.nickname" class="input" placeholder="Никнейм" />
-        <input v-model="profileForm.homeCity" class="input" placeholder="Город" />
-        <input v-model="profileForm.birthDate" class="input" type="date" />
-        <input v-model="profileForm.username" class="input" placeholder="Имя пользователя Telegram" />
-        <select v-model="profileForm.defaultPosition" class="input">
-          <option v-for="position in positions" :key="position" :value="position">{{ playerPositionLabel(position) }}</option>
-        </select>
+        <label class="field-label">
+          <span>Имя</span>
+          <input v-model="profileForm.firstName" class="input" placeholder="Имя" required />
+        </label>
+        <label class="field-label">
+          <span>Фамилия</span>
+          <input v-model="profileForm.lastName" class="input" placeholder="Фамилия" />
+        </label>
+        <label class="field-label">
+          <span>Отображаемое имя в приложении</span>
+          <input v-model="profileForm.displayName" class="input" placeholder="Username" required />
+        </label>
+        <label class="field-label">
+          <span>Откуда ты?</span>
+          <input v-model="profileForm.homeCity" class="input" placeholder="Родной город" />
+        </label>
+        <label class="field-label">
+          <span>Дата рождения</span>
+          <input v-model="profileForm.birthDate" class="input" type="date" />
+        </label>
+        <label class="field-label">
+          <span>Имя пользователя Telegram</span>
+          <input class="input" :value="telegramUsername" placeholder="Не указан" readonly />
+        </label>
+        <label class="field-label">
+          <span>Позиция</span>
+          <select v-model="profileForm.defaultPosition" class="input" required>
+            <option v-for="position in positions" :key="position" :value="position">{{ playerPositionLabel(position) }}</option>
+          </select>
+        </label>
       </div>
 
       <button class="primary-button form-submit" @click="saveProfile" :disabled="pending">Сохранить изменения</button>
@@ -39,17 +59,36 @@
       </div>
 
       <div class="grid-form">
-        <input v-model="registrationForm.firstName" class="input" placeholder="Имя" />
-        <input v-model="registrationForm.lastName" class="input" placeholder="Фамилия" />
-        <input v-model="registrationForm.displayName" class="input" placeholder="Отображаемое имя" />
-        <input v-model="registrationForm.nickname" class="input" placeholder="Никнейм" />
-        <input v-model="registrationForm.homeCity" class="input" placeholder="Город" />
-        <input v-model="registrationForm.birthDate" class="input" type="date" />
-        <input v-model="registrationForm.username" class="input" placeholder="Имя пользователя Telegram" />
-        <input v-model.number="registrationForm.telegramId" class="input" type="number" placeholder="Telegram ID" />
-        <select v-model="registrationForm.defaultPosition" class="input">
-          <option v-for="position in positions" :key="position" :value="position">{{ playerPositionLabel(position) }}</option>
-        </select>
+        <label class="field-label">
+          <span>Имя</span>
+          <input v-model="registrationForm.firstName" class="input" placeholder="Имя" required />
+        </label>
+        <label class="field-label">
+          <span>Фамилия</span>
+          <input v-model="registrationForm.lastName" class="input" placeholder="Фамилия" />
+        </label>
+        <label class="field-label">
+          <span>Отображаемое имя в приложении</span>
+          <input v-model="registrationForm.displayName" class="input" placeholder="Username" required />
+        </label>
+        <label class="field-label">
+          <span>Откуда ты?</span>
+          <input v-model="registrationForm.homeCity" class="input" placeholder="Родной город" />
+        </label>
+        <label class="field-label">
+          <span>Дата рождения</span>
+          <input v-model="registrationForm.birthDate" class="input" type="date" />
+        </label>
+        <label class="field-label">
+          <span>Имя пользователя Telegram</span>
+          <input class="input" :value="telegramUsername" placeholder="Не указан" readonly />
+        </label>
+        <label class="field-label">
+          <span>Позиция</span>
+          <select v-model="registrationForm.defaultPosition" class="input" required>
+            <option v-for="position in positions" :key="position" :value="position">{{ playerPositionLabel(position) }}</option>
+          </select>
+        </label>
       </div>
 
       <button class="primary-button form-submit" @click="createPlayer" :disabled="pending">Зарегистрироваться</button>
@@ -71,29 +110,28 @@ const error = ref('');
 const positions: PlayerPosition[] = ['GOALKEEPER', 'DEFENDER', 'MIDFIELDER', 'FORWARD', 'UNIVERSAL'];
 
 const registrationForm = reactive({
-  telegramId: undefined as number | undefined,
-  username: '',
   displayName: '',
   firstName: '',
   lastName: '',
-  nickname: '',
   homeCity: '',
   birthDate: '',
   defaultPosition: 'MIDFIELDER' as PlayerPosition
 });
 
 const profileForm = reactive({
-  username: '',
   displayName: '',
   firstName: '',
   lastName: '',
-  nickname: '',
   homeCity: '',
   birthDate: '',
   defaultPosition: 'MIDFIELDER' as PlayerPosition
 });
 
 const telegramPhotoUrl = computed(() => authState.user?.photoUrl ?? '');
+const telegramUsername = computed(() => {
+  const username = authState.user?.username ?? authState.player?.username ?? '';
+  return username ? `@${username}` : '';
+});
 const profileTitle = computed(() => authState.player?.displayName || authState.user?.displayName || 'Профиль');
 const profileInitials = computed(() => {
   const source = authState.player
@@ -111,36 +149,44 @@ const profileInitials = computed(() => {
 function fillRegistrationFromTelegram() {
   if (!authState.user) return;
 
-  registrationForm.telegramId = authState.user.telegramId;
-  registrationForm.username = authState.user.username ?? '';
   registrationForm.displayName = authState.user.displayName;
   registrationForm.firstName = authState.user.displayName.split(' ')[0] ?? '';
   registrationForm.lastName = authState.user.displayName.split(' ').slice(1).join(' ');
 }
 
 function fillProfileForm(player: PlayerProfile) {
-  profileForm.username = player.username ?? authState.user?.username ?? '';
   profileForm.displayName = player.displayName ?? '';
   profileForm.firstName = player.firstName;
   profileForm.lastName = player.lastName ?? '';
-  profileForm.nickname = player.nickname ?? '';
   profileForm.homeCity = player.homeCity ?? '';
   profileForm.birthDate = player.birthDate ?? '';
   profileForm.defaultPosition = player.defaultPosition ?? 'MIDFIELDER';
 }
 
 async function createPlayer() {
+  if (!authState.user) {
+    error.value = 'Пользователь Telegram недоступен';
+    return;
+  }
+
+  const firstName = registrationForm.firstName.trim();
+  const displayName = registrationForm.displayName.trim();
+  if (!firstName || !displayName || !registrationForm.defaultPosition) {
+    error.value = 'Заполните имя, Username и позицию';
+    return;
+  }
+
   pending.value = true;
   error.value = '';
   try {
     const player = await api.createPlayer({
-      telegramId: registrationForm.telegramId,
-      username: registrationForm.username || null,
-      displayName: registrationForm.displayName,
-      firstName: registrationForm.firstName,
-      lastName: registrationForm.lastName || null,
-      nickname: registrationForm.nickname || null,
-      homeCity: registrationForm.homeCity || null,
+      telegramId: authState.user.telegramId,
+      username: authState.user.username,
+      displayName,
+      firstName,
+      lastName: registrationForm.lastName.trim() || null,
+      nickname: null,
+      homeCity: registrationForm.homeCity.trim() || null,
       birthDate: registrationForm.birthDate || null,
       defaultPosition: registrationForm.defaultPosition
     });
@@ -156,16 +202,23 @@ async function createPlayer() {
 async function saveProfile() {
   if (!authState.player) return;
 
+  const firstName = profileForm.firstName.trim();
+  const displayName = profileForm.displayName.trim();
+  if (!firstName || !displayName || !profileForm.defaultPosition) {
+    error.value = 'Заполните имя, Username и позицию';
+    return;
+  }
+
   pending.value = true;
   error.value = '';
   try {
     const player = await api.updatePlayer(authState.player.playerId, {
-      username: profileForm.username || null,
-      displayName: profileForm.displayName,
-      firstName: profileForm.firstName,
-      lastName: profileForm.lastName || null,
-      nickname: profileForm.nickname || null,
-      homeCity: profileForm.homeCity || null,
+      username: authState.user?.username ?? authState.player.username ?? null,
+      displayName,
+      firstName,
+      lastName: profileForm.lastName.trim() || null,
+      nickname: null,
+      homeCity: profileForm.homeCity.trim() || null,
       birthDate: profileForm.birthDate || null,
       defaultPosition: profileForm.defaultPosition,
       active: true
