@@ -12,6 +12,7 @@ import com.pollybreak.footballcore.repository.AppUserRepository;
 import com.pollybreak.footballcore.repository.GameSessionRepository;
 import com.pollybreak.footballcore.repository.SessionTeamRepository;
 import java.time.LocalDate;
+import java.time.OffsetDateTime;
 import java.util.Comparator;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
@@ -107,6 +108,12 @@ public class GameSessionService {
         session.setLocation(request.location());
         session.setLocationUrl(request.locationUrl());
         session.setBroadcastUrl(request.broadcastUrl());
+        if (request.status() != null) {
+            session.setStatus(request.status());
+            if (request.status() == SessionStatus.FINISHED && session.getEndedAt() == null) {
+                session.setEndedAt(OffsetDateTime.now());
+            }
+        }
         session.setPlannedMatchDurationMinutes(request.plannedMatchDurationMinutes());
         session.setNotes(request.notes());
         session.setMaxPlayers(request.maxPlayers());

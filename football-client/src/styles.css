@@ -576,7 +576,19 @@ textarea {
   min-height: 48px;
 }
 
+.finish-session-button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  min-height: 48px;
+}
+
 .join-session-button.is-danger {
+  background: linear-gradient(135deg, #d95d5d, #9f3030);
+}
+
+.finish-session-button.is-danger {
   background: linear-gradient(135deg, #d95d5d, #9f3030);
 }
 

@@ -39,38 +39,38 @@
       </div>
 
       <div class="button-row">
-        <button class="ghost-button" @click="startMatch" :disabled="match.status !== 'PLANNED'">Начать</button>
-        <button class="ghost-button" :class="{ 'is-danger': matchIsOvertime }" @click="finishMatch" :disabled="match.status === 'FINISHED'">Завершить</button>
+        <button v-if="!sessionIsFinished" class="ghost-button" @click="startMatch" :disabled="match.status !== 'PLANNED'">Начать</button>
+        <button v-if="!sessionIsFinished" class="ghost-button" :class="{ 'is-danger': matchIsOvertime }" @click="finishMatch" :disabled="match.status === 'FINISHED'">Завершить</button>
         <button class="ghost-button" @click="loadMatch">Обновить</button>
       </div>
     </div>
 
-    <div class="card stack-sm">
+    <div v-if="!sessionIsFinished" class="card stack-sm">
       <div class="section-header">
         <h3 class="section-title">Гол и передача</h3>
       </div>
       <div class="grid-form">
-        <select v-model.number="goalForm.teamId" class="input">
+        <select v-model.number="goalForm.teamId" class="input" :disabled="sessionIsFinished">
           <option :value="match.teamAId">{{ match.teamAName }}</option>
           <option :value="match.teamBId">{{ match.teamBName }}</option>
         </select>
         <label class="field-label field-label--checkbox">
           <span>Автогол</span>
-          <input v-model="goalForm.ownGoal" type="checkbox" />
+          <input v-model="goalForm.ownGoal" type="checkbox" :disabled="sessionIsFinished" />
         </label>
-        <select v-model.number="goalForm.scorerPlayerId" class="input">
+        <select v-model.number="goalForm.scorerPlayerId" class="input" :disabled="sessionIsFinished">
           <option :value="undefined">Автор гола</option>
           <option v-for="player in scorerOptions" :key="player.playerId" :value="player.playerId">
             {{ player.playerName }}
           </option>
         </select>
-        <select v-if="!goalForm.ownGoal" v-model.number="goalForm.assistPlayerId" class="input">
+        <select v-if="!goalForm.ownGoal" v-model.number="goalForm.assistPlayerId" class="input" :disabled="sessionIsFinished">
           <option :value="undefined">Без голевой передачи</option>
           <option v-for="player in selectedTeamPlayers" :key="`assist-${player.playerId}`" :value="player.playerId">
             {{ player.playerName }}
           </option>
         </select>
-        <button class="primary-button" @click="addGoal" :disabled="!goalForm.teamId || !goalForm.scorerPlayerId">Добавить гол</button>
+        <button class="primary-button" @click="addGoal" :disabled="sessionIsFinished || !goalForm.teamId || !goalForm.scorerPlayerId">Добавить гол</button>
       </div>
     </div>
 
@@ -89,7 +89,7 @@
               <span v-if="event.relatedPlayerName"> • передача: {{ event.relatedPlayerName }}</span>
             </p>
           </div>
-          <button class="ghost-button" @click="deleteEvent(event.id)">Удалить</button>
+          <button v-if="!sessionIsFinished" class="ghost-button" @click="deleteEvent(event.id)">Удалить</button>
         </article>
       </div>
     </div>
@@ -119,6 +119,7 @@ let timerId: number | undefined;
 const sessionIdNumber = computed(() => Number(props.sessionId));
 const matchIdNumber = computed(() => Number(props.matchId));
 const matchStartStorageKey = computed(() => `football-match-start-${matchIdNumber.value}`);
+const sessionIsFinished = computed(() => session.value?.status === 'FINISHED');
 
 const goalForm = reactive({
   teamId: undefined as number | undefined,
@@ -252,7 +253,7 @@ async function loadEvents() {
 }
 
 async function startMatch() {
-  if (!match.value) return;
+  if (sessionIsFinished.value || !match.value) return;
   const clientStartTimestamp = Date.now();
   localStartedAt.value = clientStartTimestamp;
   persistMatchStart(clientStartTimestamp);
@@ -261,13 +262,14 @@ async function startMatch() {
 }
 
 async function finishMatch() {
-  if (!match.value) return;
+  if (sessionIsFinished.value || !match.value) return;
   match.value = await api.finishMatch(sessionIdNumber.value, match.value.id);
   localStartedAt.value = null;
   persistMatchStart(null);
 }
 
 async function addGoal() {
+  if (sessionIsFinished.value) return;
   if (!match.value || !goalForm.teamId || !goalForm.scorerPlayerId) return;
   const minuteInMatch = Math.floor(elapsedSeconds.value / 60);
   const secondInMatch = elapsedSeconds.value % 60;
@@ -286,7 +288,7 @@ async function addGoal() {
 }
 
 async function deleteEvent(eventId: number) {
-  if (!match.value) return;
+  if (sessionIsFinished.value || !match.value) return;
   const deletedEvent = events.value.find((event) => String(event.id) === String(eventId));
   applyDeletedEvent(deletedEvent);
   try {

@@ -15,7 +15,7 @@
       </div>
       <div class="hero-actions">
         <span class="status-pill">{{ sessionStatusLabel(session.status) }}</span>
-        <button class="icon-button" type="button" aria-label="Настройки сессии" @click="settingsOpen = true">
+        <button class="icon-button" type="button" aria-label="Настройки сессии" :disabled="sessionIsFinished" @click="settingsOpen = true">
           &#9881;
         </button>
       </div>
@@ -25,7 +25,7 @@
       <div class="settings-window">
         <div class="section-header">
           <button class="ghost-button" type="button" @click="settingsOpen = false">Назад</button>
-          <button class="primary-button" type="button" @click="saveSessionSettings" :disabled="pendingSessionUpdate">Сохранить</button>
+          <button class="primary-button" type="button" @click="saveSessionSettings" :disabled="pendingSessionUpdate || sessionIsFinished">Сохранить</button>
         </div>
         <div class="stack-sm">
           <div>
@@ -34,39 +34,39 @@
           </div>
           <label class="field-label">
             <span>Название сессии</span>
-            <input v-model="sessionSettings.title" class="input" placeholder="Название сессии" />
+            <input v-model="sessionSettings.title" class="input" placeholder="Название сессии" :disabled="sessionIsFinished" />
           </label>
           <label class="field-label">
             <span>Дата сессии</span>
-            <input v-model="sessionSettings.sessionDate" class="input" type="date" />
+            <input v-model="sessionSettings.sessionDate" class="input" type="date" :disabled="sessionIsFinished" />
           </label>
           <label class="field-label">
             <span>Время сессии</span>
-            <input v-model="sessionSettings.sessionTime" class="input" type="time" />
+            <input v-model="sessionSettings.sessionTime" class="input" type="time" :disabled="sessionIsFinished" />
           </label>
           <label class="field-label">
             <span>Место</span>
-            <input v-model="sessionSettings.location" class="input" placeholder="Место" />
+            <input v-model="sessionSettings.location" class="input" placeholder="Место" :disabled="sessionIsFinished" />
           </label>
           <label class="field-label">
             <span>Ссылка на поле на 2GIS / Google Maps / Яндекс картах</span>
-            <input v-model="sessionSettings.locationUrl" class="input" type="url" placeholder="https://..." />
+            <input v-model="sessionSettings.locationUrl" class="input" type="url" placeholder="https://..." :disabled="sessionIsFinished" />
           </label>
           <label class="field-label">
             <span>Ссылка на трансляцию</span>
-            <input v-model="sessionSettings.broadcastUrl" class="input" type="url" placeholder="https://..." />
+            <input v-model="sessionSettings.broadcastUrl" class="input" type="url" placeholder="https://..." :disabled="sessionIsFinished" />
           </label>
           <label class="field-label">
             <span>Длительность матча, минут</span>
-            <input v-model.number="sessionSettings.plannedMatchDurationMinutes" class="input" type="number" min="1" />
+            <input v-model.number="sessionSettings.plannedMatchDurationMinutes" class="input" type="number" min="1" :disabled="sessionIsFinished" />
           </label>
           <label class="field-label">
             <span>Максимум игроков</span>
-            <input v-model.number="sessionSettings.maxPlayers" class="input" type="number" min="1" />
+            <input v-model.number="sessionSettings.maxPlayers" class="input" type="number" min="1" :disabled="sessionIsFinished" />
           </label>
           <label class="field-label">
             <span>Заметки</span>
-            <textarea v-model="sessionSettings.notes" class="input textarea" placeholder="Заметки"></textarea>
+            <textarea v-model="sessionSettings.notes" class="input textarea" placeholder="Заметки" :disabled="sessionIsFinished"></textarea>
           </label>
         </div>
       </div>
@@ -75,11 +75,11 @@
     <div class="card stack-sm session-settings-inline">
       <div class="section-header">
         <h3 class="section-title">Настройки сессии</h3>
-        <button class="ghost-button" @click="saveSessionSettings" :disabled="pendingSessionUpdate">Сохранить</button>
+        <button class="ghost-button" @click="saveSessionSettings" :disabled="pendingSessionUpdate || sessionIsFinished">Сохранить</button>
       </div>
       <label class="field-label">
         <span>Максимум игроков</span>
-        <input v-model.number="sessionSettings.maxPlayers" class="input" type="number" min="1" />
+        <input v-model.number="sessionSettings.maxPlayers" class="input" type="number" min="1" :disabled="sessionIsFinished" />
       </label>
     </div>
 
@@ -87,7 +87,7 @@
       class="primary-button join-session-button"
       :class="{ 'is-danger': currentUserSessionPlayer || currentUserWaitlistEntry }"
       @click="toggleCurrentUserSession"
-      :disabled="!authState.player || pendingMembership"
+      :disabled="!authState.player || pendingMembership || sessionIsFinished"
     >
       {{ membershipButtonLabel }}
     </button>
@@ -160,16 +160,16 @@
           <h3 class="section-title">Добавить игрока</h3>
         </div>
         <div class="grid-form">
-          <select v-model.number="sessionPlayerForm.playerId" class="input">
+          <select v-model.number="sessionPlayerForm.playerId" class="input" :disabled="sessionIsFinished">
             <option :value="undefined">Выберите игрока</option>
             <option v-for="player in allPlayers" :key="player.playerId" :value="player.playerId">
               {{ player.firstName }} {{ player.lastName ?? '' }}
             </option>
           </select>
-          <select v-model="sessionPlayerForm.position" class="input">
+          <select v-model="sessionPlayerForm.position" class="input" :disabled="sessionIsFinished">
             <option v-for="position in positions" :key="position" :value="position">{{ playerPositionLabel(position) }}</option>
           </select>
-          <button class="primary-button" @click="addPlayerToSession">Добавить в сессию</button>
+          <button class="primary-button" @click="addPlayerToSession" :disabled="sessionIsFinished">Добавить в сессию</button>
         </div>
       </div>
     </div>
@@ -181,7 +181,7 @@
       <div v-for="team in session.teams" :key="team.id" class="team-block">
         <div class="team-block__header">
           <strong>{{ team.name }}</strong>
-          <button class="primary-button" @click="assignSelectedPlayers(team.id)">Назначить выбранных</button>
+          <button v-if="!sessionIsFinished" class="primary-button" @click="assignSelectedPlayers(team.id)">Назначить выбранных</button>
         </div>
         <div class="chips">
           <label
@@ -197,7 +197,7 @@
             <input
               type="checkbox"
               :checked="isPlayerSelectedForTeam(team.id, player.playerId)"
-              :disabled="isPlayerLockedForTeam(team.id, player.playerId)"
+              :disabled="sessionIsFinished || isPlayerLockedForTeam(team.id, player.playerId)"
               @change="toggleTeamPlayer(team.id, player.playerId, $event)"
             />
             <span>{{ player.firstName }}</span>
@@ -219,12 +219,12 @@
     <div v-if="activeTab === 'Matches'" class="card stack-sm">
       <div class="section-header">
         <h3 class="section-title">Матчи</h3>
-        <button class="primary-button" @click="createNextMatch">{{ createMatchButtonLabel }}</button>
+        <button v-if="!sessionIsFinished" class="primary-button" @click="createNextMatch">{{ createMatchButtonLabel }}</button>
       </div>
       <div v-if="session.formatType === 'ROUND_ROBIN'" class="grid-form">
         <label class="field-label">
           <span>Первый матч</span>
-          <select v-model="roundRobinFirstPairKey" class="input" :disabled="matches.length > 0">
+          <select v-model="roundRobinFirstPairKey" class="input" :disabled="sessionIsFinished || matches.length > 0">
             <option v-for="pair in roundRobinPairOptions" :key="pair.key" :value="pair.key">{{ pair.label }}</option>
           </select>
         </label>
@@ -232,14 +232,14 @@
       <div v-if="session.formatType === 'KNOCKOUT'" class="grid-form">
         <label class="field-label">
           <span>Первая команда</span>
-          <select v-model.number="knockoutMatchForm.teamAId" class="input">
+          <select v-model.number="knockoutMatchForm.teamAId" class="input" :disabled="sessionIsFinished">
             <option :value="undefined">Выберите команду</option>
             <option v-for="team in session.teams" :key="team.id" :value="team.id">{{ team.name }}</option>
           </select>
         </label>
         <label class="field-label">
           <span>Вторая команда</span>
-          <select v-model.number="knockoutMatchForm.teamBId" class="input">
+          <select v-model.number="knockoutMatchForm.teamBId" class="input" :disabled="sessionIsFinished">
             <option :value="undefined">Выберите команду</option>
             <option v-for="team in session.teams" :key="team.id" :value="team.id">{{ team.name }}</option>
           </select>
@@ -274,9 +274,9 @@
                 </div>
               </div>
               <div class="button-row">
-                <button class="ghost-button" @click="startMatch(match.id)" :disabled="match.status !== 'PLANNED'">Начать</button>
+                <button v-if="!sessionIsFinished" class="ghost-button" @click="startMatch(match.id)" :disabled="match.status !== 'PLANNED'">Начать</button>
                 <button class="ghost-button" @click="openMatch(match.id)">Открыть</button>
-                <button class="ghost-button" @click="finishMatch(match.id)" :disabled="match.status === 'FINISHED'">Завершить</button>
+                <button v-if="!sessionIsFinished" class="ghost-button" @click="finishMatch(match.id)" :disabled="match.status === 'FINISHED'">Завершить</button>
               </div>
             </article>
           </div>
@@ -398,6 +398,15 @@
       </div>
     </div>
 
+    <button
+      v-if="!sessionIsFinished"
+      class="primary-button finish-session-button is-danger"
+      @click="finishSession"
+      :disabled="pendingSessionUpdate"
+    >
+      Завершить
+    </button>
+
     <p v-if="error" class="error-text">{{ error }}</p>
   </section>
 </template>
@@ -463,6 +472,7 @@ const currentUserWaitlistEntry = computed(() => {
     ? waitlist.value.find((entry) => entry.playerId === currentPlayerId)
     : undefined;
 });
+const sessionIsFinished = computed(() => session.value?.status === 'FINISHED');
 const sessionIsFull = computed(() => {
   return Boolean(session.value?.maxPlayers && sessionPlayers.value.length >= session.value.maxPlayers);
 });
@@ -761,6 +771,10 @@ function toggleTeamPlayer(teamId: number, playerId: number, event: Event) {
 }
 
 async function handleTeamPlayerToggle(teamId: number, playerId: number, event: Event) {
+  if (sessionIsFinished.value) {
+    (event.target as HTMLInputElement).checked = false;
+    return;
+  }
   ensureTeamSelection(teamId);
   const checked = (event.target as HTMLInputElement).checked;
   if (!checked && isPlayerAssignedToTeam(teamId, playerId)) {
@@ -929,6 +943,9 @@ async function loadTeamPlayers() {
 }
 
 async function saveSessionSettings() {
+  if (sessionIsFinished.value) {
+    return;
+  }
   if (!sessionSettings.title.trim()) {
     error.value = 'Заполните название сессии';
     return;
@@ -948,6 +965,7 @@ async function saveSessionSettings() {
       location: sessionSettings.location.trim() || null,
       locationUrl: sessionSettings.locationUrl.trim() || null,
       broadcastUrl: sessionSettings.broadcastUrl.trim() || null,
+      status: session.value?.status ?? null,
       plannedMatchDurationMinutes: sessionSettings.plannedMatchDurationMinutes || null,
       notes: sessionSettings.notes.trim() || null,
       maxPlayers: sessionSettings.maxPlayers || null
@@ -963,7 +981,7 @@ async function saveSessionSettings() {
 }
 
 async function addPlayerToSession() {
-  if (!sessionPlayerForm.playerId) return;
+  if (sessionIsFinished.value || !sessionPlayerForm.playerId) return;
   await api.addPlayerToSession(sessionIdNumber.value, {
     playerId: sessionPlayerForm.playerId,
     position: sessionPlayerForm.position
@@ -973,6 +991,9 @@ async function addPlayerToSession() {
 }
 
 async function toggleCurrentUserSession() {
+  if (sessionIsFinished.value) {
+    return;
+  }
   if (!authState.player) {
     error.value = 'Сначала заполните профиль игрока';
     return;
@@ -1000,6 +1021,9 @@ async function toggleCurrentUserSession() {
 }
 
 async function assignSelectedPlayers(teamId: number) {
+  if (sessionIsFinished.value) {
+    return;
+  }
   const ids = (selectedPlayersByTeam[teamId] ?? []).filter((playerId) => !assignedTeamForPlayer(playerId));
   if (!ids.length) return;
   try {
@@ -1013,6 +1037,7 @@ async function assignSelectedPlayers(teamId: number) {
 }
 
 async function createNextMatch() {
+  if (sessionIsFinished.value) return;
   if (!session.value || session.value.teams.length < 2) return;
 
   const [teamA, teamB] = nextMatchTeams();
@@ -1088,13 +1113,43 @@ function ensureRoundRobinPairSelection() {
 }
 
 async function startMatch(matchId: number) {
+  if (sessionIsFinished.value) return;
   await api.startMatch(sessionIdNumber.value, matchId);
   await loadMatches();
 }
 
 async function finishMatch(matchId: number) {
+  if (sessionIsFinished.value) return;
   await api.finishMatch(sessionIdNumber.value, matchId);
   await Promise.all([loadMatches(), loadStandings()]);
+}
+
+async function finishSession() {
+  if (!session.value || sessionIsFinished.value) {
+    return;
+  }
+
+  pendingSessionUpdate.value = true;
+  error.value = '';
+  try {
+    session.value = await api.updateSession(sessionIdNumber.value, {
+      title: session.value.title,
+      sessionDate: session.value.sessionDate,
+      sessionTime: session.value.sessionTime,
+      location: session.value.location,
+      locationUrl: session.value.locationUrl,
+      broadcastUrl: session.value.broadcastUrl,
+      status: 'FINISHED',
+      plannedMatchDurationMinutes: session.value.plannedMatchDurationMinutes,
+      notes: session.value.notes,
+      maxPlayers: session.value.maxPlayers
+    });
+    fillSessionSettings();
+  } catch (err) {
+    error.value = err instanceof Error ? err.message : 'Не удалось завершить сессию';
+  } finally {
+    pendingSessionUpdate.value = false;
+  }
 }
 
 async function openMatch(matchId: number) {
