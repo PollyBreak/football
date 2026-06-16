@@ -2,13 +2,13 @@
   <section class="stack" v-if="match">
     <RouterLink class="ghost-button back-button" :to="`/sessions/${sessionId}`">Назад к сессии</RouterLink>
 
-    <div class="card stack-sm">
+    <div class="card stack-sm" :class="matchCardStatusClass(match.status)">
       <div class="section-header">
         <div>
           <p class="eyebrow">Матч #{{ match.matchNumber }}</p>
           <h2 class="section-title">{{ match.teamAName }} против {{ match.teamBName }}</h2>
         </div>
-        <span class="status-pill">{{ matchStatusLabel(match.status) }}</span>
+        <span class="status-pill" :class="matchStatusClass(match.status)">{{ matchStatusLabel(match.status) }}</span>
       </div>
 
       <div class="match-scoreboard" :class="{ 'is-overtime': matchIsOvertime }">
@@ -208,6 +208,14 @@ function goalTimeLabel(goal: MatchEvent): string | null {
 function ownGoalEventLabel(event: MatchEvent): string {
   const playerName = event.playerName || 'Игрок не указан';
   return event.eventType === 'OWN_GOAL' ? `${playerName} (А)` : playerName;
+}
+
+function matchStatusClass(status: SessionMatch['status']): string {
+  return `status-pill--match-${status.toLowerCase()}`;
+}
+
+function matchCardStatusClass(status: SessionMatch['status']): string {
+  return `match-card--${status.toLowerCase()}`;
 }
 
 function readStoredMatchStart(): number | null {

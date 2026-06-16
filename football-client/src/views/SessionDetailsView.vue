@@ -251,10 +251,10 @@
             <strong>{{ round.roundNumber }} круг</strong>
           </div>
           <div class="list">
-            <article v-for="match in round.matches" :key="match.id" class="match-card">
+            <article v-for="match in round.matches" :key="match.id" class="match-card" :class="matchCardStatusClass(match.status)">
               <div class="match-card__top">
                 <strong>#{{ match.matchNumber }} {{ match.teamAName }} против {{ match.teamBName }}</strong>
-                <span class="status-pill">{{ matchStatusLabel(match.status) }}</span>
+                <span class="status-pill" :class="matchStatusClass(match.status)">{{ matchStatusLabel(match.status) }}</span>
               </div>
               <p class="score-line">{{ match.teamAScore }} : {{ match.teamBScore }}</p>
               <div v-if="matchGoalSummaries(match).length" class="match-goal-summary">
@@ -741,6 +741,14 @@ function fallbackRoundNumber(matchNumber: number): number {
   const teamCount = session.value?.teams.length ?? 0;
   const matchesPerRound = Math.max(1, (teamCount * (teamCount - 1)) / 2);
   return Math.floor((Math.max(1, matchNumber) - 1) / matchesPerRound) + 1;
+}
+
+function matchStatusClass(status: SessionMatch['status']): string {
+  return `status-pill--match-${status.toLowerCase()}`;
+}
+
+function matchCardStatusClass(status: SessionMatch['status']): string {
+  return `match-card--${status.toLowerCase()}`;
 }
 
 function teamGroupHeaderStyle(color: string | null) {
