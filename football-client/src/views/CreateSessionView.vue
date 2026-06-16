@@ -24,6 +24,10 @@
           <span>Ссылка на поле на 2GIS / Google Maps / Яндекс картах</span>
           <input v-model="form.locationUrl" class="input" type="url" placeholder="https://..." />
         </label>
+        <label class="field-label">
+          <span>Ссылка на трансляцию</span>
+          <input v-model="form.broadcastUrl" class="input" type="url" placeholder="https://..." />
+        </label>
         <label class="field-label" :class="{ 'is-invalid': shouldShowFieldError('formatType') }">
           <span>Формат игр *</span>
           <select v-model="form.formatType" class="input" required>
@@ -65,6 +69,7 @@ const form = reactive({
   sessionTime: '20:00',
   location: '',
   locationUrl: '',
+  broadcastUrl: '',
   formatType: 'ROUND_ROBIN' as SessionFormatType,
   plannedMatchDurationMinutes: 6,
   maxPlayers: 15,
@@ -106,6 +111,7 @@ async function createSession() {
       sessionTime: form.sessionTime,
       location: form.location || null,
       locationUrl: form.locationUrl || null,
+      broadcastUrl: form.broadcastUrl || null,
       formatType: form.formatType,
       plannedMatchDurationMinutes: form.plannedMatchDurationMinutes,
       maxPlayers: form.maxPlayers || null,

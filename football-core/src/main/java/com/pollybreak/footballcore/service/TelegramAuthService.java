@@ -130,7 +130,9 @@ public class TelegramAuthService {
 
     private AppUser updateUser(AppUser user, TelegramMiniAppUser telegramUser) {
         user.setUsername(telegramUser.username());
-        user.setDisplayName(buildDisplayName(telegramUser));
+        if (user.getDisplayName() == null || user.getDisplayName().isBlank()) {
+            user.setDisplayName(buildDisplayName(telegramUser));
+        }
         user.setPhotoUrl(telegramUser.photoUrl());
         return user;
     }

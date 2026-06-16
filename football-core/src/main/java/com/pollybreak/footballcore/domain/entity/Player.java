@@ -52,6 +52,9 @@ public class Player {
     @Column(name = "default_position", length = 50)
     private PlayerPosition defaultPosition;
 
+    @Column(nullable = false)
+    private Integer rating = 100;
+
     @Column(name = "is_active", nullable = false)
     private boolean active = true;
 

@@ -9,6 +9,9 @@
           Открыть поле на карте
         </a>
         <p class="muted">Игроки: {{ sessionPlayers.length }} / {{ session.maxPlayers || 'без лимита' }}</p>
+        <a v-if="session.broadcastUrl" class="broadcast-link" :href="session.broadcastUrl" target="_blank" rel="noreferrer">
+          Открыть трансляцию
+        </a>
       </div>
       <div class="hero-actions">
         <span class="status-pill">{{ sessionStatusLabel(session.status) }}</span>
@@ -48,6 +51,10 @@
           <label class="field-label">
             <span>Ссылка на поле на 2GIS / Google Maps / Яндекс картах</span>
             <input v-model="sessionSettings.locationUrl" class="input" type="url" placeholder="https://..." />
+          </label>
+          <label class="field-label">
+            <span>Ссылка на трансляцию</span>
+            <input v-model="sessionSettings.broadcastUrl" class="input" type="url" placeholder="https://..." />
           </label>
           <label class="field-label">
             <span>Длительность матча, минут</span>
@@ -97,21 +104,32 @@
           <h3 class="section-title">Игроки сессии</h3>
           <button class="ghost-button" @click="refreshAll">Обновить</button>
         </div>
-        <p v-if="!sessionPlayers.length" class="muted">Пока нет игроков в сессии.</p>
-        <div v-else class="list">
-          <article v-for="player in sessionPlayers" :key="player.id" class="list-item">
-            <div class="list-item__lead">
-              <div class="player-avatar player-avatar--sm">
-                <img v-if="player.photoUrl" :src="player.photoUrl" alt="Фото игрока" />
-                <span v-else>{{ playerInitials(player) }}</span>
-              </div>
-              <div>
-                <strong>{{ sessionPersonDisplayName(player) }}</strong>
-                <p class="muted">{{ sessionPersonDetails(player) }}</p>
-              </div>
+        <div v-if="playersViewLoading" class="session-players-loading" aria-live="polite">
+          <div v-for="index in 3" :key="index" class="session-players-loading__item"></div>
+        </div>
+        <p v-else-if="!sessionPlayers.length" class="muted">Пока нет игроков в сессии.</p>
+        <div v-else class="stack-sm">
+          <section v-for="group in groupedSessionPlayers" :key="group.key" class="session-player-group">
+            <div v-if="group.title" class="session-player-group__header" :style="teamGroupHeaderStyle(group.color)">
+              <strong>{{ group.title }}</strong>
             </div>
-            <span class="item-tag">{{ playerPositionLabel(player.position) }}</span>
-          </article>
+            <div class="list">
+              <article v-for="player in group.players" :key="player.id" class="list-item">
+                <div class="list-item__lead">
+                  <div class="player-avatar player-avatar--sm">
+                    <img v-if="player.photoUrl" :src="player.photoUrl" alt="Фото игрока" />
+                    <span v-else>{{ playerInitials(player) }}</span>
+                  </div>
+                  <div>
+                    <strong>{{ sessionPersonDisplayName(player) }}</strong>
+                    <p class="muted">{{ sessionPersonDetails(player) }}</p>
+                    <p class="session-player-stats">{{ playerSessionStats(player.playerId).goals }} ⚽ {{ playerSessionStats(player.playerId).assists }} 👟</p>
+                  </div>
+                </div>
+                <span class="item-tag">{{ playerPositionLabel(player.position) }}</span>
+              </article>
+            </div>
+          </section>
         </div>
       </div>
 
@@ -234,6 +252,22 @@
             <span class="status-pill">{{ matchStatusLabel(match.status) }}</span>
           </div>
           <p class="score-line">{{ match.teamAScore }} : {{ match.teamBScore }}</p>
+          <div v-if="matchGoalSummaries(match).length" class="match-goal-summary">
+            <div class="match-goal-summary__column match-goal-summary__column--left">
+              <p v-for="goal in teamMatchGoals(match, match.teamAId)" :key="goal.id" class="match-goal-summary__row">
+                <img v-if="goal.playerPhotoUrl" :src="goal.playerPhotoUrl" alt="Р¤РѕС‚Рѕ РёРіСЂРѕРєР°" class="scoreboard-goal-avatar" />
+                <span v-if="goal.timeLabel" class="scoreboard-goal-time">{{ goal.timeLabel }}</span>
+                <span class="scoreboard-goal-name">{{ goal.label }}</span>
+              </p>
+            </div>
+            <div class="match-goal-summary__column match-goal-summary__column--right">
+              <p v-for="goal in teamMatchGoals(match, match.teamBId)" :key="goal.id" class="match-goal-summary__row">
+                <img v-if="goal.playerPhotoUrl" :src="goal.playerPhotoUrl" alt="Р¤РѕС‚Рѕ РёРіСЂРѕРєР°" class="scoreboard-goal-avatar" />
+                <span v-if="goal.timeLabel" class="scoreboard-goal-time">{{ goal.timeLabel }}</span>
+                <span class="scoreboard-goal-name">{{ goal.label }}</span>
+              </p>
+            </div>
+          </div>
           <div class="button-row">
             <button class="ghost-button" @click="startMatch(match.id)" :disabled="match.status !== 'PLANNED'">Начать</button>
             <button class="ghost-button" @click="openMatch(match.id)">Открыть</button>
@@ -293,6 +327,7 @@ import { matchStatusLabel, playerPositionLabel, sessionStatusLabel } from '../li
 import { getStartParam } from '../lib/telegram';
 import type {
   GameSession,
+  MatchEvent,
   PlayerPosition,
   PlayerProfile,
   SessionMatch,
@@ -319,6 +354,7 @@ const sessionPlayers = ref<SessionPlayer[]>([]);
 const waitlist = ref<SessionWaitlistEntry[]>([]);
 const allPlayers = ref<PlayerProfile[]>([]);
 const matches = ref<SessionMatch[]>([]);
+const matchEventsByMatchId = ref<Record<number, MatchEvent[]>>({});
 const standings = ref<SessionStandingsRow[]>([]);
 const teamPlayers = ref<Record<number, SessionTeamPlayer[]>>({});
 const selectedPlayersByTeam = reactive<Record<number, number[]>>({});
@@ -328,6 +364,7 @@ const error = ref('');
 const pendingMembership = ref(false);
 const pendingSessionUpdate = ref(false);
 const settingsOpen = ref(false);
+const playersViewLoading = ref(false);
 
 const sessionIdNumber = computed(() => Number(props.sessionId));
 const currentUserSessionPlayer = computed(() => {
@@ -365,12 +402,69 @@ const sessionSettings = reactive({
   sessionTime: '',
   location: '',
   locationUrl: '',
+  broadcastUrl: '',
   plannedMatchDurationMinutes: 6 as number | null,
   notes: '',
   maxPlayers: 15 as number | null
 });
 const createMatchButtonLabel = computed(() => {
   return session.value?.formatType === 'KNOCKOUT' ? 'Создать матч' : 'Создать следующий';
+});
+const sessionPlayerStats = computed<Record<number, { goals: number; assists: number }>>(() => {
+  const stats: Record<number, { goals: number; assists: number }> = {};
+
+  Object.values(matchEventsByMatchId.value)
+    .flat()
+    .forEach((event) => {
+      if (!event.playerId) {
+        return;
+      }
+
+      if (!stats[event.playerId]) {
+        stats[event.playerId] = { goals: 0, assists: 0 };
+      }
+
+      if (event.eventType === 'GOAL') {
+        stats[event.playerId].goals += 1;
+      }
+
+      if (event.eventType === 'ASSIST') {
+        stats[event.playerId].assists += 1;
+      }
+    });
+
+  return stats;
+});
+const groupedSessionPlayers = computed(() => {
+  if (!session.value) {
+    return [];
+  }
+
+  const assignedPlayerIds = new Set<number>();
+  const groups = session.value.teams
+    .map((team) => {
+      const playerIds = new Set((teamPlayers.value[team.id] ?? []).map((player) => player.playerId));
+      playerIds.forEach((playerId) => assignedPlayerIds.add(playerId));
+
+      return {
+        key: `team-${team.id}`,
+        title: team.name,
+        color: team.color ?? null,
+        players: sessionPlayers.value.filter((player) => playerIds.has(player.playerId))
+      };
+    });
+
+  const unassignedPlayers = sessionPlayers.value.filter((player) => !assignedPlayerIds.has(player.playerId));
+  if (unassignedPlayers.length) {
+    groups.unshift({
+      key: 'unassigned',
+      title: 'Без команды',
+      color: null,
+      players: unassignedPlayers
+    });
+  }
+
+  return groups;
 });
 const roundRobinPairOptions = computed(() => {
   if (!session.value) return [];
@@ -404,6 +498,22 @@ function sessionPersonDetails(person: SessionPlayer | SessionWaitlistEntry): str
   const fullName = [person.firstName, person.lastName].filter(Boolean).join(' ');
   const city = person.homeCity?.trim();
   return city ? `${fullName} (${city})` : fullName;
+}
+
+function playerSessionStats(playerId: number): { goals: number; assists: number } {
+  return sessionPlayerStats.value[playerId] ?? { goals: 0, assists: 0 };
+}
+
+function teamGroupHeaderStyle(color: string | null) {
+  if (!color) {
+    return {};
+  }
+
+  return {
+    color,
+    borderLeftColor: color,
+    background: `color-mix(in srgb, ${color} 14%, transparent)`
+  };
 }
 
 function ensureTeamSelection(teamId: number) {
@@ -472,14 +582,20 @@ function teamChipStyle(teamId: number, playerId: number) {
 }
 
 async function refreshAll() {
-  await Promise.all([
-    loadSession(),
-    loadSessionPlayers(),
-    loadWaitlist(),
-    loadPlayers(),
-    loadMatches(),
-    loadStandings()
-  ]);
+  playersViewLoading.value = true;
+  try {
+    await loadSession();
+    await Promise.all([
+      loadSessionPlayers(),
+      loadWaitlist(),
+      loadPlayers(),
+      loadMatches(),
+      loadTeamPlayers(),
+      loadStandings()
+    ]);
+  } finally {
+    playersViewLoading.value = false;
+  }
 }
 
 async function loadSession() {
@@ -496,6 +612,7 @@ function fillSessionSettings() {
   sessionSettings.sessionTime = session.value.sessionTime?.slice(0, 5) ?? '';
   sessionSettings.location = session.value.location ?? '';
   sessionSettings.locationUrl = session.value.locationUrl ?? '';
+  sessionSettings.broadcastUrl = session.value.broadcastUrl ?? '';
   sessionSettings.plannedMatchDurationMinutes = session.value.plannedMatchDurationMinutes ?? null;
   sessionSettings.notes = session.value.notes ?? '';
   sessionSettings.maxPlayers = session.value.maxPlayers ?? null;
@@ -515,7 +632,58 @@ async function loadWaitlist() {
 
 async function loadMatches() {
   matches.value = await api.getMatches(sessionIdNumber.value);
+  const entries = await Promise.all(
+    matches.value.map(async (match) => [match.id, await api.getMatchEvents(match.id)] as const)
+  );
+  matchEventsByMatchId.value = Object.fromEntries(entries);
   ensureRoundRobinPairSelection();
+}
+
+function matchGoalSummaries(match: SessionMatch) {
+  const assistsByGoalId = new Map<number, MatchEvent>();
+  const events = matchEventsByMatchId.value[match.id] ?? [];
+
+  events
+    .filter((event) => event.eventType === 'ASSIST' && event.linkedEventId)
+    .forEach((event) => assistsByGoalId.set(event.linkedEventId as number, event));
+
+  return events
+    .filter((event) => (event.eventType === 'GOAL' || event.eventType === 'OWN_GOAL') && event.teamId)
+    .map((goal) => {
+      const assist = assistsByGoalId.get(goal.id);
+      const scorer = shortMatchPlayerName(goal.playerName) ?? 'Игрок';
+      const assistName = shortMatchPlayerName(assist?.playerName ?? null);
+      return {
+        id: goal.id,
+        teamId: goal.teamId,
+        playerPhotoUrl: goal.playerPhotoUrl,
+        timeLabel: matchGoalTimeLabel(goal),
+        label: goal.eventType === 'OWN_GOAL'
+          ? `${scorer} (А)`
+          : assistName ? `${scorer} (${assistName})` : scorer
+      };
+    });
+}
+
+function teamMatchGoals(match: SessionMatch, teamId: number) {
+  return matchGoalSummaries(match).filter((goal) => goal.teamId === teamId);
+}
+
+function shortMatchPlayerName(name: string | null): string | null {
+  return name?.trim().split(/\s+/)[0] || null;
+}
+
+function matchGoalTimeLabel(goal: MatchEvent): string | null {
+  if (goal.minuteInMatch == null) {
+    return null;
+  }
+
+  const minutes = goal.minuteInMatch.toString();
+  if (goal.secondInMatch == null || goal.secondInMatch === 0) {
+    return `${minutes}'`;
+  }
+
+  return `${minutes}'${goal.secondInMatch.toString().padStart(2, '0')}"`;
 }
 
 async function loadStandings() {
@@ -550,6 +718,7 @@ async function saveSessionSettings() {
       sessionTime: sessionSettings.sessionTime,
       location: sessionSettings.location.trim() || null,
       locationUrl: sessionSettings.locationUrl.trim() || null,
+      broadcastUrl: sessionSettings.broadcastUrl.trim() || null,
       plannedMatchDurationMinutes: sessionSettings.plannedMatchDurationMinutes || null,
       notes: sessionSettings.notes.trim() || null,
       maxPlayers: sessionSettings.maxPlayers || null

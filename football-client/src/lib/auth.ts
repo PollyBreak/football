@@ -93,6 +93,9 @@ async function authenticateAsLocalDevUser(): Promise<void> {
 
 export function setRegisteredPlayer(player: PlayerProfile): void {
   authState.player = player;
+  if (authState.user && player.displayName?.trim()) {
+    authState.user.displayName = player.displayName;
+  }
   authState.authenticated = true;
   authState.onboardingRequired = false;
 }

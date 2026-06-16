@@ -15,6 +15,7 @@ public record CreateGameSessionRequest(
         @NotNull LocalTime sessionTime,
         String location,
         String locationUrl,
+        String broadcastUrl,
         @NotNull SessionFormatType formatType,
         SessionStatus status,
         Integer plannedMatchDurationMinutes,

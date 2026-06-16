@@ -46,6 +46,9 @@ public class GameSession {
     @Column(name = "location_url", length = 500)
     private String locationUrl;
 
+    @Column(name = "broadcast_url", length = 500)
+    private String broadcastUrl;
+
     @Enumerated(EnumType.STRING)
     @Column(name = "format_type", nullable = false, length = 100)
     private SessionFormatType formatType;

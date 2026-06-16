@@ -52,10 +52,11 @@ public class MatchEventService {
         SessionTeam team = getTeamForMatch(match, request.teamId());
         Player scorer = getPlayer(request.scorerPlayerId());
         AppUser createdBy = getUserOrNull(request.createdByUserId());
+        boolean ownGoal = Boolean.TRUE.equals(request.ownGoal());
 
         MatchEvent goalEvent = new MatchEvent();
         goalEvent.setMatch(match);
-        goalEvent.setEventType(MatchEventType.GOAL);
+        goalEvent.setEventType(ownGoal ? MatchEventType.OWN_GOAL : MatchEventType.GOAL);
         goalEvent.setTeam(team);
         goalEvent.setPlayer(scorer);
         goalEvent.setMinuteInMatch(request.minuteInMatch());
@@ -67,7 +68,7 @@ public class MatchEventService {
         incrementScore(match, team);
 
         MatchEvent savedAssistEvent = null;
-        if (request.assistPlayerId() != null) {
+        if (!ownGoal && request.assistPlayerId() != null) {
             Player assistPlayer = getPlayer(request.assistPlayerId());
             MatchEvent assistEvent = new MatchEvent();
             assistEvent.setMatch(match);
@@ -119,13 +120,15 @@ public class MatchEventService {
         MatchEvent event = matchEventRepository.findByIdAndMatchId(eventId, matchId)
                 .orElseThrow(() -> new IllegalArgumentException("Match event not found for this match"));
 
-        if (event.getEventType() == MatchEventType.GOAL) {
+        if (event.getEventType() == MatchEventType.GOAL || event.getEventType() == MatchEventType.OWN_GOAL) {
             rollbackScore(match, event.getTeam());
             matchEventRepository.findAllByLinkedEventId(event.getId())
                     .forEach(matchEventRepository::delete);
         }
 
         matchEventRepository.delete(event);
+        matchEventRepository.flush();
+        sessionMatchRepository.flush();
     }
 
     @Transactional

@@ -36,7 +36,6 @@
             </button>
           </div>
         </div>
-        <RouterLink v-if="canUseApp" class="ghost-button" to="/players">Игроки</RouterLink>
       </div>
     </header>
 

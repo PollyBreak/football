@@ -9,6 +9,7 @@ public record UpdateGameSessionRequest(
         LocalTime sessionTime,
         String location,
         String locationUrl,
+        String broadcastUrl,
         Integer plannedMatchDurationMinutes,
         String notes,
         Integer maxPlayers

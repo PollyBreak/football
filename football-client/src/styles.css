@@ -435,6 +435,22 @@ textarea {
   font-size: 0.92rem;
 }
 
+.broadcast-link {
+  width: fit-content;
+  margin-top: 10px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 40px;
+  padding: 10px 14px;
+  border-radius: 14px;
+  color: white;
+  background: linear-gradient(135deg, var(--accent), var(--accent-dark));
+  font-size: 0.92rem;
+  font-weight: 600;
+  box-shadow: 0 8px 20px var(--shadow);
+}
+
 .error-text {
   margin: 0;
   padding: 10px 12px;
@@ -490,6 +506,17 @@ textarea {
   gap: 6px;
   color: var(--muted);
   font-size: 0.86rem;
+}
+
+.field-label--checkbox {
+  min-height: 48px;
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 14px;
+  border: 1px solid var(--input-border);
+  border-radius: 14px;
+  background: var(--input-bg);
 }
 
 .field-label .input {
@@ -687,12 +714,13 @@ textarea {
   margin: 0;
   font-size: 1.6rem;
   font-weight: 700;
+  text-align: center;
 }
 
 .match-scoreboard {
-  display: flex;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
   align-items: center;
-  justify-content: space-between;
   gap: 12px;
   padding: 14px;
   border-radius: 16px;
@@ -700,11 +728,31 @@ textarea {
   border: 1px solid var(--card-border);
 }
 
-.match-scoreboard strong {
+.match-scoreboard.is-overtime .scoreboard-center span {
+  color: var(--danger);
+  background: rgba(217, 93, 93, 0.1);
+}
+
+.scoreboard-team,
+.scoreboard-center {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+}
+
+.scoreboard-team strong,
+.scoreboard-center strong {
+  line-height: 1;
   font-size: 2rem;
 }
 
-.match-scoreboard span {
+.scoreboard-center {
+  gap: 8px;
+}
+
+.scoreboard-center span {
   min-width: 74px;
   padding: 8px 10px;
   border-radius: 999px;
@@ -712,6 +760,82 @@ textarea {
   color: var(--accent-text);
   text-align: center;
   font-weight: 700;
+}
+
+.scoreboard-goals {
+  width: 100%;
+  margin-top: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  color: var(--muted);
+  font-size: 0.8rem;
+}
+
+.scoreboard-goals p {
+  margin: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  overflow-wrap: anywhere;
+}
+
+.scoreboard-goal-avatar {
+  width: 18px;
+  height: 18px;
+  border-radius: 999px;
+  object-fit: cover;
+  flex: 0 0 auto;
+}
+
+.scoreboard-goal-time {
+  color: var(--muted);
+}
+
+.scoreboard-goal-time {
+  margin: 0 4px;
+}
+
+.scoreboard-goal-name {
+  color: inherit;
+  font-weight: 600;
+}
+
+.match-goal-summary {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 4px;
+  align-items: start;
+}
+
+.match-goal-summary__column {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.match-goal-summary__column--left {
+  align-items: flex-start;
+}
+
+.match-goal-summary__column--right {
+  align-items: flex-end;
+}
+
+.match-goal-summary__row {
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--muted);
+  font-size: 0.82rem;
+}
+
+.ghost-button.is-danger {
+  color: white;
+  background: linear-gradient(135deg, #d95d5d, #9f3030);
 }
 
 .tabs {
@@ -754,6 +878,60 @@ textarea {
   padding: 12px;
   border-radius: 18px;
   border: 1px dashed var(--card-border);
+}
+
+.session-player-group {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.session-player-group__header {
+  padding: 8px 10px;
+  border-left: 4px solid var(--card-border);
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--ghost-bg) 55%, transparent);
+}
+
+.session-player-group__header strong {
+  display: block;
+}
+
+.session-player-stats {
+  margin: 4px 0 0;
+  color: var(--accent-text);
+  font-size: 0.84rem;
+  font-weight: 600;
+}
+
+.session-players-loading {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.session-players-loading__item {
+  min-height: 88px;
+  border-radius: 16px;
+  border: 1px solid var(--card-border);
+  background: linear-gradient(
+    90deg,
+    color-mix(in srgb, var(--surface-bg) 92%, transparent) 0%,
+    color-mix(in srgb, white 45%, var(--surface-bg)) 50%,
+    color-mix(in srgb, var(--surface-bg) 92%, transparent) 100%
+  );
+  background-size: 200% 100%;
+  animation: session-loading-shimmer 1.2s ease-in-out infinite;
+}
+
+@keyframes session-loading-shimmer {
+  0% {
+    background-position: 200% 0;
+  }
+
+  100% {
+    background-position: -200% 0;
+  }
 }
 
 .team-block__header {

@@ -4,11 +4,30 @@
       <div>
         <p class="eyebrow">Мой аккаунт</p>
         <h2 class="section-title">{{ profileTitle }}</h2>
-        <p class="muted">{{ authState.player ? 'Вы вошли в приложение.' : 'Заполните профиль игрока, чтобы войти в приложение.' }}</p>
       </div>
       <div class="profile-photo" aria-label="Фото профиля">
         <img v-if="telegramPhotoUrl" :src="telegramPhotoUrl" alt="Фото из Telegram" />
         <span v-else>{{ profileInitials }}</span>
+      </div>
+    </div>
+
+    <div v-if="authState.player" class="card stack-sm">
+      <div class="section-header">
+        <h3 class="section-title">Моя статистика</h3>
+      </div>
+      <div class="profile-details">
+        <div>
+          <span class="muted">Рейтинг</span>
+          <strong>{{ authState.player.rating }}</strong>
+        </div>
+        <div>
+          <span class="muted">Голы</span>
+          <strong>{{ authState.player.stats.goals }} ⚽</strong>
+        </div>
+        <div>
+          <span class="muted">Голевые передачи</span>
+          <strong>{{ authState.player.stats.assists }} 👟</strong>
+        </div>
       </div>
     </div>
 
@@ -51,6 +70,27 @@
       </div>
 
       <button class="primary-button form-submit" @click="saveProfile" :disabled="pending">Сохранить изменения</button>
+    </div>
+
+    <div v-if="authState.player" class="card stack-sm">
+      <div class="section-header">
+        <h3 class="section-title">Мои сессии</h3>
+      </div>
+      <p v-if="!authState.player.sessions.length" class="muted">Вы пока не участвовали в сессиях.</p>
+      <div v-else class="list">
+        <RouterLink
+          v-for="session in authState.player.sessions"
+          :key="session.sessionId"
+          :to="`/sessions/${session.sessionId}`"
+          class="list-item player-list-item"
+        >
+          <div>
+            <strong>{{ session.title }}</strong>
+            <p class="muted">{{ session.sessionDate }} {{ session.sessionTime?.slice(0, 5) }}</p>
+          </div>
+          <span class="status-pill">{{ sessionStatusLabel(session.status) }}</span>
+        </RouterLink>
+      </div>
     </div>
 
     <div v-else class="card stack-sm">
@@ -100,9 +140,10 @@
 
 <script setup lang="ts">
 import { computed, onMounted, reactive, ref, watch } from 'vue';
+import { RouterLink } from 'vue-router';
 import { api } from '../lib/api';
 import { authState, setRegisteredPlayer } from '../lib/auth';
-import { playerPositionLabel } from '../lib/labels';
+import { playerPositionLabel, sessionStatusLabel } from '../lib/labels';
 import type { PlayerProfile, PlayerPosition } from '../types';
 
 const pending = ref(false);
@@ -232,6 +273,20 @@ async function saveProfile() {
   }
 }
 
+async function refreshCurrentPlayerProfile() {
+  if (!authState.player?.playerId) {
+    return;
+  }
+
+  try {
+    const player = await api.getPlayer(authState.player.playerId);
+    setRegisteredPlayer(player);
+    fillProfileForm(player);
+  } catch (err) {
+    error.value = err instanceof Error ? err.message : 'Не удалось обновить профиль игрока';
+  }
+}
+
 watch(
   () => authState.user,
   () => fillRegistrationFromTelegram(),
@@ -249,4 +304,7 @@ watch(
 );
 
 onMounted(fillRegistrationFromTelegram);
+onMounted(() => {
+  void refreshCurrentPlayerProfile();
+});
 </script>

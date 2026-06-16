@@ -22,6 +22,18 @@ export interface PlayerProfile {
   homeCity: string | null;
   birthDate: string | null;
   defaultPosition: PlayerPosition | null;
+  rating: number;
+  stats: {
+    goals: number;
+    assists: number;
+  };
+  sessions: Array<{
+    sessionId: number;
+    title: string;
+    sessionDate: string;
+    sessionTime: string;
+    status: SessionStatus;
+  }>;
   active: boolean;
   createdAt: string;
 }
@@ -58,6 +70,7 @@ export interface GameSession {
   sessionTime: string;
   location: string | null;
   locationUrl: string | null;
+  broadcastUrl: string | null;
   formatType: SessionFormatType;
   status: SessionStatus;
   plannedMatchDurationMinutes: number | null;
@@ -146,8 +159,10 @@ export interface MatchEvent {
   teamName: string | null;
   playerId: number | null;
   playerName: string | null;
+  playerPhotoUrl: string | null;
   relatedPlayerId: number | null;
   relatedPlayerName: string | null;
+  relatedPlayerPhotoUrl: string | null;
   linkedEventId: number | null;
   minuteInMatch: number | null;
   secondInMatch: number | null;

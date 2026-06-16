@@ -11,14 +11,36 @@
         <span class="status-pill">{{ matchStatusLabel(match.status) }}</span>
       </div>
 
-      <div class="match-scoreboard">
-        <strong>{{ match.teamAScore }} : {{ match.teamBScore }}</strong>
-        <span>{{ elapsedLabel }}</span>
+      <div class="match-scoreboard" :class="{ 'is-overtime': matchIsOvertime }">
+        <div class="scoreboard-team">
+          <strong>{{ match.teamAScore }}</strong>
+          <div v-if="teamAGoals.length" class="scoreboard-goals">
+            <p v-for="goal in teamAGoals" :key="goal.id">
+              <span v-if="goal.timeLabel" class="scoreboard-goal-time">{{ goal.timeLabel }}</span>
+              <img v-if="goal.playerPhotoUrl" :src="goal.playerPhotoUrl" alt="Фото игрока" class="scoreboard-goal-avatar" />
+              <span class="scoreboard-goal-name">{{ goal.label }}</span>
+            </p>
+          </div>
+        </div>
+        <div class="scoreboard-center">
+          <strong>:</strong>
+          <span>{{ elapsedLabel }}</span>
+        </div>
+        <div class="scoreboard-team">
+          <strong>{{ match.teamBScore }}</strong>
+          <div v-if="teamBGoals.length" class="scoreboard-goals">
+            <p v-for="goal in teamBGoals" :key="goal.id">
+              <span v-if="goal.timeLabel" class="scoreboard-goal-time">{{ goal.timeLabel }}</span>
+              <img v-if="goal.playerPhotoUrl" :src="goal.playerPhotoUrl" alt="Фото игрока" class="scoreboard-goal-avatar" />
+              <span class="scoreboard-goal-name">{{ goal.label }}</span>
+            </p>
+          </div>
+        </div>
       </div>
 
       <div class="button-row">
         <button class="ghost-button" @click="startMatch" :disabled="match.status !== 'PLANNED'">Начать</button>
-        <button class="ghost-button" @click="finishMatch" :disabled="match.status === 'FINISHED'">Завершить</button>
+        <button class="ghost-button" :class="{ 'is-danger': matchIsOvertime }" @click="finishMatch" :disabled="match.status === 'FINISHED'">Завершить</button>
         <button class="ghost-button" @click="loadMatch">Обновить</button>
       </div>
     </div>
@@ -32,13 +54,17 @@
           <option :value="match.teamAId">{{ match.teamAName }}</option>
           <option :value="match.teamBId">{{ match.teamBName }}</option>
         </select>
+        <label class="field-label field-label--checkbox">
+          <span>Автогол</span>
+          <input v-model="goalForm.ownGoal" type="checkbox" />
+        </label>
         <select v-model.number="goalForm.scorerPlayerId" class="input">
           <option :value="undefined">Автор гола</option>
-          <option v-for="player in selectedTeamPlayers" :key="player.playerId" :value="player.playerId">
+          <option v-for="player in scorerOptions" :key="player.playerId" :value="player.playerId">
             {{ player.playerName }}
           </option>
         </select>
-        <select v-model.number="goalForm.assistPlayerId" class="input">
+        <select v-if="!goalForm.ownGoal" v-model.number="goalForm.assistPlayerId" class="input">
           <option :value="undefined">Без голевой передачи</option>
           <option v-for="player in selectedTeamPlayers" :key="`assist-${player.playerId}`" :value="player.playerId">
             {{ player.playerName }}
@@ -59,7 +85,7 @@
           <div>
             <strong>{{ matchEventLabel(event.eventType) }}</strong>
             <p class="muted">
-              {{ event.playerName || 'Игрок не указан' }} • {{ event.teamName || 'Команда не указана' }}
+              {{ ownGoalEventLabel(event) }} • {{ event.teamName || 'Команда не указана' }}
               <span v-if="event.relatedPlayerName"> • передача: {{ event.relatedPlayerName }}</span>
             </p>
           </div>
@@ -87,6 +113,7 @@ const events = ref<MatchEvent[]>([]);
 const teamPlayers = ref<Record<number, SessionTeamPlayer[]>>({});
 const error = ref('');
 const now = ref(Date.now());
+const localStartedAt = ref<number | null>(null);
 let timerId: number | undefined;
 
 const sessionIdNumber = computed(() => Number(props.sessionId));
@@ -95,6 +122,7 @@ const matchIdNumber = computed(() => Number(props.matchId));
 const goalForm = reactive({
   teamId: undefined as number | undefined,
   scorerPlayerId: undefined as number | undefined,
+  ownGoal: false,
   assistPlayerId: undefined as number | undefined
 });
 
@@ -102,19 +130,83 @@ const selectedTeamPlayers = computed(() => {
   if (!goalForm.teamId) return [];
   return teamPlayers.value[goalForm.teamId] ?? [];
 });
+const oppositeTeamPlayers = computed(() => {
+  if (!match.value || !goalForm.teamId) return [];
+  const oppositeTeamId = goalForm.teamId === match.value.teamAId ? match.value.teamBId : match.value.teamAId;
+  return teamPlayers.value[oppositeTeamId] ?? [];
+});
+const scorerOptions = computed(() => goalForm.ownGoal ? oppositeTeamPlayers.value : selectedTeamPlayers.value);
 
-const elapsedLabel = computed(() => {
+const elapsedSeconds = computed(() => {
   if (!match.value?.startedAt) {
-    return '00:00';
+    return 0;
   }
 
-  const startedAt = new Date(match.value.startedAt).getTime();
+  const startedAt = localStartedAt.value ?? new Date(match.value.startedAt).getTime();
   const endedAt = match.value.endedAt ? new Date(match.value.endedAt).getTime() : now.value;
-  const totalSeconds = Math.max(0, Math.floor((endedAt - startedAt) / 1000));
-  const minutes = Math.floor(totalSeconds / 60).toString().padStart(2, '0');
-  const seconds = (totalSeconds % 60).toString().padStart(2, '0');
+  return Math.max(0, Math.floor((endedAt - startedAt) / 1000));
+});
+
+const elapsedLabel = computed(() => {
+  const minutes = Math.floor(elapsedSeconds.value / 60).toString().padStart(2, '0');
+  const seconds = (elapsedSeconds.value % 60).toString().padStart(2, '0');
   return `${minutes}:${seconds}`;
 });
+
+const matchDurationSeconds = computed(() => {
+  return (match.value?.plannedDurationMinutes ?? session.value?.plannedMatchDurationMinutes ?? 0) * 60;
+});
+const matchIsOvertime = computed(() => {
+  return matchDurationSeconds.value > 0 && elapsedSeconds.value > matchDurationSeconds.value;
+});
+const goalSummaries = computed(() => {
+  const assistsByGoalId = new Map<number, MatchEvent>();
+  events.value
+    .filter((event) => event.eventType === 'ASSIST' && event.linkedEventId)
+    .forEach((event) => assistsByGoalId.set(event.linkedEventId as number, event));
+
+  return events.value
+    .filter((event) => (event.eventType === 'GOAL' || event.eventType === 'OWN_GOAL') && event.teamId)
+    .map((goal) => {
+      const assist = assistsByGoalId.get(goal.id);
+      const scorer = shortPlayerName(goal.playerName) ?? 'Игрок';
+      const assistName = shortPlayerName(assist?.playerName ?? null);
+      const ownGoalMarker = goal.eventType === 'OWN_GOAL' ? ' (А)' : '';
+      return {
+        id: goal.id,
+        teamId: goal.teamId as number,
+        timeLabel: goalTimeLabel(goal),
+        playerPhotoUrl: goal.playerPhotoUrl,
+        label: goal.eventType === 'OWN_GOAL'
+          ? `${scorer}${ownGoalMarker}`
+          : assistName ? `${scorer} (${assistName})` : scorer
+      };
+    });
+});
+const teamAGoals = computed(() => match.value ? goalSummaries.value.filter((goal) => goal.teamId === match.value?.teamAId) : []);
+const teamBGoals = computed(() => match.value ? goalSummaries.value.filter((goal) => goal.teamId === match.value?.teamBId) : []);
+
+function shortPlayerName(name: string | null): string | null {
+  return name?.trim().split(/\s+/)[0] || null;
+}
+
+function goalTimeLabel(goal: MatchEvent): string | null {
+  if (goal.minuteInMatch == null) {
+    return null;
+  }
+
+  const minutes = goal.minuteInMatch.toString();
+  if (goal.secondInMatch == null || goal.secondInMatch === 0) {
+    return `${minutes}'`;
+  }
+
+  return `${minutes}'${goal.secondInMatch.toString().padStart(2, '0')}"`;
+}
+
+function ownGoalEventLabel(event: MatchEvent): string {
+  const playerName = event.playerName || 'Игрок не указан';
+  return event.eventType === 'OWN_GOAL' ? `${playerName} (А)` : playerName;
+}
 
 async function loadSession() {
   session.value = await api.getSession(sessionIdNumber.value);
@@ -126,6 +218,9 @@ async function loadSession() {
 
 async function loadMatch() {
   match.value = await api.getMatch(sessionIdNumber.value, matchIdNumber.value);
+  if (match.value.status !== 'IN_PROGRESS') {
+    localStartedAt.value = null;
+  }
   goalForm.teamId = goalForm.teamId ?? match.value.teamAId;
 }
 
@@ -135,6 +230,8 @@ async function loadEvents() {
 
 async function startMatch() {
   if (!match.value) return;
+  localStartedAt.value = Date.now();
+  now.value = Date.now();
   match.value = await api.startMatch(sessionIdNumber.value, match.value.id);
 }
 
@@ -145,24 +242,81 @@ async function finishMatch() {
 
 async function addGoal() {
   if (!match.value || !goalForm.teamId || !goalForm.scorerPlayerId) return;
+  const minuteInMatch = Math.floor(elapsedSeconds.value / 60);
+  const secondInMatch = elapsedSeconds.value % 60;
   await api.addGoal(match.value.id, {
     teamId: goalForm.teamId,
     scorerPlayerId: goalForm.scorerPlayerId,
-    assistPlayerId: goalForm.assistPlayerId ?? null
+    ownGoal: goalForm.ownGoal,
+    assistPlayerId: goalForm.ownGoal ? null : goalForm.assistPlayerId ?? null,
+    minuteInMatch,
+    secondInMatch
   });
   goalForm.scorerPlayerId = undefined;
+  goalForm.ownGoal = false;
   goalForm.assistPlayerId = undefined;
   await Promise.all([loadMatch(), loadEvents()]);
 }
 
 async function deleteEvent(eventId: number) {
   if (!match.value) return;
-  await api.deleteEvent(match.value.id, eventId);
-  await Promise.all([loadMatch(), loadEvents()]);
+  const deletedEvent = events.value.find((event) => String(event.id) === String(eventId));
+  applyDeletedEvent(deletedEvent);
+  try {
+    await api.deleteEvent(match.value.id, eventId);
+  } catch (err) {
+    error.value = err instanceof Error ? err.message : 'Не удалось удалить событие';
+  } finally {
+    await Promise.allSettled([loadMatch(), loadEvents()]);
+  }
+}
+
+function applyDeletedEvent(deletedEvent: MatchEvent | undefined) {
+  if (!deletedEvent || !match.value) return;
+
+  const deletedEventIds = new Set<string>([String(deletedEvent.id)]);
+  if (deletedEvent.eventType === 'GOAL' || deletedEvent.eventType === 'OWN_GOAL') {
+    events.value
+      .filter((event) => String(event.linkedEventId) === String(deletedEvent.id))
+      .forEach((event) => deletedEventIds.add(String(event.id)));
+
+    if (deletedEvent.teamId === match.value.teamAId) {
+      match.value = nextMatchState({
+        teamAScore: Math.max(0, match.value.teamAScore - 1)
+      });
+    }
+    if (deletedEvent.teamId === match.value.teamBId) {
+      match.value = nextMatchState({
+        teamBScore: Math.max(0, match.value.teamBScore - 1)
+      });
+    }
+  }
+
+  events.value = events.value.filter((event) => !deletedEventIds.has(String(event.id)));
+}
+
+function nextMatchState(patch: Partial<SessionMatch>): SessionMatch {
+  if (!match.value) {
+    throw new Error('Match state is not loaded');
+  }
+
+  const nextMatch = { ...match.value, ...patch };
+  nextMatch.winningTeamId = resolveWinningTeamId(nextMatch);
+  return nextMatch;
+}
+
+function resolveWinningTeamId(currentMatch: SessionMatch): number | null {
+  if (currentMatch.teamAScore > currentMatch.teamBScore) {
+    return currentMatch.teamAId;
+  }
+  if (currentMatch.teamBScore > currentMatch.teamAScore) {
+    return currentMatch.teamBId;
+  }
+  return null;
 }
 
 watch(
-  () => goalForm.teamId,
+  () => [goalForm.teamId, goalForm.ownGoal],
   () => {
     goalForm.scorerPlayerId = undefined;
     goalForm.assistPlayerId = undefined;

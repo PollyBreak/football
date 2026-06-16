@@ -48,6 +48,7 @@ export function matchStatusLabel(status: MatchStatus): string {
 export function matchEventLabel(type: string): string {
   const labels: Record<string, string> = {
     GOAL: 'Гол',
+    OWN_GOAL: 'Автогол',
     ASSIST: 'Передача'
   };
 

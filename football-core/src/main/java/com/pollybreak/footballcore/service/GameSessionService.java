@@ -53,6 +53,7 @@ public class GameSessionService {
         session.setSessionTime(request.sessionTime());
         session.setLocation(request.location());
         session.setLocationUrl(request.locationUrl());
+        session.setBroadcastUrl(request.broadcastUrl());
         session.setFormatType(request.formatType());
         session.setStatus(request.status() != null ? request.status() : SessionStatus.PLANNED);
         session.setPlannedMatchDurationMinutes(request.plannedMatchDurationMinutes());
@@ -105,6 +106,7 @@ public class GameSessionService {
         }
         session.setLocation(request.location());
         session.setLocationUrl(request.locationUrl());
+        session.setBroadcastUrl(request.broadcastUrl());
         session.setPlannedMatchDurationMinutes(request.plannedMatchDurationMinutes());
         session.setNotes(request.notes());
         session.setMaxPlayers(request.maxPlayers());

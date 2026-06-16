@@ -35,6 +35,47 @@
       </div>
     </div>
 
+    <div v-if="player" class="card stack-sm">
+      <div class="section-header">
+        <h3 class="section-title">Статистика</h3>
+      </div>
+      <div class="profile-details">
+        <div>
+          <span class="muted">Рейтинг</span>
+          <strong>{{ player.rating }}</strong>
+        </div>
+        <div>
+          <span class="muted">Голы</span>
+          <strong>{{ player.stats.goals }} ⚽</strong>
+        </div>
+        <div>
+          <span class="muted">Голевые передачи</span>
+          <strong>{{ player.stats.assists }} 👟</strong>
+        </div>
+      </div>
+    </div>
+
+    <div v-if="player" class="card stack-sm">
+      <div class="section-header">
+        <h3 class="section-title">Сессии игрока</h3>
+      </div>
+      <p v-if="!player.sessions.length" class="muted">Игрок пока не участвовал в сессиях.</p>
+      <div v-else class="list">
+        <RouterLink
+          v-for="session in player.sessions"
+          :key="session.sessionId"
+          :to="`/sessions/${session.sessionId}`"
+          class="list-item player-list-item"
+        >
+          <div>
+            <strong>{{ session.title }}</strong>
+            <p class="muted">{{ session.sessionDate }} {{ session.sessionTime?.slice(0, 5) }}</p>
+          </div>
+          <span class="status-pill">{{ sessionStatusLabel(session.status) }}</span>
+        </RouterLink>
+      </div>
+    </div>
+
     <p v-if="error" class="error-text">{{ error }}</p>
   </section>
 </template>
@@ -44,7 +85,7 @@ import { computed, onMounted, ref } from 'vue';
 import { RouterLink } from 'vue-router';
 import { api } from '../lib/api';
 import { authState } from '../lib/auth';
-import { playerPositionLabel } from '../lib/labels';
+import { playerPositionLabel, sessionStatusLabel } from '../lib/labels';
 import type { PlayerProfile } from '../types';
 
 const props = defineProps<{ playerId: string }>();

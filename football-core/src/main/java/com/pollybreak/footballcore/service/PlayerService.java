@@ -1,14 +1,22 @@
 package com.pollybreak.footballcore.service;
 
 import com.pollybreak.footballcore.api.dto.player.PlayerProfileResponse;
+import com.pollybreak.footballcore.api.dto.player.PlayerSessionSummaryResponse;
+import com.pollybreak.footballcore.api.dto.player.PlayerStatsResponse;
 import com.pollybreak.footballcore.api.dto.player.RegisterPlayerRequest;
 import com.pollybreak.footballcore.api.dto.player.AttachUserToPlayerRequest;
 import com.pollybreak.footballcore.api.dto.player.UpdatePlayerRequest;
+import com.pollybreak.footballcore.domain.entity.GameSession;
 import com.pollybreak.footballcore.domain.entity.AppUser;
 import com.pollybreak.footballcore.domain.entity.Player;
+import com.pollybreak.footballcore.domain.enums.MatchEventType;
 import com.pollybreak.footballcore.repository.AppUserRepository;
+import com.pollybreak.footballcore.repository.MatchEventRepository;
 import com.pollybreak.footballcore.repository.PlayerRepository;
+import com.pollybreak.footballcore.repository.SessionPlayerRepository;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -20,6 +28,8 @@ public class PlayerService {
 
     private final PlayerRepository playerRepository;
     private final AppUserRepository appUserRepository;
+    private final MatchEventRepository matchEventRepository;
+    private final SessionPlayerRepository sessionPlayerRepository;
 
     public List<Player> findAll() {
         return playerRepository.findAll();
@@ -29,7 +39,7 @@ public class PlayerService {
         List<Player> players = activeOnly ? playerRepository.findAllByActiveTrueOrderByFirstNameAscLastNameAsc()
                 : playerRepository.findAll();
         return players.stream()
-                .map(PlayerProfileResponse::fromEntity)
+                .map(this::buildProfileResponse)
                 .toList();
     }
 
@@ -43,7 +53,7 @@ public class PlayerService {
     }
 
     public PlayerProfileResponse getProfile(Long id) {
-        return PlayerProfileResponse.fromEntity(getById(id));
+        return buildProfileResponse(getById(id));
     }
 
     @Transactional
@@ -61,9 +71,10 @@ public class PlayerService {
         player.setHomeCity(request.homeCity());
         player.setBirthDate(request.birthDate());
         player.setDefaultPosition(request.defaultPosition());
+        player.setRating(100);
         player.setActive(true);
 
-        return PlayerProfileResponse.fromEntity(playerRepository.save(player));
+        return buildProfileResponse(playerRepository.save(player));
     }
 
     @Transactional
@@ -90,7 +101,7 @@ public class PlayerService {
             player.setActive(request.active());
         }
 
-        return PlayerProfileResponse.fromEntity(player);
+        return buildProfileResponse(player);
     }
 
     @Transactional
@@ -122,12 +133,29 @@ public class PlayerService {
             player.setDefaultPosition(request.defaultPosition());
         }
 
-        return PlayerProfileResponse.fromEntity(player);
+        return buildProfileResponse(player);
     }
 
     @Transactional
     public Player save(Player player) {
         return playerRepository.save(player);
+    }
+
+    private PlayerProfileResponse buildProfileResponse(Player player) {
+        long goals = matchEventRepository.countByPlayerIdAndEventTypeSafe(player.getId(), MatchEventType.GOAL);
+        long assists = matchEventRepository.countByPlayerIdAndEventTypeSafe(player.getId(), MatchEventType.ASSIST);
+
+        Map<Long, GameSession> uniqueSessions = new LinkedHashMap<>();
+        sessionPlayerRepository.findAllByPlayerIdWithSessionOrderBySessionDateDesc(player.getId())
+                .forEach(sessionPlayer -> uniqueSessions.putIfAbsent(sessionPlayer.getSession().getId(), sessionPlayer.getSession()));
+
+        return PlayerProfileResponse.fromEntity(
+                player,
+                new PlayerStatsResponse(goals, assists),
+                uniqueSessions.values().stream()
+                        .map(PlayerSessionSummaryResponse::fromEntity)
+                        .toList()
+        );
     }
 
     private AppUser resolveOrCreateUser(RegisterPlayerRequest request) {
