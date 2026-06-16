@@ -15,6 +15,7 @@ import com.pollybreak.footballcore.repository.PlayerRepository;
 import com.pollybreak.footballcore.repository.SessionPlayerRepository;
 import com.pollybreak.footballcore.repository.SessionTeamPlayerRepository;
 import com.pollybreak.footballcore.repository.SessionTeamRepository;
+import java.time.OffsetDateTime;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -73,6 +74,14 @@ public class SessionTeamService {
                 .ifPresent(existing -> {
                     throw new IllegalArgumentException("Player is already active in this team");
                 });
+        sessionTeamPlayerRepository
+                .findAllBySessionTeamSessionIdAndPlayerIdAndActiveTrue(sessionTeam.getSession().getId(), request.playerId())
+                .stream()
+                .filter(existing -> !existing.getSessionTeam().getId().equals(sessionTeamId))
+                .findAny()
+                .ifPresent(existing -> {
+                    throw new IllegalArgumentException("Player is already assigned to another team in this session");
+                });
 
         SessionTeamPlayer teamPlayer = new SessionTeamPlayer();
         teamPlayer.setSessionTeam(sessionTeam);
@@ -94,6 +103,15 @@ public class SessionTeamService {
         return sessionTeamPlayerRepository.findAllBySessionTeamIdAndActiveTrue(sessionTeamId).stream()
                 .map(SessionTeamPlayerResponse::fromEntity)
                 .toList();
+    }
+
+    @Transactional
+    public void removePlayer(Long sessionTeamId, Long playerId) {
+        SessionTeamPlayer membership = sessionTeamPlayerRepository
+                .findBySessionTeamIdAndPlayerIdAndActiveTrue(sessionTeamId, playerId)
+                .orElseThrow(() -> new IllegalArgumentException("Active team membership not found"));
+        membership.setActive(false);
+        membership.setLeftAt(OffsetDateTime.now());
     }
 
     @Transactional

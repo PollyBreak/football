@@ -77,6 +77,8 @@ export interface SessionPlayer {
   firstName: string;
   lastName: string | null;
   nickname: string | null;
+  displayName: string | null;
+  homeCity: string | null;
   photoUrl: string | null;
   position: PlayerPosition | null;
   active: boolean;
@@ -91,6 +93,8 @@ export interface SessionWaitlistEntry {
   firstName: string;
   lastName: string | null;
   nickname: string | null;
+  displayName: string | null;
+  homeCity: string | null;
   photoUrl: string | null;
   position: PlayerPosition | null;
   active: boolean;

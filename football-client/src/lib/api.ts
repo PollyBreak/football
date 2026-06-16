@@ -114,6 +114,9 @@ export const api = {
       body: JSON.stringify({ playerIds })
     });
   },
+  removePlayerFromTeam(teamId: number, playerId: number): Promise<void> {
+    return request(`/api/session-teams/${teamId}/players/${playerId}`, { method: 'DELETE' });
+  },
   getMatches(sessionId: number): Promise<SessionMatch[]> {
     return request(`/api/sessions/${sessionId}/matches`);
   },

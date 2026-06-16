@@ -106,8 +106,8 @@
                 <span v-else>{{ playerInitials(player) }}</span>
               </div>
               <div>
-                <strong>{{ player.firstName }} {{ player.lastName ?? '' }}</strong>
-                <p class="muted">{{ player.nickname || 'Без никнейма' }}</p>
+                <strong>{{ sessionPersonDisplayName(player) }}</strong>
+                <p class="muted">{{ sessionPersonDetails(player) }}</p>
               </div>
             </div>
             <span class="item-tag">{{ playerPositionLabel(player.position) }}</span>
@@ -128,8 +128,8 @@
                 <span v-else>{{ waitlistInitials(entry) }}</span>
               </div>
               <div>
-                <strong>{{ index + 1 }}. {{ entry.firstName }} {{ entry.lastName ?? '' }}</strong>
-                <p class="muted">{{ entry.nickname || 'Без никнейма' }}</p>
+                <strong>{{ index + 1 }}. {{ sessionPersonDisplayName(entry) }}</strong>
+                <p class="muted">{{ sessionPersonDetails(entry) }}</p>
               </div>
             </div>
             <span class="item-tag">{{ playerPositionLabel(entry.position) }}</span>
@@ -166,13 +166,24 @@
           <button class="primary-button" @click="assignSelectedPlayers(team.id)">Назначить выбранных</button>
         </div>
         <div class="chips">
-          <label v-for="player in sessionPlayers" :key="`${team.id}-${player.playerId}`" class="chip">
+          <label
+            v-for="player in sessionPlayers"
+            :key="`${team.id}-${player.playerId}`"
+            class="chip team-chip"
+            :class="{
+              'is-assigned': isPlayerAssignedToTeam(team.id, player.playerId),
+              'is-locked': isPlayerLockedForTeam(team.id, player.playerId)
+            }"
+            :style="teamChipStyle(team.id, player.playerId)"
+          >
             <input
               type="checkbox"
               :checked="isPlayerSelectedForTeam(team.id, player.playerId)"
+              :disabled="isPlayerLockedForTeam(team.id, player.playerId)"
               @change="toggleTeamPlayer(team.id, player.playerId, $event)"
             />
             <span>{{ player.firstName }}</span>
+            <small v-if="isPlayerLockedForTeam(team.id, player.playerId)">{{ assignedTeamName(player.playerId) }}</small>
           </label>
         </div>
         <div class="list">
@@ -191,6 +202,14 @@
       <div class="section-header">
         <h3 class="section-title">Матчи</h3>
         <button class="primary-button" @click="createNextMatch">{{ createMatchButtonLabel }}</button>
+      </div>
+      <div v-if="session.formatType === 'ROUND_ROBIN'" class="grid-form">
+        <label class="field-label">
+          <span>Первый матч</span>
+          <select v-model="roundRobinFirstPairKey" class="input" :disabled="matches.length > 0">
+            <option v-for="pair in roundRobinPairOptions" :key="pair.key" :value="pair.key">{{ pair.label }}</option>
+          </select>
+        </label>
       </div>
       <div v-if="session.formatType === 'KNOCKOUT'" class="grid-form">
         <label class="field-label">
@@ -303,6 +322,7 @@ const matches = ref<SessionMatch[]>([]);
 const standings = ref<SessionStandingsRow[]>([]);
 const teamPlayers = ref<Record<number, SessionTeamPlayer[]>>({});
 const selectedPlayersByTeam = reactive<Record<number, number[]>>({});
+const roundRobinFirstPairKey = ref('');
 const activeTab = ref<(typeof tabs)[number]>('Players');
 const error = ref('');
 const pendingMembership = ref(false);
@@ -352,6 +372,13 @@ const sessionSettings = reactive({
 const createMatchButtonLabel = computed(() => {
   return session.value?.formatType === 'KNOCKOUT' ? 'Создать матч' : 'Создать следующий';
 });
+const roundRobinPairOptions = computed(() => {
+  if (!session.value) return [];
+  return buildTeamPairs(session.value.teams).map(([teamA, teamB]) => ({
+    key: pairKey(teamA.id, teamB.id),
+    label: `${teamA.name} - ${teamB.name}`
+  }));
+});
 
 function playerInitials(player: SessionPlayer): string {
   return [player.firstName, player.lastName]
@@ -369,6 +396,16 @@ function waitlistInitials(entry: SessionWaitlistEntry): string {
     .join('') || 'И';
 }
 
+function sessionPersonDisplayName(person: SessionPlayer | SessionWaitlistEntry): string {
+  return person.displayName?.trim() || person.firstName;
+}
+
+function sessionPersonDetails(person: SessionPlayer | SessionWaitlistEntry): string {
+  const fullName = [person.firstName, person.lastName].filter(Boolean).join(' ');
+  const city = person.homeCity?.trim();
+  return city ? `${fullName} (${city})` : fullName;
+}
+
 function ensureTeamSelection(teamId: number) {
   if (!selectedPlayersByTeam[teamId]) {
     selectedPlayersByTeam[teamId] = [];
@@ -377,16 +414,61 @@ function ensureTeamSelection(teamId: number) {
 
 function isPlayerSelectedForTeam(teamId: number, playerId: number): boolean {
   ensureTeamSelection(teamId);
-  return selectedPlayersByTeam[teamId].includes(playerId);
+  return isPlayerAssignedToTeam(teamId, playerId) || selectedPlayersByTeam[teamId].includes(playerId);
 }
 
 function toggleTeamPlayer(teamId: number, playerId: number, event: Event) {
+  void handleTeamPlayerToggle(teamId, playerId, event);
+}
+
+async function handleTeamPlayerToggle(teamId: number, playerId: number, event: Event) {
   ensureTeamSelection(teamId);
   const checked = (event.target as HTMLInputElement).checked;
+  if (!checked && isPlayerAssignedToTeam(teamId, playerId)) {
+    await api.removePlayerFromTeam(teamId, playerId);
+    selectedPlayersByTeam[teamId] = selectedPlayersByTeam[teamId].filter((id) => id !== playerId);
+    await loadTeamPlayers();
+    return;
+  }
+  if (isPlayerLockedForTeam(teamId, playerId)) {
+    (event.target as HTMLInputElement).checked = false;
+    return;
+  }
   const current = selectedPlayersByTeam[teamId];
   selectedPlayersByTeam[teamId] = checked
     ? [...new Set([...current, playerId])]
     : current.filter((id) => id !== playerId);
+}
+
+function assignedTeamForPlayer(playerId: number) {
+  if (!session.value) return undefined;
+  const teamId = Object.entries(teamPlayers.value).find(([, members]) => {
+    return members.some((member) => member.playerId === playerId);
+  })?.[0];
+  return teamId ? session.value.teams.find((team) => team.id === Number(teamId)) : undefined;
+}
+
+function isPlayerAssignedToTeam(teamId: number, playerId: number): boolean {
+  return Boolean(teamPlayers.value[teamId]?.some((member) => member.playerId === playerId));
+}
+
+function isPlayerLockedForTeam(teamId: number, playerId: number): boolean {
+  const assignedTeam = assignedTeamForPlayer(playerId);
+  return Boolean(assignedTeam && assignedTeam.id !== teamId);
+}
+
+function assignedTeamName(playerId: number): string {
+  return assignedTeamForPlayer(playerId)?.name ?? '';
+}
+
+function teamChipStyle(teamId: number, playerId: number) {
+  const assignedTeam = assignedTeamForPlayer(playerId);
+  const color = assignedTeam?.color;
+  if (!color) return {};
+  return {
+    borderColor: color,
+    background: `color-mix(in srgb, ${color} 18%, white)`
+  };
 }
 
 async function refreshAll() {
@@ -404,6 +486,7 @@ async function loadSession() {
   session.value = await api.getSession(sessionIdNumber.value);
   fillSessionSettings();
   session.value.teams.forEach((team) => ensureTeamSelection(team.id));
+  ensureRoundRobinPairSelection();
 }
 
 function fillSessionSettings() {
@@ -432,6 +515,7 @@ async function loadWaitlist() {
 
 async function loadMatches() {
   matches.value = await api.getMatches(sessionIdNumber.value);
+  ensureRoundRobinPairSelection();
 }
 
 async function loadStandings() {
@@ -518,22 +602,22 @@ async function toggleCurrentUserSession() {
 }
 
 async function assignSelectedPlayers(teamId: number) {
-  const ids = selectedPlayersByTeam[teamId] ?? [];
+  const ids = (selectedPlayersByTeam[teamId] ?? []).filter((playerId) => !assignedTeamForPlayer(playerId));
   if (!ids.length) return;
-  await api.bulkAssignPlayers(teamId, ids);
-  selectedPlayersByTeam[teamId] = [];
-  await loadTeamPlayers();
+  try {
+    await api.bulkAssignPlayers(teamId, ids);
+    selectedPlayersByTeam[teamId] = [];
+    await loadTeamPlayers();
+  } catch (err) {
+    error.value = err instanceof Error ? err.message : 'Не удалось распределить игроков по команде';
+    await loadTeamPlayers();
+  }
 }
 
 async function createNextMatch() {
   if (!session.value || session.value.teams.length < 2) return;
 
-  const teamA = session.value.formatType === 'KNOCKOUT'
-    ? session.value.teams.find((team) => team.id === knockoutMatchForm.teamAId)
-    : session.value.teams[matches.value.length % session.value.teams.length];
-  const teamB = session.value.formatType === 'KNOCKOUT'
-    ? session.value.teams.find((team) => team.id === knockoutMatchForm.teamBId)
-    : session.value.teams[(matches.value.length + 1) % session.value.teams.length];
+  const [teamA, teamB] = nextMatchTeams();
   if (!teamA || !teamB) {
     error.value = 'Выберите две команды для матча';
     return;
@@ -551,6 +635,58 @@ async function createNextMatch() {
   knockoutMatchForm.teamAId = undefined;
   knockoutMatchForm.teamBId = undefined;
   await loadMatches();
+}
+
+function nextMatchTeams() {
+  if (!session.value) return [undefined, undefined] as const;
+  if (session.value.formatType === 'KNOCKOUT') {
+    return [
+      session.value.teams.find((team) => team.id === knockoutMatchForm.teamAId),
+      session.value.teams.find((team) => team.id === knockoutMatchForm.teamBId)
+    ] as const;
+  }
+  if (session.value.formatType === 'ROUND_ROBIN') {
+    const pairs = orderedRoundRobinPairs();
+    const pair = pairs[matches.value.length % pairs.length];
+    return pair ?? [undefined, undefined] as const;
+  }
+  return [
+    session.value.teams[matches.value.length % session.value.teams.length],
+    session.value.teams[(matches.value.length + 1) % session.value.teams.length]
+  ] as const;
+}
+
+function orderedRoundRobinPairs() {
+  if (!session.value) return [];
+  const pairs = buildTeamPairs(session.value.teams);
+  const selectedIndex = pairs.findIndex(([teamA, teamB]) => pairKey(teamA.id, teamB.id) === roundRobinFirstPairKey.value);
+  if (selectedIndex < 1) return pairs;
+  return [...pairs.slice(selectedIndex), ...pairs.slice(0, selectedIndex)];
+}
+
+function buildTeamPairs(teams: GameSession['teams']) {
+  const pairs: Array<[GameSession['teams'][number], GameSession['teams'][number]]> = [];
+  teams.forEach((teamA, index) => {
+    teams.slice(index + 1).forEach((teamB) => pairs.push([teamA, teamB]));
+  });
+  return pairs;
+}
+
+function pairKey(teamAId: number, teamBId: number): string {
+  return [teamAId, teamBId].sort((left, right) => left - right).join(':');
+}
+
+function ensureRoundRobinPairSelection() {
+  if (!session.value || session.value.formatType !== 'ROUND_ROBIN') return;
+  const firstMatch = matches.value[0];
+  if (firstMatch) {
+    roundRobinFirstPairKey.value = pairKey(firstMatch.teamAId, firstMatch.teamBId);
+    return;
+  }
+  const options = roundRobinPairOptions.value;
+  if (!options.some((option) => option.key === roundRobinFirstPairKey.value)) {
+    roundRobinFirstPairKey.value = options[0]?.key ?? '';
+  }
 }
 
 async function startMatch(matchId: number) {

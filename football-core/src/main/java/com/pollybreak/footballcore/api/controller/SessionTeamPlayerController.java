@@ -7,6 +7,8 @@ import com.pollybreak.footballcore.service.SessionTeamService;
 import jakarta.validation.Valid;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -39,5 +41,14 @@ public class SessionTeamPlayerController {
     @GetMapping
     public List<SessionTeamPlayerResponse> getActivePlayers(@PathVariable Long teamId) {
         return sessionTeamService.getActivePlayers(teamId);
+    }
+
+    @DeleteMapping("/{playerId}")
+    public ResponseEntity<Void> removePlayerFromTeam(
+            @PathVariable Long teamId,
+            @PathVariable Long playerId
+    ) {
+        sessionTeamService.removePlayer(teamId, playerId);
+        return ResponseEntity.noContent().build();
     }
 }

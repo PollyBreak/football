@@ -776,6 +776,24 @@ textarea {
   padding: 9px 10px;
   border-radius: 999px;
   background: var(--surface-bg);
+  border: 1px solid transparent;
+}
+
+.team-chip {
+  transition: border-color 0.15s ease, background 0.15s ease, opacity 0.15s ease;
+}
+
+.team-chip.is-assigned {
+  font-weight: 700;
+}
+
+.team-chip.is-locked {
+  opacity: 0.72;
+}
+
+.team-chip small {
+  color: var(--muted);
+  font-size: 0.72rem;
 }
 
 .table-scroll {
