@@ -8,6 +8,8 @@ import org.springframework.stereotype.Component;
 public class TelegramBotProperties {
 
     private String token;
+    private String username;
+    private String appUrl;
 
     public String getToken() {
         return token;
@@ -15,5 +17,21 @@ public class TelegramBotProperties {
 
     public void setToken(String token) {
         this.token = token;
+    }
+
+    public String getUsername() {
+        return username;
+    }
+
+    public void setUsername(String username) {
+        this.username = username;
+    }
+
+    public String getAppUrl() {
+        return appUrl;
+    }
+
+    public void setAppUrl(String appUrl) {
+        this.appUrl = appUrl;
     }
 }

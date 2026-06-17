@@ -56,6 +56,15 @@ public class SessionPlayerService {
                 .orElseThrow(() -> new IllegalArgumentException("Player is not registered for this session"));
     }
 
+    public java.util.Optional<SessionPlayer> findActiveSessionPlayer(Long sessionId, Long playerId) {
+        return sessionPlayerRepository.findBySessionIdAndPlayerIdAndActiveTrue(sessionId, playerId);
+    }
+
+    public java.util.Optional<SessionWaitlistEntry> findActiveWaitlistEntry(Long sessionId, Long playerId) {
+        return sessionWaitlistRepository.findBySessionIdAndPlayerId(sessionId, playerId)
+                .filter(SessionWaitlistEntry::isActive);
+    }
+
     @Transactional
     public SessionPlayerResponse addExistingPlayer(Long sessionId, AddPlayerToSessionRequest request) {
         GameSession session = getSession(sessionId);
@@ -160,6 +169,17 @@ public class SessionPlayerService {
     }
 
     @Transactional
+    public void removePlayerIfActive(Long sessionId, Long playerId) {
+        sessionPlayerRepository.findBySessionIdAndPlayerIdAndActiveTrue(sessionId, playerId)
+                .ifPresent(sessionPlayer -> {
+                    sessionPlayer.setActive(false);
+                    sessionPlayer.setLeftAt(OffsetDateTime.now());
+                    sessionTeamPlayerService.deactivateAllForSession(sessionId, playerId);
+                    promoteFirstQueuedPlayer(sessionPlayer.getSession());
+                });
+    }
+
+    @Transactional
     public void leaveWaitlist(Long sessionId, Long playerId) {
         SessionWaitlistEntry waitlistEntry = sessionWaitlistRepository.findBySessionIdAndPlayerId(sessionId, playerId)
                 .orElseThrow(() -> new IllegalArgumentException("Player is not in waitlist for this session"));
@@ -168,6 +188,16 @@ public class SessionPlayerService {
         }
         waitlistEntry.setActive(false);
         waitlistEntry.setLeftAt(OffsetDateTime.now());
+    }
+
+    @Transactional
+    public void leaveWaitlistIfActive(Long sessionId, Long playerId) {
+        sessionWaitlistRepository.findBySessionIdAndPlayerId(sessionId, playerId)
+                .filter(SessionWaitlistEntry::isActive)
+                .ifPresent(waitlistEntry -> {
+                    waitlistEntry.setActive(false);
+                    waitlistEntry.setLeftAt(OffsetDateTime.now());
+                });
     }
 
     @Transactional

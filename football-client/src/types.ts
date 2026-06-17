@@ -71,6 +71,11 @@ export interface GameSession {
   location: string | null;
   locationUrl: string | null;
   broadcastUrl: string | null;
+  telegramChatId: number | null;
+  telegramChatTitle: string | null;
+  telegramRegistrationMessageId: number | null;
+  feeAmount: number | null;
+  feeRecipient: string | null;
   formatType: SessionFormatType;
   status: SessionStatus;
   plannedMatchDurationMinutes: number | null;
@@ -208,6 +213,11 @@ export interface OverlayState {
   matches: SessionMatch[];
   teams: OverlayTeam[];
   currentMatchEvents: MatchEvent[];
+  sessionEvents: MatchEvent[];
+  standings?: SessionStandingsRow[];
+  lastFinishedMatch?: SessionMatch | null;
+  nextMatch?: SessionMatch | null;
+  lastFinishedMatchEvents?: MatchEvent[];
 }
 
 export type OverlayEventType =

@@ -28,6 +28,18 @@
           <span>Ссылка на трансляцию</span>
           <input v-model="form.broadcastUrl" class="input" type="url" placeholder="https://..." />
         </label>
+        <label class="field-label">
+          <span>Telegram chat ID</span>
+          <input v-model.number="form.telegramChatId" class="input" type="number" placeholder="-100..." />
+        </label>
+        <label class="field-label">
+          <span>Взнос, тенге</span>
+          <input v-model.number="form.feeAmount" class="input" type="number" min="0" />
+        </label>
+        <label class="field-label">
+          <span>Кому скидывать взнос</span>
+          <input v-model="form.feeRecipient" class="input" placeholder="Kaspi / имя / телефон" />
+        </label>
         <label class="field-label" :class="{ 'is-invalid': shouldShowFieldError('formatType') }">
           <span>Формат игр *</span>
           <select v-model="form.formatType" class="input" required>
@@ -70,6 +82,9 @@ const form = reactive({
   location: '',
   locationUrl: '',
   broadcastUrl: '',
+  telegramChatId: null as number | null,
+  feeAmount: null as number | null,
+  feeRecipient: '',
   formatType: 'ROUND_ROBIN' as SessionFormatType,
   plannedMatchDurationMinutes: 6,
   maxPlayers: 15,
@@ -112,6 +127,9 @@ async function createSession() {
       location: form.location || null,
       locationUrl: form.locationUrl || null,
       broadcastUrl: form.broadcastUrl || null,
+      telegramChatId: form.telegramChatId || null,
+      feeAmount: form.feeAmount || null,
+      feeRecipient: form.feeRecipient || null,
       formatType: form.formatType,
       plannedMatchDurationMinutes: form.plannedMatchDurationMinutes,
       maxPlayers: form.maxPlayers || null,

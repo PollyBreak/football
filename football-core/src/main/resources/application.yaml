@@ -23,6 +23,8 @@ logging:
 telegram:
   bot:
     token: ${TELEGRAM_BOT_TOKEN:}
+    username: ${TELEGRAM_BOT_USERNAME:}
+    app-url: ${TELEGRAM_APP_URL:}
 
 app:
   cors:

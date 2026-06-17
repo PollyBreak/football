@@ -12,6 +12,8 @@ public interface MatchEventRepository extends JpaRepository<MatchEvent, Long> {
 
     List<MatchEvent> findAllByMatchIdOrderByEventTimeAscIdAsc(Long matchId);
 
+    List<MatchEvent> findAllByMatchSessionIdOrderByEventTimeAscIdAsc(Long sessionId);
+
     List<MatchEvent> findAllByLinkedEventId(Long linkedEventId);
 
     Optional<MatchEvent> findByIdAndMatchId(Long id, Long matchId);

@@ -15,6 +15,9 @@
       </div>
       <div class="hero-actions">
         <span class="status-pill">{{ sessionStatusLabel(session.status) }}</span>
+        <button class="primary-button" type="button" :disabled="pendingRegistrationStart || pendingSessionUpdate || sessionIsFinished" @click="startRegistration">
+          Начать регистрацию
+        </button>
         <button class="icon-button" type="button" aria-label="Настройки сессии" :disabled="sessionIsFinished" @click="settingsOpen = true">
           &#9881;
         </button>
@@ -109,6 +112,18 @@
             <input v-model="sessionSettings.broadcastUrl" class="input" type="url" placeholder="https://..." :disabled="sessionIsFinished" />
           </label>
           <label class="field-label">
+            <span>Telegram chat ID</span>
+            <input v-model.number="sessionSettings.telegramChatId" class="input" type="number" placeholder="-100..." :disabled="sessionIsFinished" />
+          </label>
+          <label class="field-label">
+            <span>Взнос, тенге</span>
+            <input v-model.number="sessionSettings.feeAmount" class="input" type="number" min="0" :disabled="sessionIsFinished" />
+          </label>
+          <label class="field-label">
+            <span>Кому скидывать взнос</span>
+            <input v-model="sessionSettings.feeRecipient" class="input" placeholder="Kaspi / имя / телефон" :disabled="sessionIsFinished" />
+          </label>
+          <label class="field-label">
             <span>Длительность матча, минут</span>
             <input v-model.number="sessionSettings.plannedMatchDurationMinutes" class="input" type="number" min="1" :disabled="sessionIsFinished" />
           </label>
@@ -159,6 +174,20 @@
         <span>Максимум игроков</span>
         <input v-model.number="sessionSettings.maxPlayers" class="input" type="number" min="1" :disabled="sessionIsFinished" />
       </label>
+      <label class="field-label">
+        <span>Telegram chat ID</span>
+        <input v-model.number="sessionSettings.telegramChatId" class="input" type="number" placeholder="-100..." :disabled="sessionIsFinished" />
+      </label>
+      <div class="grid-form">
+        <label class="field-label">
+          <span>Взнос, тенге</span>
+          <input v-model.number="sessionSettings.feeAmount" class="input" type="number" min="0" :disabled="sessionIsFinished" />
+        </label>
+        <label class="field-label">
+          <span>Кому скидывать взнос</span>
+          <input v-model="sessionSettings.feeRecipient" class="input" placeholder="Kaspi / имя / телефон" :disabled="sessionIsFinished" />
+        </label>
+      </div>
     </div>
 
     <button
@@ -378,7 +407,8 @@
               <div class="button-row">
                 <button v-if="!sessionIsFinished" class="ghost-button" @click="startMatch(match.id)" :disabled="match.status !== 'PLANNED'">Начать</button>
                 <button class="ghost-button" @click="openMatch(match.id)">Открыть</button>
-                <button v-if="!sessionIsFinished" class="ghost-button" @click="finishMatch(match.id)" :disabled="match.status === 'FINISHED'">Завершить</button>
+                <button v-if="!sessionIsFinished" class="ghost-button" @click="finishMatch(match.id)" :disabled="match.status !== 'IN_PROGRESS'">Завершить</button>
+                <button v-if="!sessionIsFinished && match.status === 'FINISHED'" class="ghost-button" @click="resumeMatch(match.id)">Возобновить</button>
               </div>
             </article>
           </div>
@@ -566,6 +596,7 @@ const activeTab = ref<(typeof tabs)[number]>('Players');
 const error = ref('');
 const pendingMembership = ref(false);
 const pendingSessionUpdate = ref(false);
+const pendingRegistrationStart = ref(false);
 const settingsOpen = ref(false);
 const playersViewLoading = ref(false);
 const resumeSessionPassword = '212229';
@@ -611,6 +642,10 @@ const sessionSettings = reactive({
   location: '',
   locationUrl: '',
   broadcastUrl: '',
+  telegramChatId: null as number | null,
+  telegramChatTitle: '',
+  feeAmount: null as number | null,
+  feeRecipient: '',
   plannedMatchDurationMinutes: 6 as number | null,
   notes: '',
   maxPlayers: 15 as number | null
@@ -1116,6 +1151,10 @@ function fillSessionSettings() {
   sessionSettings.location = session.value.location ?? '';
   sessionSettings.locationUrl = session.value.locationUrl ?? '';
   sessionSettings.broadcastUrl = session.value.broadcastUrl ?? '';
+  sessionSettings.telegramChatId = session.value.telegramChatId ?? null;
+  sessionSettings.telegramChatTitle = session.value.telegramChatTitle ?? '';
+  sessionSettings.feeAmount = session.value.feeAmount ?? null;
+  sessionSettings.feeRecipient = session.value.feeRecipient ?? '';
   sessionSettings.plannedMatchDurationMinutes = session.value.plannedMatchDurationMinutes ?? null;
   sessionSettings.notes = session.value.notes ?? '';
   sessionSettings.maxPlayers = session.value.maxPlayers ?? null;
@@ -1204,20 +1243,28 @@ async function loadTeamPlayers() {
 
 async function saveSessionSettings() {
   if (sessionIsFinished.value) {
-    return;
+    return false;
   }
   if (!sessionSettings.title.trim()) {
     error.value = 'Заполните название сессии';
-    return;
+    return false;
   }
   if (!sessionSettings.sessionDate || !sessionSettings.sessionTime) {
     error.value = 'Укажите дату и время сессии';
-    return;
+    return false;
   }
 
   pendingSessionUpdate.value = true;
   error.value = '';
   try {
+    let telegramChatTitle = sessionSettings.telegramChatTitle.trim() || null;
+    if (sessionSettings.telegramChatId && authState.user) {
+      const chat = await api.validateTelegramChat(sessionIdNumber.value, {
+        chatId: sessionSettings.telegramChatId,
+        userId: authState.user.id
+      });
+      telegramChatTitle = chat.title;
+    }
     session.value = await api.updateSession(sessionIdNumber.value, {
       title: sessionSettings.title.trim(),
       sessionDate: sessionSettings.sessionDate,
@@ -1225,6 +1272,10 @@ async function saveSessionSettings() {
       location: sessionSettings.location.trim() || null,
       locationUrl: sessionSettings.locationUrl.trim() || null,
       broadcastUrl: sessionSettings.broadcastUrl.trim() || null,
+      telegramChatId: sessionSettings.telegramChatId || null,
+      telegramChatTitle,
+      feeAmount: sessionSettings.feeAmount || null,
+      feeRecipient: sessionSettings.feeRecipient.trim() || null,
       status: session.value?.status ?? null,
       plannedMatchDurationMinutes: sessionSettings.plannedMatchDurationMinutes || null,
       notes: sessionSettings.notes.trim() || null,
@@ -1233,10 +1284,43 @@ async function saveSessionSettings() {
     fillSessionSettings();
     await Promise.all([loadSessionPlayers(), loadWaitlist()]);
     settingsOpen.value = false;
+    return true;
   } catch (err) {
     error.value = err instanceof Error ? err.message : 'Не удалось сохранить настройки сессии';
+    return false;
   } finally {
     pendingSessionUpdate.value = false;
+  }
+}
+
+async function startRegistration() {
+  if (!authState.user) {
+    error.value = 'Откройте приложение через Telegram Mini App';
+    return;
+  }
+  if (!sessionSettings.telegramChatId) {
+    error.value = 'Укажите Telegram chat ID в настройках сессии';
+    return;
+  }
+
+  pendingRegistrationStart.value = true;
+  error.value = '';
+  try {
+    const saved = await saveSessionSettings();
+    if (!saved) {
+      return;
+    }
+    const result = await api.startSessionRegistration(sessionIdNumber.value, {
+      userId: authState.user.id
+    });
+    if (result.messageUrl) {
+      window.open(result.messageUrl, '_blank', 'noreferrer');
+    }
+    await loadSession();
+  } catch (err) {
+    error.value = err instanceof Error ? err.message : 'Не удалось начать регистрацию';
+  } finally {
+    pendingRegistrationStart.value = false;
   }
 }
 
@@ -1384,6 +1468,12 @@ async function finishMatch(matchId: number) {
   await Promise.all([loadMatches(), loadStandings()]);
 }
 
+async function resumeMatch(matchId: number) {
+  if (sessionIsFinished.value) return;
+  await api.resumeMatch(sessionIdNumber.value, matchId);
+  await Promise.all([loadMatches(), loadStandings()]);
+}
+
 async function finishSession() {
   if (!session.value || sessionIsFinished.value) {
     return;
@@ -1399,6 +1489,10 @@ async function finishSession() {
       location: session.value.location,
       locationUrl: session.value.locationUrl,
       broadcastUrl: session.value.broadcastUrl,
+      telegramChatId: session.value.telegramChatId,
+      telegramChatTitle: session.value.telegramChatTitle,
+      feeAmount: session.value.feeAmount,
+      feeRecipient: session.value.feeRecipient,
       status: 'FINISHED',
       plannedMatchDurationMinutes: session.value.plannedMatchDurationMinutes,
       notes: session.value.notes,
@@ -1455,6 +1549,10 @@ async function resumeSession() {
       location: session.value.location,
       locationUrl: session.value.locationUrl,
       broadcastUrl: session.value.broadcastUrl,
+      telegramChatId: session.value.telegramChatId,
+      telegramChatTitle: session.value.telegramChatTitle,
+      feeAmount: session.value.feeAmount,
+      feeRecipient: session.value.feeRecipient,
       status: 'IN_PROGRESS',
       plannedMatchDurationMinutes: session.value.plannedMatchDurationMinutes,
       notes: session.value.notes,

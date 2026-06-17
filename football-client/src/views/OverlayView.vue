@@ -1,65 +1,225 @@
 <template>
   <main class="overlay-page">
-    <section class="overlay-scoreboard" :class="{ 'is-offline': connectionStatus !== 'live' }">
-      <div class="overlay-scoreboard__top">
-        <span class="overlay-status-dot"></span>
-        <span>{{ statusLabel }}</span>
+    <section v-if="currentMatch" class="overlay-scoreboard" :class="{ 'is-offline': connectionStatus !== 'live' }">
+      <div class="overlay-scoreboard__meta">
+        <span class="overlay-live-row">
+          <span class="overlay-status-dot"></span>
+          {{ statusLabel }}
+        </span>
+        <span v-if="currentMatch">Круг {{ currentMatch.roundNumber ?? 1 }} · матч {{ currentMatch.matchNumber }}</span>
       </div>
 
       <div v-if="currentMatch" class="overlay-scoreboard__match">
-        <div class="overlay-team-name">{{ currentMatch.teamAName }}</div>
-        <div class="overlay-score">{{ currentMatch.teamAScore }}<span>:</span>{{ currentMatch.teamBScore }}</div>
-        <div class="overlay-team-name">{{ currentMatch.teamBName }}</div>
+        <div class="overlay-team-name">
+          <img class="overlay-team-logo" :src="teamLogo(leftTeam)" alt="" />
+          <span :style="teamNameStyle(leftTeam)">{{ currentMatch.teamAName }}</span>
+        </div>
+
+        <div class="overlay-score-center">
+          <div class="overlay-score">{{ currentMatch.teamAScore }}<span>:</span>{{ currentMatch.teamBScore }}</div>
+          <strong class="overlay-time-badge">{{ minuteLabel }}</strong>
+        </div>
+
+        <div class="overlay-team-name overlay-team-name--right">
+          <span :style="teamNameStyle(rightTeam)">{{ currentMatch.teamBName }}</span>
+          <img class="overlay-team-logo" :src="teamLogo(rightTeam)" alt="" />
+        </div>
       </div>
 
       <div v-else class="overlay-scoreboard__empty">Матч не выбран</div>
 
-      <div class="overlay-scoreboard__meta">
-        <strong>{{ minuteLabel }}</strong>
-        <span v-if="currentMatch">Матч {{ currentMatch.matchNumber }}</span>
-      </div>
-
       <div v-if="goalRows.length" class="overlay-goal-list">
-        <p v-for="goal in goalRows" :key="goal.id">
-          <span>{{ goal.minute }}</span>
-          <strong>{{ goal.name }}</strong>
-        </p>
+        <div class="overlay-goal-list__column">
+          <p v-for="goal in leftGoalRows" :key="goal.id">
+            <span>{{ goal.minute }}</span>
+            <strong>{{ goal.name }}</strong>
+          </p>
+        </div>
+        <div class="overlay-goal-list__column overlay-goal-list__column--right">
+          <p v-for="goal in rightGoalRows" :key="goal.id">
+            <span>{{ goal.minute }}</span>
+            <strong>{{ goal.name }}</strong>
+          </p>
+        </div>
       </div>
     </section>
 
-    <section v-if="currentMatch" class="overlay-lineups">
-      <div class="overlay-lineups__team">
-        <strong :style="teamAccentStyle(leftTeam)">{{ currentMatch.teamAName }}</strong>
-        <div class="overlay-lineups__players">
-          <article v-for="player in visiblePlayers(leftTeam)" :key="player.id" class="overlay-player">
-            <div class="overlay-player__photo">
-              <img v-if="player.photoUrl" :src="player.photoUrl" :alt="player.playerName" />
-              <span v-else>{{ initials(player.playerName) }}</span>
-            </div>
-            <span>{{ shortName(player.playerName) }}</span>
-          </article>
+    <section v-if="currentMatch" class="overlay-lineups-shell">
+      <div class="overlay-lineups">
+        <div class="overlay-team-panel">
+          <div class="overlay-lineups__players">
+            <article
+              v-for="player in visiblePlayers(leftTeam)"
+              :key="player.id"
+              class="overlay-player-card"
+              :style="playerCardStyle(leftTeam)"
+            >
+              <div class="overlay-card-top">
+                <div class="overlay-card-position">
+                  <span>{{ positionLabel(player.position) }}</span>
+                  <img :src="teamLogo(leftTeam)" alt="" />
+                </div>
+              </div>
+              <div class="overlay-player-card__photo">
+                <img v-if="player.photoUrl" :src="player.photoUrl" :alt="player.playerName" />
+                <span v-else>{{ initials(player.playerName) }}</span>
+              </div>
+              <strong class="overlay-player-card__name">{{ shortName(player.playerName) }}</strong>
+              <div v-if="playerStatsLabel(player.playerId)" class="overlay-player-card__stats">
+                {{ playerStatsLabel(player.playerId) }}
+              </div>
+            </article>
+          </div>
+        </div>
+
+        <div class="overlay-lineups__divider">
+          <img src="/vs.png" alt="VS" />
+        </div>
+
+        <div class="overlay-team-panel">
+          <div class="overlay-lineups__players overlay-lineups__players--right">
+            <article
+              v-for="player in visiblePlayers(rightTeam)"
+              :key="player.id"
+              class="overlay-player-card"
+              :style="playerCardStyle(rightTeam)"
+            >
+              <div class="overlay-card-top">
+                <div class="overlay-card-position">
+                  <span>{{ positionLabel(player.position) }}</span>
+                  <img :src="teamLogo(rightTeam)" alt="" />
+                </div>
+              </div>
+              <div class="overlay-player-card__photo">
+                <img v-if="player.photoUrl" :src="player.photoUrl" :alt="player.playerName" />
+                <span v-else>{{ initials(player.playerName) }}</span>
+              </div>
+              <strong class="overlay-player-card__name">{{ shortName(player.playerName) }}</strong>
+              <div v-if="playerStatsLabel(player.playerId)" class="overlay-player-card__stats">
+                {{ playerStatsLabel(player.playerId) }}
+              </div>
+            </article>
+          </div>
         </div>
       </div>
-      <div class="overlay-lineups__divider">VS</div>
-      <div class="overlay-lineups__team overlay-lineups__team--right">
-        <strong :style="teamAccentStyle(rightTeam)">{{ currentMatch.teamBName }}</strong>
-        <div class="overlay-lineups__players overlay-lineups__players--right">
-          <article v-for="player in visiblePlayers(rightTeam)" :key="player.id" class="overlay-player">
-            <div class="overlay-player__photo">
-              <img v-if="player.photoUrl" :src="player.photoUrl" :alt="player.playerName" />
-              <span v-else>{{ initials(player.playerName) }}</span>
+    </section>
+
+    <section v-if="intermissionVisible" class="overlay-intermission">
+      <div class="overlay-standings">
+        <h2>Турнирная таблица</h2>
+        <div class="overlay-standings__head">
+          <span>#</span>
+          <span>Команда</span>
+          <span>И</span>
+          <span>В</span>
+          <span>Н</span>
+          <span>П</span>
+          <span>М</span>
+          <span>О</span>
+        </div>
+        <div v-if="standingsRows.length" class="overlay-standings__body">
+          <div v-for="row in standingsRows" :key="row.team.id" class="overlay-standings__row">
+            <span class="overlay-standings__place">{{ row.place }}</span>
+            <span class="overlay-standings__team">
+              <img :src="teamLogo(row.team)" alt="" />
+              <strong :style="standingTeamNameStyle(row.team)">{{ row.team.name }}</strong>
+            </span>
+            <span>{{ row.played }}</span>
+            <span>{{ row.wins }}</span>
+            <span>{{ row.draws }}</span>
+            <span>{{ row.losses }}</span>
+            <span>{{ row.goalsFor }}:{{ row.goalsAgainst }}</span>
+            <strong>{{ row.points }}</strong>
+          </div>
+        </div>
+        <p v-else class="overlay-empty-note">Команды пока не добавлены</p>
+      </div>
+
+      <div class="overlay-intermission__side">
+        <div class="overlay-match-card">
+          <h2>Результат последнего матча</h2>
+          <div v-if="lastFinishedMatch" class="overlay-result-match">
+            <div class="overlay-result-team">
+              <img :src="teamLogo(findTeam(lastFinishedMatch.teamAId))" alt="" />
+              <strong :style="teamNameStyle(findTeam(lastFinishedMatch.teamAId))">{{ lastFinishedMatch.teamAName }}</strong>
             </div>
-            <span>{{ shortName(player.playerName) }}</span>
-          </article>
+            <div class="overlay-result-score">{{ lastFinishedMatch.teamAScore }}<span>:</span>{{ lastFinishedMatch.teamBScore }}</div>
+            <div class="overlay-result-team overlay-result-team--right">
+              <img :src="teamLogo(findTeam(lastFinishedMatch.teamBId))" alt="" />
+              <strong :style="teamNameStyle(findTeam(lastFinishedMatch.teamBId))">{{ lastFinishedMatch.teamBName }}</strong>
+            </div>
+          </div>
+          <div v-if="lastFinishedMatch && lastFinishedMatchGoals.length" class="overlay-result-goals">
+            <div class="overlay-result-goals__column">
+              <p v-for="goal in lastFinishedLeftGoals" :key="goal.id">
+                <span>{{ goal.minute }}</span>
+                <strong>{{ goal.name }}</strong>
+              </p>
+            </div>
+            <div class="overlay-result-goals__column overlay-result-goals__column--right">
+              <p v-for="goal in lastFinishedRightGoals" :key="goal.id">
+                <span>{{ goal.minute }}</span>
+                <strong>{{ goal.name }}</strong>
+              </p>
+            </div>
+          </div>
+          <p v-if="!lastFinishedMatch" class="overlay-empty-note">Сыгранных матчей пока нет</p>
+        </div>
+
+        <div class="overlay-match-card">
+          <h2>Следующий матч</h2>
+          <div v-if="nextMatch" class="overlay-next-match">
+            <div class="overlay-next-team">
+              <img :src="teamLogo(findTeam(nextMatch.teamAId))" alt="" />
+              <strong :style="teamNameStyle(findTeam(nextMatch.teamAId))">{{ nextMatch.teamAName }}</strong>
+            </div>
+            <img class="overlay-next-vs" src="/vs.png" alt="VS" />
+            <div class="overlay-next-team">
+              <img :src="teamLogo(findTeam(nextMatch.teamBId))" alt="" />
+              <strong :style="teamNameStyle(findTeam(nextMatch.teamBId))">{{ nextMatch.teamBName }}</strong>
+            </div>
+          </div>
+          <p v-else class="overlay-empty-note">Следующий матч не выбран</p>
         </div>
       </div>
     </section>
 
     <Transition name="goal-toast">
-      <section v-if="goalToast" class="overlay-goal-toast">
-        <p>{{ goalToast.cancelled ? 'Гол отменен' : 'ГОЛ' }}</p>
-        <strong>{{ goalToast.scorer }}</strong>
-        <span v-if="goalToast.assist && !goalToast.cancelled">Пас: {{ goalToast.assist }}</span>
+      <section
+        v-if="goalToast"
+        class="overlay-goal-toast"
+        :class="{ 'is-cancelled': goalToast.cancelled, 'has-assist': goalToast.assist && !goalToast.cancelled }"
+      >
+        <template v-if="goalToast.assist && !goalToast.cancelled">
+          <div class="overlay-goal-person overlay-goal-person--assist">
+            <span>АССИСТ</span>
+            <div class="overlay-goal-photo">
+              <img v-if="goalToast.assistPhotoUrl" :src="goalToast.assistPhotoUrl" :alt="goalToast.assist" />
+              <strong v-else>{{ initials(goalToast.assist) }}</strong>
+            </div>
+            <strong>{{ goalToast.assist }}</strong>
+          </div>
+
+          <div class="overlay-goal-arrow">→</div>
+
+          <div class="overlay-goal-person">
+            <span>ГОЛ</span>
+            <div class="overlay-goal-photo">
+              <img v-if="goalToast.scorerPhotoUrl" :src="goalToast.scorerPhotoUrl" :alt="goalToast.scorer" />
+              <strong v-else>{{ initials(goalToast.scorer) }}</strong>
+            </div>
+            <strong>{{ goalToast.scorer }}</strong>
+          </div>
+        </template>
+
+        <template v-else>
+          <p>{{ goalToast.cancelled ? 'Гол отменен' : 'ГОЛ' }}</p>
+          <div class="overlay-goal-photo overlay-goal-photo--solo">
+            <img v-if="goalToast.scorerPhotoUrl" :src="goalToast.scorerPhotoUrl" :alt="goalToast.scorer" />
+            <strong v-else>{{ initials(goalToast.scorer) }}</strong>
+          </div>
+          <strong>{{ goalToast.scorer }}</strong>
+        </template>
       </section>
     </Transition>
 
@@ -71,7 +231,20 @@
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
 import { useRoute } from 'vue-router';
 import { api } from '../lib/api';
-import type { MatchEvent, OverlayEvent, OverlayState, OverlayTeam, SessionTeamPlayer } from '../types';
+import type { MatchEvent, OverlayEvent, OverlayState, OverlayTeam, PlayerPosition, SessionMatch, SessionTeamPlayer } from '../types';
+
+interface OverlayStandingRow {
+  place: number;
+  team: OverlayTeam;
+  played: number;
+  wins: number;
+  draws: number;
+  losses: number;
+  goalsFor: number;
+  goalsAgainst: number;
+  goalDifference: number;
+  points: number;
+}
 
 const props = defineProps<{
   sessionId: string;
@@ -82,7 +255,13 @@ const state = ref<OverlayState | null>(null);
 const now = ref(new Date());
 const connectionStatus = ref<'connecting' | 'live' | 'offline'>('connecting');
 const error = ref('');
-const goalToast = ref<{ scorer: string; assist: string | null; cancelled: boolean } | null>(null);
+const goalToast = ref<{
+  scorer: string;
+  scorerPhotoUrl: string | null;
+  assist: string | null;
+  assistPhotoUrl: string | null;
+  cancelled: boolean;
+} | null>(null);
 
 let events: EventSource | null = null;
 let clockTimer: number | null = null;
@@ -96,7 +275,11 @@ const preferredMatchId = computed(() => {
   return Number.isFinite(parsed) && parsed > 0 ? parsed : null;
 });
 
-const currentMatch = computed(() => state.value?.currentMatch ?? null);
+const selectedMatch = computed(() => state.value?.currentMatch ?? null);
+const currentMatch = computed(() => {
+  const match = selectedMatch.value;
+  return match?.status === 'IN_PROGRESS' ? match : null;
+});
 const leftTeam = computed(() => findTeam(currentMatch.value?.teamAId ?? null));
 const rightTeam = computed(() => findTeam(currentMatch.value?.teamBId ?? null));
 
@@ -133,10 +316,133 @@ const goalRows = computed(() => {
     .filter((event) => event.eventType === 'GOAL' || event.eventType === 'OWN_GOAL')
     .map((event) => ({
       id: event.id,
+      teamId: event.teamId,
       minute: formatEventMinute(event),
       name: event.playerName ? shortName(event.playerName) : 'Игрок'
     }))
     .slice(-5);
+});
+const leftGoalRows = computed(() => goalRows.value.filter((goal) => goal.teamId === currentMatch.value?.teamAId));
+const rightGoalRows = computed(() => goalRows.value.filter((goal) => goal.teamId === currentMatch.value?.teamBId));
+const intermissionVisible = computed(() => Boolean(state.value) && !currentMatch.value);
+
+const finishedMatches = computed(() => {
+  const matches = [...(state.value?.matches ?? [])];
+  const selected = selectedMatch.value;
+  if (selected?.status === 'FINISHED' && !matches.some((match) => match.id === selected.id)) {
+    matches.push(selected);
+  }
+
+  return matches
+    .filter((match) => match.status === 'FINISHED')
+    .sort((first, second) => matchSortValue(first) - matchSortValue(second));
+});
+
+const lastFinishedMatch = computed(() => state.value?.lastFinishedMatch ?? finishedMatches.value[finishedMatches.value.length - 1] ?? null);
+const lastFinishedMatchGoals = computed(() => {
+  const match = lastFinishedMatch.value;
+  if (!match) {
+    return [];
+  }
+
+  const events = state.value?.lastFinishedMatchEvents ?? state.value?.sessionEvents ?? [];
+  return events
+    .filter((event) => event.matchId === match.id && (event.eventType === 'GOAL' || event.eventType === 'OWN_GOAL'))
+    .sort((first, second) => {
+      return (first.minuteInMatch ?? 0) - (second.minuteInMatch ?? 0)
+        || (first.secondInMatch ?? 0) - (second.secondInMatch ?? 0)
+        || first.id - second.id;
+    })
+    .map((event) => ({
+      id: event.id,
+      teamId: event.teamId,
+      minute: formatEventMinute(event),
+      name: event.playerName ? shortName(event.playerName) : 'Игрок'
+    }));
+});
+const lastFinishedLeftGoals = computed(() => {
+  const match = lastFinishedMatch.value;
+  return lastFinishedMatchGoals.value.filter((goal) => goal.teamId === match?.teamAId);
+});
+const lastFinishedRightGoals = computed(() => {
+  const match = lastFinishedMatch.value;
+  return lastFinishedMatchGoals.value.filter((goal) => goal.teamId === match?.teamBId);
+});
+
+const nextMatch = computed(() => {
+  if (state.value?.nextMatch) {
+    return state.value.nextMatch;
+  }
+
+  return [...(state.value?.matches ?? [])]
+    .filter((match) => match.status === 'PLANNED')
+    .sort((first, second) => matchSequenceValue(first) - matchSequenceValue(second))[0] ?? null;
+});
+
+const standingsRows = computed<OverlayStandingRow[]>(() => {
+  if (state.value?.standings?.length) {
+    return state.value.standings.map((row, index) => ({
+      place: index + 1,
+      team: findTeam(row.teamId) ?? {
+        id: row.teamId,
+        name: row.teamName,
+        color: row.teamColor,
+        displayOrder: null,
+        players: []
+      },
+      played: row.played,
+      wins: row.wins,
+      draws: row.draws,
+      losses: row.losses,
+      goalsFor: row.goalsFor,
+      goalsAgainst: row.goalsAgainst,
+      goalDifference: row.goalDifference,
+      points: row.points
+    }));
+  }
+
+  const rows = new Map<number, Omit<OverlayStandingRow, 'place'>>();
+
+  for (const team of state.value?.teams ?? []) {
+    rows.set(team.id, {
+      team,
+      played: 0,
+      wins: 0,
+      draws: 0,
+      losses: 0,
+      goalsFor: 0,
+      goalsAgainst: 0,
+      goalDifference: 0,
+      points: 0
+    });
+  }
+
+  for (const match of finishedMatches.value) {
+    const teamA = rows.get(match.teamAId);
+    const teamB = rows.get(match.teamBId);
+    if (!teamA || !teamB) {
+      continue;
+    }
+
+    applyMatchResult(teamA, match.teamAScore, match.teamBScore);
+    applyMatchResult(teamB, match.teamBScore, match.teamAScore);
+  }
+
+  return [...rows.values()]
+    .map((row) => ({
+      ...row,
+      goalDifference: row.goalsFor - row.goalsAgainst
+    }))
+    .sort((first, second) => {
+      return second.points - first.points
+        || second.goalDifference - first.goalDifference
+        || second.goalsFor - first.goalsFor
+        || first.team.name.localeCompare(second.team.name, 'ru');
+    })
+    .map((row, index) => ({
+      ...row,
+      place: index + 1
+    }));
 });
 
 onMounted(async () => {
@@ -212,7 +518,9 @@ function handleOverlayEvent(message: MessageEvent<string>) {
 function showGoalToast(event: MatchEvent, assist: MatchEvent | null, cancelled: boolean) {
   goalToast.value = {
     scorer: event.playerName ? shortName(event.playerName) : 'Игрок',
+    scorerPhotoUrl: event.playerPhotoUrl,
     assist: assist?.playerName ? shortName(assist.playerName) : null,
+    assistPhotoUrl: assist?.playerPhotoUrl ?? null,
     cancelled
   };
   if (toastTimer) {
@@ -221,6 +529,39 @@ function showGoalToast(event: MatchEvent, assist: MatchEvent | null, cancelled: 
   toastTimer = window.setTimeout(() => {
     goalToast.value = null;
   }, cancelled ? 3200 : 5200);
+}
+
+function matchSortValue(match: SessionMatch): number {
+  const date = match.endedAt ?? match.startedAt ?? match.createdAt;
+  const timestamp = date ? new Date(date).getTime() : NaN;
+  if (Number.isFinite(timestamp)) {
+    return timestamp;
+  }
+  return matchSequenceValue(match);
+}
+
+function matchSequenceValue(match: SessionMatch): number {
+  return (match.roundNumber ?? 1) * 10000 + match.matchNumber;
+}
+
+function applyMatchResult(
+  row: Omit<OverlayStandingRow, 'place'>,
+  goalsFor: number,
+  goalsAgainst: number
+) {
+  row.played += 1;
+  row.goalsFor += goalsFor;
+  row.goalsAgainst += goalsAgainst;
+
+  if (goalsFor > goalsAgainst) {
+    row.wins += 1;
+    row.points += 3;
+  } else if (goalsFor === goalsAgainst) {
+    row.draws += 1;
+    row.points += 1;
+  } else {
+    row.losses += 1;
+  }
 }
 
 function findTeam(teamId: number | null): OverlayTeam | null {
@@ -234,15 +575,79 @@ function visiblePlayers(team: OverlayTeam | null): SessionTeamPlayer[] {
   if (!team) {
     return [];
   }
-  return team.players.filter((player) => player.active).slice(0, 10);
+  return team.players.filter((player) => player.active).slice(0, 4);
 }
 
-function teamAccentStyle(team: OverlayTeam | null): Record<string, string> {
+function teamNameStyle(team: OverlayTeam | null): Record<string, string> {
+  return standingTeamNameStyle(team);
+}
+
+function standingTeamNameStyle(team: OverlayTeam | null): Record<string, string> {
   return {
-    borderColor: team?.color || '#2ef27a',
-    color: team?.color || '#2ef27a',
-    '--team-color': team?.color || '#2ef27a'
+    color: standingTeamColor(team),
+    '-webkit-text-stroke': '0.8px rgba(0, 0, 0, 0.9)',
+    textShadow: '0 2px 0 rgba(0, 0, 0, 0.36), 0 0 10px rgba(255, 255, 255, 0.16)'
   };
+}
+
+function standingTeamColor(team: OverlayTeam | null): string {
+  const marker = `${team?.name ?? ''} ${team?.color ?? ''}`.toLowerCase();
+  if (marker.includes('blue') || marker.includes('син')) {
+    return '#6ee7ff';
+  }
+  if (marker.includes('red') || marker.includes('крас')) {
+    return '#ff6f7d';
+  }
+  if (marker.includes('green') || marker.includes('зелен') || marker.includes('зелён')) {
+    return '#6dff9c';
+  }
+  return lightenTeamColor(team?.color || '#2ef27a');
+}
+
+function lightenTeamColor(color: string): string {
+  const match = color.trim().match(/^#?([0-9a-f]{6})$/i);
+  if (!match) {
+    return color;
+  }
+  const hex = match[1];
+  const channels = [0, 2, 4].map((index) => Number.parseInt(hex.slice(index, index + 2), 16));
+  const lightened = channels.map((channel) => Math.round(channel + (255 - channel) * 0.46));
+  return `#${lightened.map((channel) => channel.toString(16).padStart(2, '0')).join('')}`;
+}
+
+function playerCardStyle(team: OverlayTeam | null): Record<string, string> {
+  const color = team?.color || '#2ef27a';
+  return {
+    borderColor: color,
+    boxShadow: `inset 0 0 0 1px rgba(255, 255, 255, 0.38), 0 0 0 2px ${color}55, 0 13px 26px rgba(0, 0, 0, 0.32)`
+  };
+}
+
+function teamLogo(team: OverlayTeam | null): string {
+  const marker = `${team?.name ?? ''} ${team?.color ?? ''}`.toLowerCase();
+  if (marker.includes('red') || marker.includes('крас')) {
+    return '/pozitiv-red.png';
+  }
+  if (marker.includes('green') || marker.includes('зелен') || marker.includes('зелён')) {
+    return '/pozitiv-green.png';
+  }
+  return '/pozitiv.png';
+}
+
+function playerStats(playerId: number): { goals: number; assists: number } {
+  const events = state.value?.sessionEvents ?? [];
+  return {
+    goals: events.filter((event) => (event.eventType === 'GOAL' || event.eventType === 'OWN_GOAL') && event.playerId === playerId).length,
+    assists: events.filter((event) => event.eventType === 'ASSIST' && event.playerId === playerId).length
+  };
+}
+
+function playerStatsLabel(playerId: number): string {
+  const stats = playerStats(playerId);
+  return [
+    stats.goals > 0 ? `${stats.goals} ⚽` : '',
+    stats.assists > 0 ? `${stats.assists} 👟` : ''
+  ].filter(Boolean).join(' ');
 }
 
 function formatEventMinute(event: MatchEvent): string {
@@ -273,6 +678,16 @@ function initials(name: string): string {
     .join('') || 'P';
 }
 
+function positionLabel(position: PlayerPosition | null): string {
+  const labels: Record<PlayerPosition, string> = {
+    GOALKEEPER: 'ВР',
+    DEFENDER: 'ЗЩ',
+    MIDFIELDER: 'ПЗ',
+    FORWARD: 'НП',
+    UNIVERSAL: 'УН'
+  };
+  return position ? labels[position] : 'ИГР';
+}
 </script>
 
 <style scoped>
@@ -288,7 +703,9 @@ function initials(name: string): string {
 }
 
 .overlay-scoreboard,
-.overlay-lineups,
+.overlay-team-panel,
+.overlay-intermission,
+.overlay-match-card,
 .overlay-goal-toast,
 .overlay-error {
   background: linear-gradient(135deg, rgba(6, 15, 18, 0.9), rgba(16, 30, 34, 0.78));
@@ -299,75 +716,74 @@ function initials(name: string): string {
 
 .overlay-scoreboard {
   position: absolute;
-  top: 28px;
-  left: 28px;
-  width: min(520px, calc(100vw - 56px));
-  padding: 16px 18px;
+  top: 22px;
+  left: 22px;
+  width: min(450px, calc(100vw - 44px));
+  padding: 8px 14px 13px;
   border-radius: 8px;
 }
 
-.overlay-scoreboard__top,
-.overlay-scoreboard__meta {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  color: rgba(247, 255, 249, 0.76);
-  font-size: 13px;
-  font-weight: 800;
-  text-transform: uppercase;
-}
-
-.overlay-status-dot {
-  width: 9px;
-  height: 9px;
-  border-radius: 999px;
-  background: #2ef27a;
-  box-shadow: 0 0 18px rgba(46, 242, 122, 0.9);
-}
-
-.overlay-scoreboard.is-offline .overlay-status-dot {
-  background: #ffbf4d;
-  box-shadow: 0 0 18px rgba(255, 191, 77, 0.8);
-}
-
 .overlay-scoreboard__match {
+  position: relative;
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
   align-items: center;
-  gap: 16px;
-  margin: 10px 0;
+  gap: 12px;
+  margin-top: 2px;
+  padding-bottom: 28px;
 }
 
 .overlay-team-name {
   min-width: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
   overflow: hidden;
-  font-size: clamp(17px, 2vw, 25px);
-  font-weight: 900;
+  font-size: clamp(14px, 1.7vw, 21px);
+  font-weight: 950;
   text-overflow: ellipsis;
   text-transform: uppercase;
   white-space: nowrap;
 }
 
-.overlay-team-name:last-child {
+.overlay-team-name--right {
+  justify-content: flex-end;
   text-align: right;
 }
 
+.overlay-team-logo {
+  width: 34px;
+  height: 34px;
+  flex: 0 0 auto;
+  object-fit: contain;
+}
+
+.overlay-score-center {
+  position: relative;
+  display: grid;
+  justify-items: center;
+}
+
 .overlay-score {
-  display: flex;
+  min-width: 88px;
+  display: inline-flex;
   align-items: baseline;
-  gap: 8px;
-  min-width: 118px;
   justify-content: center;
-  color: #2ef27a;
-  font-size: clamp(38px, 5vw, 62px);
+  gap: 8px;
+  padding: 4px 10px 6px;
+  border: 2px solid rgba(255, 255, 255, 0.72);
+  border-radius: 8px;
+  color: #ffffff;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.12), rgba(255, 255, 255, 0.03));
+  box-shadow: inset 0 0 18px rgba(255, 255, 255, 0.12), 0 0 22px rgba(255, 210, 64, 0.42);
+  font-size: clamp(24px, 3vw, 36px);
   font-weight: 950;
-  line-height: 0.95;
+  line-height: 0.9;
 }
 
 .overlay-score span {
-  color: rgba(247, 255, 249, 0.72);
-  font-size: 0.7em;
+  color: rgba(255, 255, 255, 0.58);
+  font-size: 0.66em;
 }
 
 .overlay-scoreboard__empty {
@@ -377,25 +793,85 @@ function initials(name: string): string {
   font-weight: 800;
 }
 
-.overlay-scoreboard__meta strong {
-  color: #2ef27a;
-  font-size: 18px;
+.overlay-scoreboard__meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  color: rgba(247, 255, 249, 0.76);
+  font-size: 11px;
+  font-weight: 850;
+  text-transform: uppercase;
+}
+
+.overlay-live-row {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.overlay-time-badge {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 50%;
+  transform: translateX(-50%);
+  min-width: 72px;
+  padding: 2px 9px 3px;
+  border: 1.5px solid rgba(255, 255, 255, 0.78);
+  border-radius: 6px;
+  color: #ffffff;
+  background: rgba(255, 255, 255, 0.08);
+  box-shadow: inset 0 0 12px rgba(255, 255, 255, 0.1);
+  font-size: 15px;
+  line-height: 1;
+  text-align: center;
+}
+
+.overlay-status-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 999px;
+  background: #ff364e;
+  box-shadow: 0 0 14px rgba(255, 54, 78, 0.95);
+}
+
+.overlay-scoreboard.is-offline .overlay-status-dot {
+  background: #ffbf4d;
+  box-shadow: 0 0 14px rgba(255, 191, 77, 0.8);
 }
 
 .overlay-goal-list {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 5px 12px;
-  margin-top: 12px;
+  grid-template-columns: minmax(0, 1fr) 88px minmax(0, 1fr);
+  gap: 5px 8px;
+  margin-top: -18px;
   color: rgba(247, 255, 249, 0.8);
   font-size: 13px;
 }
 
-.overlay-goal-list p {
+.overlay-goal-list__column {
+  grid-column: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.overlay-goal-list__column--right {
+  grid-column: 3;
+  align-items: flex-end;
+  text-align: right;
+}
+
+.overlay-goal-list__column p {
   min-width: 0;
   margin: 0;
   display: flex;
   gap: 6px;
+}
+
+.overlay-goal-list__column--right p {
+  justify-content: flex-end;
 }
 
 .overlay-goal-list strong {
@@ -405,89 +881,40 @@ function initials(name: string): string {
   white-space: nowrap;
 }
 
-.overlay-player {
-  min-width: 76px;
-  max-width: 92px;
-  display: grid;
-  justify-items: center;
-  align-items: center;
-  gap: 7px;
-  text-align: center;
-}
-
-.overlay-player__photo {
-  width: 42px;
-  height: 42px;
-  display: grid;
-  place-items: center;
-  overflow: hidden;
-  border-radius: 50%;
-  color: #061012;
-  background: linear-gradient(135deg, #eaffef, #2ef27a);
-  font-size: 13px;
-  font-weight: 950;
-}
-
-.overlay-player__photo img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-}
-
-.overlay-player strong,
-.overlay-player span {
-  display: block;
-  width: 100%;
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.overlay-player span {
-  color: rgba(247, 255, 249, 0.86);
-  font-size: 12px;
-  font-weight: 850;
-}
-
-.overlay-lineups {
+.overlay-lineups-shell {
   position: absolute;
   left: 50%;
-  bottom: 28px;
-  width: min(1320px, calc(100vw - 56px));
-  min-height: 144px;
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) 64px minmax(0, 1fr);
-  align-items: stretch;
-  gap: 16px;
-  padding: 14px 18px;
-  border-radius: 8px;
+  bottom: 24px;
+  width: min(1060px, calc(100vw - 48px));
   transform: translateX(-50%);
 }
 
-.overlay-lineups__team {
+.overlay-lineups {
+  display: grid;
+  grid-template-columns: minmax(0, 430px) 132px minmax(0, 430px);
+  align-items: end;
+  justify-content: center;
+  gap: 16px;
+}
+
+.overlay-team-panel {
   min-width: 0;
-}
-
-.overlay-lineups__team--right {
-  text-align: right;
-}
-
-.overlay-lineups__team strong {
-  display: block;
-  margin-bottom: 10px;
-  border-bottom: 3px solid var(--team-color, #2ef27a);
-  padding-bottom: 6px;
-  font-size: 18px;
-  font-weight: 950;
-  text-transform: uppercase;
+  min-height: 112px;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  border-radius: 8px;
+  padding: 0 12px 8px;
+  background: linear-gradient(135deg, rgba(3, 10, 12, 0.94), rgba(12, 23, 26, 0.9));
 }
 
 .overlay-lineups__players {
   display: flex;
-  gap: 12px;
+  align-items: flex-end;
+  gap: 10px;
   min-width: 0;
-  overflow: hidden;
+  margin-top: -88px;
+  overflow: visible;
 }
 
 .overlay-lineups__players--right {
@@ -495,25 +922,353 @@ function initials(name: string): string {
 }
 
 .overlay-lineups__divider {
+  width: 129px;
+  height: 129px;
   display: grid;
   place-items: center;
+  align-self: center;
+  filter: drop-shadow(0 0 16px rgba(46, 242, 122, 0.64)) drop-shadow(0 8px 22px rgba(0, 0, 0, 0.42));
+  transform: translateY(-20%);
+}
+
+.overlay-lineups__divider img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.overlay-player-card {
+  width: 112px;
+  min-width: 112px;
+  height: 184px;
+  display: grid;
+  grid-template-rows: 26px 64px minmax(24px, auto) 24px;
+  justify-items: center;
+  gap: 7px;
+  padding: 9px 9px 8px;
+  border: 1px solid rgba(255, 255, 255, 0.82);
+  border-radius: 9px;
+  color: #101820;
+  background:
+    linear-gradient(145deg, rgba(255, 255, 255, 0.95), rgba(172, 183, 190, 0.96) 42%, rgba(244, 247, 248, 0.94)),
+    radial-gradient(circle at 20% 15%, rgba(255, 255, 255, 0.95), transparent 34%);
+  overflow: hidden;
+}
+
+.overlay-card-top {
+  width: 100%;
+  display: flex;
+  justify-content: flex-start;
+}
+
+.overlay-card-position {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 3px;
+  font-size: 12px;
+  font-weight: 950;
+}
+
+.overlay-card-position img {
+  width: 20px;
+  height: 20px;
+  object-fit: contain;
+}
+
+.overlay-player-card__photo {
   width: 64px;
   height: 64px;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  border: 2px solid rgba(255, 255, 255, 0.78);
   border-radius: 50%;
   color: #061012;
-  background: #2ef27a;
+  background: linear-gradient(135deg, #f5fff7, #aeb8be);
+  font-size: 18px;
   font-weight: 950;
+}
+
+.overlay-player-card__photo img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.overlay-player-card__name {
+  width: 100%;
+  min-width: 0;
+  overflow: hidden;
+  font-size: 15px;
+  line-height: 1.12;
+  text-align: center;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.overlay-player-card__stats {
+  width: 100%;
+  min-width: 0;
+  min-height: 22px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-top: 1px solid rgba(16, 24, 32, 0.22);
+  padding-top: 3px;
+  overflow: hidden;
+  font-size: 12px;
+  font-weight: 950;
+  text-align: center;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.overlay-intermission {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: min(1060px, calc(100vw - 56px));
+  display: grid;
+  grid-template-columns: minmax(0, 1.22fr) minmax(0, 0.94fr);
+  gap: 22px;
+  padding: 24px;
+  border-radius: 10px;
+  transform: translate(-50%, -50%);
+}
+
+.overlay-standings,
+.overlay-intermission__side {
+  min-width: 0;
+}
+
+.overlay-standings h2,
+.overlay-match-card h2 {
+  margin: 0;
+  color: rgba(255, 255, 255, 0.94);
+  font-size: 20px;
+  font-weight: 950;
+  line-height: 1;
+  text-transform: uppercase;
+}
+
+.overlay-standings__head,
+.overlay-standings__row {
+  display: grid;
+  grid-template-columns: 38px minmax(0, 1fr) 38px 38px 38px 38px 66px 44px;
+  align-items: center;
+  gap: 10px;
+}
+
+.overlay-standings__head {
+  margin-top: 18px;
+  padding: 0 12px 10px;
+  color: rgba(255, 255, 255, 0.62);
+  font-size: 12px;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.overlay-standings__body {
+  display: grid;
+  gap: 7px;
+}
+
+.overlay-standings__row {
+  min-height: 54px;
+  padding: 8px 12px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.07);
+  color: rgba(255, 255, 255, 0.9);
+  font-size: 16px;
+  font-weight: 900;
+}
+
+.overlay-standings__place {
+  width: 32px;
+  height: 32px;
+  display: grid;
+  place-items: center;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.12);
+  color: #ffffff;
+}
+
+.overlay-standings__team {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.overlay-standings__team img {
+  width: 34px;
+  height: 34px;
+  flex: 0 0 auto;
+  object-fit: contain;
+}
+
+.overlay-standings__team strong {
+  min-width: 0;
+  overflow: hidden;
+  font-size: 17px;
+  font-weight: 950;
+  text-overflow: ellipsis;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.overlay-intermission__side {
+  display: grid;
+  gap: 18px;
+}
+
+.overlay-match-card {
+  min-width: 0;
+  border-radius: 10px;
+  padding: 20px;
+}
+
+.overlay-result-match {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  align-items: center;
+  gap: 16px;
+  margin-top: 22px;
+}
+
+.overlay-result-team,
+.overlay-next-team {
+  min-width: 0;
+  display: grid;
+  justify-items: center;
+  gap: 8px;
+  text-align: center;
+}
+
+.overlay-result-team img,
+.overlay-next-team img {
+  width: 54px;
+  height: 54px;
+  object-fit: contain;
+}
+
+.overlay-result-team strong,
+.overlay-next-team strong {
+  max-width: 100%;
+  overflow: hidden;
+  font-size: 16px;
+  font-weight: 950;
+  text-overflow: ellipsis;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.overlay-result-score {
+  min-width: 104px;
+  padding: 8px 16px 10px;
+  border: 2px solid rgba(255, 255, 255, 0.74);
+  border-radius: 8px;
+  color: #ffffff;
+  background: rgba(255, 255, 255, 0.08);
+  box-shadow: inset 0 0 16px rgba(255, 255, 255, 0.1), 0 0 20px rgba(255, 210, 64, 0.34);
+  font-size: 38px;
+  font-weight: 950;
+  line-height: 0.9;
+  text-align: center;
+}
+
+.overlay-result-score span {
+  padding: 0 6px;
+  color: rgba(255, 255, 255, 0.58);
+  font-size: 0.66em;
+}
+
+.overlay-result-goals {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 104px minmax(0, 1fr);
+  gap: 8px 16px;
+  margin-top: 12px;
+  color: rgba(255, 255, 255, 0.84);
+  font-size: 12px;
+  font-weight: 850;
+}
+
+.overlay-result-goals__column {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.overlay-result-goals__column--right {
+  grid-column: 3;
+  align-items: flex-end;
+  text-align: right;
+}
+
+.overlay-result-goals__column p {
+  max-width: 100%;
+  margin: 0;
+  display: flex;
+  gap: 5px;
+}
+
+.overlay-result-goals__column--right p {
+  justify-content: flex-end;
+}
+
+.overlay-result-goals strong {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.overlay-next-match {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 90px minmax(0, 1fr);
+  align-items: center;
+  gap: 16px;
+  margin-top: 20px;
+}
+
+.overlay-next-vs {
+  width: 90px;
+  height: 90px;
+  object-fit: contain;
+  filter: drop-shadow(0 0 16px rgba(255, 210, 64, 0.52));
+}
+
+.overlay-empty-note {
+  margin: 18px 0 0;
+  color: rgba(255, 255, 255, 0.68);
+  font-size: 13px;
+  font-weight: 800;
 }
 
 .overlay-goal-toast {
   position: absolute;
   left: 50%;
   top: 50%;
-  width: min(620px, calc(100vw - 56px));
+  width: min(760px, calc(100vw - 56px));
+  min-height: 260px;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 92px minmax(0, 1fr);
+  align-items: center;
+  gap: 24px;
   padding: 28px 34px;
   border-radius: 8px;
   text-align: center;
   transform: translate(-50%, -50%);
+}
+
+.overlay-goal-toast:not(.has-assist) {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 12px;
 }
 
 .overlay-goal-toast p,
@@ -523,23 +1278,82 @@ function initials(name: string): string {
 }
 
 .overlay-goal-toast p {
-  margin: 0 0 8px;
-  color: #2ef27a;
-  font-size: clamp(36px, 6vw, 80px);
+  margin: 0;
+  color: #ffffff;
+  font-size: clamp(36px, 6vw, 76px);
   font-weight: 950;
   line-height: 1;
   text-transform: uppercase;
+  text-shadow: 0 0 22px rgba(255, 210, 64, 0.42), 0 4px 20px rgba(0, 0, 0, 0.58);
+}
+
+.overlay-goal-toast.is-cancelled p {
+  color: #ff3f55;
+  text-shadow: 0 0 20px rgba(255, 63, 85, 0.62), 0 4px 20px rgba(0, 0, 0, 0.58);
 }
 
 .overlay-goal-toast strong {
-  font-size: clamp(24px, 3vw, 38px);
+  min-width: 0;
+  overflow: hidden;
+  font-size: clamp(20px, 2.6vw, 34px);
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .overlay-goal-toast span {
-  margin-top: 10px;
-  color: rgba(247, 255, 249, 0.76);
+  color: #ffffff;
   font-size: 18px;
-  font-weight: 800;
+  font-weight: 950;
+  letter-spacing: 0;
+  text-transform: uppercase;
+}
+
+.overlay-goal-person {
+  min-width: 0;
+  display: grid;
+  justify-items: center;
+  gap: 10px;
+}
+
+.overlay-goal-person--assist span {
+  color: rgba(255, 255, 255, 0.78);
+}
+
+.overlay-goal-photo {
+  width: 128px;
+  height: 128px;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  border: 3px solid rgba(255, 255, 255, 0.82);
+  border-radius: 50%;
+  color: #071014;
+  background: linear-gradient(145deg, #ffffff, #b7c0c6);
+  box-shadow: 0 0 0 3px rgba(255, 210, 64, 0.42), 0 16px 28px rgba(0, 0, 0, 0.36);
+  font-size: 34px;
+  font-weight: 950;
+}
+
+.overlay-goal-toast.is-cancelled .overlay-goal-photo {
+  box-shadow: 0 0 0 3px rgba(255, 63, 85, 0.55), 0 16px 28px rgba(0, 0, 0, 0.36);
+}
+
+.overlay-goal-photo--solo {
+  width: 148px;
+  height: 148px;
+}
+
+.overlay-goal-photo img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.overlay-goal-arrow {
+  color: #ffffff;
+  font-size: 68px;
+  font-weight: 950;
+  text-shadow: 0 0 22px rgba(255, 210, 64, 0.72), 0 4px 18px rgba(0, 0, 0, 0.54);
 }
 
 .overlay-error {
@@ -566,7 +1380,8 @@ function initials(name: string): string {
 
 @media (max-width: 900px) {
   .overlay-scoreboard,
-  .overlay-lineups,
+  .overlay-lineups-shell,
+  .overlay-intermission,
   .overlay-error {
     position: static;
     width: auto;
@@ -580,8 +1395,16 @@ function initials(name: string): string {
   }
 
   .overlay-lineups {
-    transform: none;
     grid-template-columns: minmax(0, 1fr);
+  }
+
+  .overlay-intermission {
+    grid-template-columns: minmax(0, 1fr);
+    transform: none;
+  }
+
+  .overlay-lineups-shell {
+    transform: none;
   }
 
   .overlay-lineups__players,
@@ -594,7 +1417,7 @@ function initials(name: string): string {
     display: none;
   }
 
-  .overlay-lineups__team--right {
+  .overlay-team-caption--right {
     text-align: left;
   }
 }

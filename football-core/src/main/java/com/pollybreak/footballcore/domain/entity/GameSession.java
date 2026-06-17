@@ -49,6 +49,21 @@ public class GameSession {
     @Column(name = "broadcast_url", length = 500)
     private String broadcastUrl;
 
+    @Column(name = "telegram_chat_id")
+    private Long telegramChatId;
+
+    @Column(name = "telegram_chat_title", length = 200)
+    private String telegramChatTitle;
+
+    @Column(name = "telegram_registration_message_id")
+    private Long telegramRegistrationMessageId;
+
+    @Column(name = "fee_amount")
+    private Integer feeAmount;
+
+    @Column(name = "fee_recipient", length = 200)
+    private String feeRecipient;
+
     @Enumerated(EnumType.STRING)
     @Column(name = "format_type", nullable = false, length = 100)
     private SessionFormatType formatType;

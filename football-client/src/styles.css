@@ -867,16 +867,16 @@ textarea {
 
 .match-scoreboard {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
-  align-items: center;
-  gap: 12px;
+  grid-template-columns: minmax(0, 1fr) 56px 28px 56px minmax(0, 1fr);
+  align-items: start;
+  gap: 8px 12px;
   padding: 14px;
   border-radius: 16px;
   background: var(--surface-bg);
   border: 1px solid var(--card-border);
 }
 
-.match-scoreboard.is-overtime .scoreboard-center span {
+.match-scoreboard.is-overtime .scoreboard-time {
   color: var(--danger);
   background: rgba(217, 93, 93, 0.1);
 }
@@ -900,7 +900,9 @@ textarea {
   gap: 8px;
 }
 
-.scoreboard-center span {
+.scoreboard-time {
+  grid-column: 1 / -1;
+  justify-self: center;
   min-width: 74px;
   padding: 8px 10px;
   border-radius: 999px;
@@ -910,9 +912,34 @@ textarea {
   font-weight: 700;
 }
 
+.scoreboard-goals-board {
+  grid-column: 1 / -1;
+  width: min(420px, 100%);
+  justify-self: center;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 10px 20px;
+}
+
+.scoreboard-team:first-child {
+  grid-column: 1 / 3;
+  align-items: flex-end;
+  text-align: right;
+}
+
+.scoreboard-center {
+  grid-column: 3;
+}
+
+.scoreboard-team:nth-of-type(3) {
+  grid-column: 4 / 6;
+  align-items: flex-start;
+  text-align: left;
+}
+
 .scoreboard-goals {
   width: 100%;
-  margin-top: 8px;
+  margin-top: 0;
   display: flex;
   flex-direction: column;
   gap: 4px;
@@ -924,9 +951,18 @@ textarea {
   margin: 0;
   display: flex;
   align-items: center;
-  justify-content: center;
   gap: 4px;
   overflow-wrap: anywhere;
+}
+
+.scoreboard-goals--left p {
+  justify-content: flex-end;
+  text-align: right;
+}
+
+.scoreboard-goals--right p {
+  justify-content: flex-start;
+  text-align: left;
 }
 
 .scoreboard-goal-avatar {

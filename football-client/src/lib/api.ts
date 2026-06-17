@@ -90,6 +90,12 @@ export const api = {
   updateSession(sessionId: number, payload: Record<string, unknown>): Promise<GameSession> {
     return request(`/api/sessions/${sessionId}`, { method: 'PATCH', body: JSON.stringify(payload) });
   },
+  validateTelegramChat(sessionId: number, payload: Record<string, unknown>): Promise<{ chatId: number; title: string | null; valid: boolean }> {
+    return request(`/api/sessions/${sessionId}/telegram-chat/validate`, { method: 'POST', body: JSON.stringify(payload) });
+  },
+  startSessionRegistration(sessionId: number, payload: Record<string, unknown>): Promise<{ chatId: number; messageId: number; messageUrl: string | null }> {
+    return request(`/api/sessions/${sessionId}/registration/start`, { method: 'POST', body: JSON.stringify(payload) });
+  },
   getSession(sessionId: number): Promise<GameSession> {
     return request(`/api/sessions/${sessionId}`);
   },
@@ -137,6 +143,9 @@ export const api = {
   },
   finishMatch(sessionId: number, matchId: number): Promise<SessionMatch> {
     return request(`/api/sessions/${sessionId}/matches/${matchId}/finish`, { method: 'POST', body: JSON.stringify({}) });
+  },
+  resumeMatch(sessionId: number, matchId: number): Promise<SessionMatch> {
+    return request(`/api/sessions/${sessionId}/matches/${matchId}/resume`, { method: 'POST', body: JSON.stringify({}) });
   },
   getStandings(sessionId: number): Promise<SessionStandings> {
     return request(`/api/sessions/${sessionId}/standings`);

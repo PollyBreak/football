@@ -14,7 +14,16 @@
       <div class="match-scoreboard" :class="{ 'is-overtime': matchIsOvertime }">
         <div class="scoreboard-team">
           <strong>{{ match.teamAScore }}</strong>
-          <div v-if="teamAGoals.length" class="scoreboard-goals">
+        </div>
+        <div class="scoreboard-center">
+          <strong>:</strong>
+        </div>
+        <div class="scoreboard-team">
+          <strong>{{ match.teamBScore }}</strong>
+        </div>
+        <span class="scoreboard-time">{{ elapsedLabel }}</span>
+        <div v-if="teamAGoals.length || teamBGoals.length" class="scoreboard-goals-board">
+          <div class="scoreboard-goals scoreboard-goals--left">
             <p v-for="goal in teamAGoals" :key="goal.id">
               <span v-if="goal.timeLabel" class="scoreboard-goal-time">{{ goal.timeLabel }}</span>
               <img v-if="goal.playerPhotoUrl" :src="goal.playerPhotoUrl" alt="Фото игрока" class="scoreboard-goal-avatar" />
@@ -29,14 +38,7 @@
               <span v-else class="scoreboard-goal-name">{{ goal.label }}</span>
             </p>
           </div>
-        </div>
-        <div class="scoreboard-center">
-          <strong>:</strong>
-          <span>{{ elapsedLabel }}</span>
-        </div>
-        <div class="scoreboard-team">
-          <strong>{{ match.teamBScore }}</strong>
-          <div v-if="teamBGoals.length" class="scoreboard-goals">
+          <div class="scoreboard-goals scoreboard-goals--right">
             <p v-for="goal in teamBGoals" :key="goal.id">
               <span v-if="goal.timeLabel" class="scoreboard-goal-time">{{ goal.timeLabel }}</span>
               <img v-if="goal.playerPhotoUrl" :src="goal.playerPhotoUrl" alt="Фото игрока" class="scoreboard-goal-avatar" />
@@ -56,7 +58,8 @@
 
       <div class="button-row">
         <button v-if="!sessionIsFinished" class="ghost-button" @click="startMatch" :disabled="match.status !== 'PLANNED'">Начать</button>
-        <button v-if="!sessionIsFinished" class="ghost-button" :class="{ 'is-danger': matchIsOvertime }" @click="finishMatch" :disabled="match.status === 'FINISHED'">Завершить</button>
+        <button v-if="!sessionIsFinished" class="ghost-button" :class="{ 'is-danger': matchIsOvertime }" @click="finishMatch" :disabled="match.status !== 'IN_PROGRESS'">Завершить</button>
+        <button v-if="!sessionIsFinished && match.status === 'FINISHED'" class="ghost-button" @click="resumeMatch">Возобновить</button>
         <button class="ghost-button" @click="loadMatch">Обновить</button>
       </div>
     </div>
@@ -330,6 +333,14 @@ async function finishMatch() {
   match.value = await api.finishMatch(sessionIdNumber.value, match.value.id);
   localStartedAt.value = null;
   persistMatchStart(null);
+}
+
+async function resumeMatch() {
+  if (sessionIsFinished.value || !match.value) return;
+  match.value = await api.resumeMatch(sessionIdNumber.value, match.value.id);
+  localStartedAt.value = null;
+  persistMatchStart(null);
+  now.value = Date.now();
 }
 
 async function addGoal() {

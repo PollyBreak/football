@@ -55,6 +55,10 @@ public class GameSessionService {
         session.setLocation(request.location());
         session.setLocationUrl(request.locationUrl());
         session.setBroadcastUrl(request.broadcastUrl());
+        session.setTelegramChatId(request.telegramChatId());
+        session.setTelegramChatTitle(request.telegramChatTitle());
+        session.setFeeAmount(request.feeAmount());
+        session.setFeeRecipient(request.feeRecipient());
         session.setFormatType(request.formatType());
         session.setStatus(request.status() != null ? request.status() : SessionStatus.PLANNED);
         session.setPlannedMatchDurationMinutes(request.plannedMatchDurationMinutes());
@@ -108,6 +112,10 @@ public class GameSessionService {
         session.setLocation(request.location());
         session.setLocationUrl(request.locationUrl());
         session.setBroadcastUrl(request.broadcastUrl());
+        session.setTelegramChatId(request.telegramChatId());
+        session.setTelegramChatTitle(request.telegramChatTitle());
+        session.setFeeAmount(request.feeAmount());
+        session.setFeeRecipient(request.feeRecipient());
         if (request.status() != null) {
             session.setStatus(request.status());
             if (request.status() == SessionStatus.FINISHED && session.getEndedAt() == null) {

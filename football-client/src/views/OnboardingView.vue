@@ -61,6 +61,7 @@ import { useRouter } from 'vue-router';
 import { api } from '../lib/api';
 import { authState, setRegisteredPlayer } from '../lib/auth';
 import { playerPositionLabel } from '../lib/labels';
+import { getStartParam } from '../lib/telegram';
 import type { PlayerPosition } from '../types';
 
 const router = useRouter();
@@ -141,7 +142,7 @@ async function completeRegistration() {
       defaultPosition: form.defaultPosition
     });
     setRegisteredPlayer(player);
-    await router.push('/sessions');
+    await router.push(afterRegistrationPath());
   } catch (err) {
     error.value = err instanceof Error ? err.message : 'Не удалось завершить регистрацию';
   } finally {
@@ -151,7 +152,13 @@ async function completeRegistration() {
 
 onMounted(() => {
   if (authState.player) {
-    router.replace('/sessions');
+    router.replace(afterRegistrationPath());
   }
 });
+
+function afterRegistrationPath(): string {
+  const startParam = getStartParam();
+  const match = startParam?.match(/^join_(\d+)_(GOING|MAYBE|OUT)$/);
+  return match ? `/sessions/${match[1]}` : '/sessions';
+}
 </script>

@@ -30,6 +30,7 @@ public class PlayerService {
     private final AppUserRepository appUserRepository;
     private final MatchEventRepository matchEventRepository;
     private final SessionPlayerRepository sessionPlayerRepository;
+    private final TelegramRegistrationService telegramRegistrationService;
 
     public List<Player> findAll() {
         return playerRepository.findAll();
@@ -74,7 +75,9 @@ public class PlayerService {
         player.setRating(100);
         player.setActive(true);
 
-        return buildProfileResponse(playerRepository.save(player));
+        Player savedPlayer = playerRepository.save(player);
+        telegramRegistrationService.applyPendingRegistrations(savedPlayer);
+        return buildProfileResponse(savedPlayer);
     }
 
     @Transactional
@@ -133,6 +136,7 @@ public class PlayerService {
             player.setDefaultPosition(request.defaultPosition());
         }
 
+        telegramRegistrationService.applyPendingRegistrations(player);
         return buildProfileResponse(player);
     }
 

@@ -15,6 +15,7 @@ import java.time.OffsetDateTime;
 import com.pollybreak.footballcore.repository.GameSessionRepository;
 import com.pollybreak.footballcore.repository.SessionMatchRepository;
 import com.pollybreak.footballcore.repository.SessionTeamRepository;
+import java.time.Duration;
 import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -168,6 +169,29 @@ public class SessionMatchService {
     }
 
     @Transactional
+    public SessionMatchResponse resume(Long matchId) {
+        SessionMatch match = getById(matchId);
+        if (match.getStatus() != MatchStatus.FINISHED) {
+            throw new IllegalArgumentException("Only finished matches can be resumed");
+        }
+
+        OffsetDateTime resumedAt = OffsetDateTime.now();
+        Duration elapsedBeforeFinish = resolveElapsedBeforeFinish(match, resumedAt);
+        match.setStatus(MatchStatus.IN_PROGRESS);
+        match.setStartedAt(resumedAt.minus(elapsedBeforeFinish));
+        match.setEndedAt(null);
+        match.setWinningTeam(null);
+
+        SessionMatchResponse response = SessionMatchResponse.fromEntity(match);
+        overlayEventService.publishAfterCommit(
+                OverlayEventService.MATCH_STARTED,
+                match.getSession().getId(),
+                match.getId()
+        );
+        return response;
+    }
+
+    @Transactional
     public SessionMatch save(SessionMatch sessionMatch) {
         return sessionMatchRepository.save(sessionMatch);
     }
@@ -188,6 +212,16 @@ public class SessionMatchService {
             return;
         }
         match.setWinningTeam(null);
+    }
+
+    private Duration resolveElapsedBeforeFinish(SessionMatch match, OffsetDateTime fallbackEnd) {
+        if (match.getStartedAt() == null) {
+            return Duration.ZERO;
+        }
+
+        OffsetDateTime end = match.getEndedAt() != null ? match.getEndedAt() : fallbackEnd;
+        Duration elapsed = Duration.between(match.getStartedAt(), end);
+        return elapsed.isNegative() ? Duration.ZERO : elapsed;
     }
 
     private void applyMatchResult(Map<Long, MutableStanding> table, SessionMatch match) {

@@ -76,6 +76,15 @@ public class SessionMatchController {
         return sessionMatchService.finish(matchId, request);
     }
 
+    @PostMapping("/{matchId}/resume")
+    public SessionMatchResponse resumeMatch(
+            @PathVariable Long sessionId,
+            @PathVariable Long matchId
+    ) {
+        validateMatchBelongsToSession(sessionId, matchId);
+        return sessionMatchService.resume(matchId);
+    }
+
     private void validateMatchBelongsToSession(Long sessionId, Long matchId) {
         sessionMatchService.getResponsesBySessionId(sessionId).stream()
                 .filter(item -> item.id().equals(matchId))
