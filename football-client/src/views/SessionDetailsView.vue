@@ -212,7 +212,7 @@
                     <p class="session-player-stats">{{ playerSessionStats(player.playerId).goals }} ⚽ {{ playerSessionStats(player.playerId).assists }} 👟</p>
                   </div>
                 </div>
-                <span class="item-tag">{{ playerPositionLabel(player.position) }}</span>
+                <span class="item-tag" :aria-label="playerPositionLabel(player.position)">{{ compactPlayerPositionLabel(player.position) }}</span>
               </article>
             </div>
           </section>
@@ -244,7 +244,7 @@
                 <p class="muted">{{ sessionPersonDetails(entry) }}</p>
               </div>
             </div>
-            <span class="item-tag">{{ playerPositionLabel(entry.position) }}</span>
+            <span class="item-tag" :aria-label="playerPositionLabel(entry.position)">{{ compactPlayerPositionLabel(entry.position) }}</span>
           </article>
         </div>
       </div>
@@ -312,7 +312,7 @@
               <img v-if="member.photoUrl" :src="member.photoUrl" alt="Фото игрока" class="avatar avatar--sm" />
               <strong>{{ member.playerName }}</strong>
             </div>
-            <span class="item-tag">{{ playerPositionLabel(member.position) }}</span>
+            <span class="item-tag" :aria-label="playerPositionLabel(member.position)">{{ compactPlayerPositionLabel(member.position) }}</span>
           </article>
         </div>
       </div>
@@ -989,6 +989,18 @@ function matchStatusClass(status: SessionMatch['status']): string {
 
 function matchCardStatusClass(status: SessionMatch['status']): string {
   return `match-card--${status.toLowerCase()}`;
+}
+
+function compactPlayerPositionLabel(position: PlayerPosition | null | undefined): string {
+  const labels: Record<PlayerPosition, string> = {
+    GOALKEEPER: 'ВР',
+    DEFENDER: 'ЗАЩ',
+    MIDFIELDER: 'ПЗ',
+    FORWARD: 'НАП',
+    UNIVERSAL: 'УН'
+  };
+
+  return position ? labels[position] : 'Н/У';
 }
 
 function teamGroupHeaderStyle(color: string | null) {
