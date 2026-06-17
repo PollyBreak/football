@@ -31,6 +31,7 @@ public class SessionMatchService {
     private final SessionMatchRepository sessionMatchRepository;
     private final GameSessionRepository gameSessionRepository;
     private final SessionTeamRepository sessionTeamRepository;
+    private final OverlayEventService overlayEventService;
 
     public List<SessionMatch> findBySessionId(Long sessionId) {
         return sessionMatchRepository.findAllBySessionIdOrderByMatchNumberAsc(sessionId);
@@ -129,7 +130,13 @@ public class SessionMatchService {
         SessionMatch match = getById(matchId);
         match.setStatus(MatchStatus.IN_PROGRESS);
         match.setStartedAt(request.startedAt() != null ? request.startedAt() : OffsetDateTime.now());
-        return SessionMatchResponse.fromEntity(match);
+        SessionMatchResponse response = SessionMatchResponse.fromEntity(match);
+        overlayEventService.publishAfterCommit(
+                OverlayEventService.MATCH_STARTED,
+                match.getSession().getId(),
+                match.getId()
+        );
+        return response;
     }
 
     @Transactional
@@ -151,7 +158,13 @@ public class SessionMatchService {
         }
 
         syncWinningTeam(match);
-        return SessionMatchResponse.fromEntity(match);
+        SessionMatchResponse response = SessionMatchResponse.fromEntity(match);
+        overlayEventService.publishAfterCommit(
+                OverlayEventService.MATCH_FINISHED,
+                match.getSession().getId(),
+                match.getId()
+        );
+        return response;
     }
 
     @Transactional

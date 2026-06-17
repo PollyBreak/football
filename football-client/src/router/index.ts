@@ -6,6 +6,7 @@ import CreateSessionView from '../views/CreateSessionView.vue';
 import SessionDetailsView from '../views/SessionDetailsView.vue';
 import MatchDetailsView from '../views/MatchDetailsView.vue';
 import OnboardingView from '../views/OnboardingView.vue';
+import OverlayView from '../views/OverlayView.vue';
 import ProfileView from '../views/ProfileView.vue';
 import { authState } from '../lib/auth';
 
@@ -19,12 +20,17 @@ const router = createRouter({
     { path: '/players/:playerId', component: PlayerDetailsView, props: true },
     { path: '/sessions', component: SessionsView },
     { path: '/sessions/new', component: CreateSessionView },
+    { path: '/overlay/sessions/:sessionId', component: OverlayView, props: true },
     { path: '/sessions/:sessionId/matches/:matchId', component: MatchDetailsView, props: true },
     { path: '/sessions/:sessionId', component: SessionDetailsView, props: true }
   ]
 });
 
 router.beforeEach((to) => {
+  if (to.path.startsWith('/overlay/')) {
+    return true;
+  }
+
   if (!authState.authenticated || !authState.user) {
     return true;
   }

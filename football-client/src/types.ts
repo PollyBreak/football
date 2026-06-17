@@ -191,3 +191,38 @@ export interface SessionStandings {
   sessionId: number;
   standings: SessionStandingsRow[];
 }
+
+export interface OverlayTeam {
+  id: number;
+  name: string;
+  color: string | null;
+  displayOrder: number | null;
+  players: SessionTeamPlayer[];
+}
+
+export interface OverlayState {
+  sessionId: number;
+  serverTime: string;
+  currentMatch: SessionMatch | null;
+  inProgressMatches: SessionMatch[];
+  matches: SessionMatch[];
+  teams: OverlayTeam[];
+  currentMatchEvents: MatchEvent[];
+}
+
+export type OverlayEventType =
+  | 'CONNECTED'
+  | 'MATCH_STARTED'
+  | 'MATCH_FINISHED'
+  | 'GOAL_RECORDED'
+  | 'GOAL_CANCELLED';
+
+export interface OverlayEvent {
+  type: OverlayEventType;
+  sessionId: number;
+  matchId: number | null;
+  state: OverlayState;
+  event: MatchEvent | null;
+  assistEvent: MatchEvent | null;
+  emittedAt: string;
+}

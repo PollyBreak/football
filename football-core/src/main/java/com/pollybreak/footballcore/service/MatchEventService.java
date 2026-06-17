@@ -30,6 +30,7 @@ public class MatchEventService {
     private final SessionTeamRepository sessionTeamRepository;
     private final PlayerRepository playerRepository;
     private final AppUserRepository appUserRepository;
+    private final OverlayEventService overlayEventService;
 
     public List<MatchEvent> findByMatchId(Long matchId) {
         return matchEventRepository.findAllByMatchIdOrderByEventTimeAscIdAsc(matchId);
@@ -84,11 +85,19 @@ public class MatchEventService {
             savedAssistEvent = matchEventRepository.save(assistEvent);
         }
 
-        return new GoalRecordedResponse(
+        GoalRecordedResponse response = new GoalRecordedResponse(
                 com.pollybreak.footballcore.api.dto.match.SessionMatchResponse.fromEntity(match),
                 MatchEventResponse.fromEntity(savedGoalEvent),
                 savedAssistEvent != null ? MatchEventResponse.fromEntity(savedAssistEvent) : null
         );
+        overlayEventService.publishAfterCommit(
+                OverlayEventService.GOAL_RECORDED,
+                match.getSession().getId(),
+                match.getId(),
+                response.goalEvent(),
+                response.assistEvent()
+        );
+        return response;
     }
 
     @Transactional
@@ -119,8 +128,10 @@ public class MatchEventService {
         SessionMatch match = getMatch(matchId);
         MatchEvent event = matchEventRepository.findByIdAndMatchId(eventId, matchId)
                 .orElseThrow(() -> new IllegalArgumentException("Match event not found for this match"));
+        MatchEventResponse deletedEvent = MatchEventResponse.fromEntity(event);
+        boolean deletedGoal = event.getEventType() == MatchEventType.GOAL || event.getEventType() == MatchEventType.OWN_GOAL;
 
-        if (event.getEventType() == MatchEventType.GOAL || event.getEventType() == MatchEventType.OWN_GOAL) {
+        if (deletedGoal) {
             rollbackScore(match, event.getTeam());
             matchEventRepository.findAllByLinkedEventId(event.getId())
                     .forEach(matchEventRepository::delete);
@@ -129,6 +140,16 @@ public class MatchEventService {
         matchEventRepository.delete(event);
         matchEventRepository.flush();
         sessionMatchRepository.flush();
+
+        if (deletedGoal) {
+            overlayEventService.publishAfterCommit(
+                    OverlayEventService.GOAL_CANCELLED,
+                    match.getSession().getId(),
+                    match.getId(),
+                    deletedEvent,
+                    null
+            );
+        }
     }
 
     @Transactional

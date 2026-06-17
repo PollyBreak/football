@@ -1,5 +1,7 @@
 <template>
-  <div class="app-shell" :class="{ 'app-shell--locked': !canUseApp }" @click="closeThemeMenu">
+  <RouterView v-if="isOverlayRoute" />
+
+  <div v-else class="app-shell" :class="{ 'app-shell--locked': !canUseApp }" @click="closeThemeMenu">
     <header class="app-header">
       <div>
         <p class="eyebrow">Мини-приложение Telegram</p>
@@ -65,7 +67,7 @@
 </template>
 
 <script setup lang="ts">
-import { RouterLink, RouterView } from 'vue-router';
+import { RouterLink, RouterView, useRoute } from 'vue-router';
 import { computed, onMounted, ref } from 'vue';
 import { authState } from './lib/auth';
 
@@ -81,8 +83,10 @@ const themes: { value: ThemeValue; label: string }[] = [
 
 const currentTheme = ref<ThemeValue>('sky');
 const themeMenuOpen = ref(false);
+const route = useRoute();
 const canUseApp = computed(() => authState.ready && authState.authenticated && Boolean(authState.player));
 const authBlocked = computed(() => authState.ready && (!authState.authenticated || !authState.user));
+const isOverlayRoute = computed(() => route.path.startsWith('/overlay/'));
 
 function applyTheme(theme: ThemeValue) {
   document.documentElement.dataset.theme = theme;

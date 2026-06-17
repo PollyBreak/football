@@ -122,6 +122,14 @@ body {
   color: inherit;
 }
 
+html.overlay-root,
+html.overlay-root body,
+html.overlay-root #app {
+  width: 100%;
+  min-height: 100%;
+  background: transparent;
+}
+
 a {
   color: inherit;
   text-decoration: none;

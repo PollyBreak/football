@@ -2,6 +2,7 @@ import type {
   TelegramAuthResponse,
   GameSession,
   MatchEvent,
+  OverlayState,
   PlayerProfile,
   SessionMatch,
   SessionPlayer,
@@ -148,5 +149,12 @@ export const api = {
   },
   deleteEvent(matchId: number, eventId: number): Promise<void> {
     return request(`/api/session-matches/${matchId}/events/${eventId}`, { method: 'DELETE' });
+  },
+  getOverlayState(sessionId: number, matchId?: number | null): Promise<OverlayState> {
+    const search = matchId ? `?matchId=${matchId}` : '';
+    return request(`/api/overlay/sessions/${sessionId}/state${search}`);
+  },
+  getOverlayStreamUrl(sessionId: number): string {
+    return `${BASE_URL}/api/overlay/sessions/${sessionId}/stream`;
   }
 };
