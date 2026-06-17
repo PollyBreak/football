@@ -29,7 +29,15 @@
         </label>
         <label class="field-label">
           <span>Дата рождения</span>
-          <input v-model="form.birthDate" class="input" type="date" />
+          <input
+            v-model="form.birthDate"
+            class="input"
+            type="text"
+            inputmode="numeric"
+            maxlength="10"
+            placeholder="ДД.ММ.ГГГГ"
+            @input="form.birthDate = formatBirthDateInput(form.birthDate)"
+          />
         </label>
         <label class="field-label">
           <span>Позиция</span>
@@ -69,6 +77,34 @@ const form = reactive({
   defaultPosition: 'MIDFIELDER' as PlayerPosition
 });
 
+function formatBirthDateInput(value: string): string {
+  const digits = value.replace(/\D/g, '').slice(0, 8);
+  const parts = [digits.slice(0, 2), digits.slice(2, 4), digits.slice(4, 8)].filter(Boolean);
+  return parts.join('.');
+}
+
+function birthDateToApi(value: string): string | null {
+  if (!value.trim()) return null;
+  const match = value.match(/^(\d{2})\.(\d{2})\.(\d{4})$/);
+  if (!match) {
+    throw new Error('Введите дату рождения в формате ДД.ММ.ГГГГ');
+  }
+
+  const day = Number(match[1]);
+  const month = Number(match[2]);
+  const year = Number(match[3]);
+  const date = new Date(Date.UTC(year, month - 1, day));
+  const isValid = date.getUTCFullYear() === year
+    && date.getUTCMonth() === month - 1
+    && date.getUTCDate() === day;
+
+  if (!isValid) {
+    throw new Error('Введите корректную дату рождения');
+  }
+
+  return `${match[3]}-${match[2]}-${match[1]}`;
+}
+
 async function completeRegistration() {
   if (!authState.user) {
     error.value = 'Пользователь Telegram недоступен';
@@ -79,6 +115,14 @@ async function completeRegistration() {
   const displayName = form.displayName.trim();
   if (!firstName || !displayName || !form.defaultPosition) {
     error.value = 'Заполните имя, Username и позицию';
+    return;
+  }
+
+  let birthDate: string | null;
+  try {
+    birthDate = birthDateToApi(form.birthDate);
+  } catch (err) {
+    error.value = err instanceof Error ? err.message : 'Введите корректную дату рождения';
     return;
   }
 
@@ -93,7 +137,7 @@ async function completeRegistration() {
       lastName: form.lastName.trim() || null,
       nickname: null,
       homeCity: form.homeCity.trim() || null,
-      birthDate: form.birthDate || null,
+      birthDate,
       defaultPosition: form.defaultPosition
     });
     setRegisteredPlayer(player);

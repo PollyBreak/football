@@ -55,7 +55,15 @@
         </label>
         <label class="field-label">
           <span>Дата рождения</span>
-          <input v-model="profileForm.birthDate" class="input" type="date" />
+          <input
+            v-model="profileForm.birthDate"
+            class="input"
+            type="text"
+            inputmode="numeric"
+            maxlength="10"
+            placeholder="ДД.ММ.ГГГГ"
+            @input="profileForm.birthDate = formatBirthDateInput(profileForm.birthDate)"
+          />
         </label>
         <label class="field-label">
           <span>Имя пользователя Telegram</span>
@@ -117,7 +125,15 @@
         </label>
         <label class="field-label">
           <span>Дата рождения</span>
-          <input v-model="registrationForm.birthDate" class="input" type="date" />
+          <input
+            v-model="registrationForm.birthDate"
+            class="input"
+            type="text"
+            inputmode="numeric"
+            maxlength="10"
+            placeholder="ДД.ММ.ГГГГ"
+            @input="registrationForm.birthDate = formatBirthDateInput(registrationForm.birthDate)"
+          />
         </label>
         <label class="field-label">
           <span>Имя пользователя Telegram</span>
@@ -200,8 +216,42 @@ function fillProfileForm(player: PlayerProfile) {
   profileForm.firstName = player.firstName;
   profileForm.lastName = player.lastName ?? '';
   profileForm.homeCity = player.homeCity ?? '';
-  profileForm.birthDate = player.birthDate ?? '';
+  profileForm.birthDate = formatBirthDateForInput(player.birthDate);
   profileForm.defaultPosition = player.defaultPosition ?? 'MIDFIELDER';
+}
+
+function formatBirthDateInput(value: string): string {
+  const digits = value.replace(/\D/g, '').slice(0, 8);
+  const parts = [digits.slice(0, 2), digits.slice(2, 4), digits.slice(4, 8)].filter(Boolean);
+  return parts.join('.');
+}
+
+function formatBirthDateForInput(value: string | null | undefined): string {
+  if (!value) return '';
+  const match = value.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  return match ? `${match[3]}.${match[2]}.${match[1]}` : formatBirthDateInput(value);
+}
+
+function birthDateToApi(value: string): string | null {
+  if (!value.trim()) return null;
+  const match = value.match(/^(\d{2})\.(\d{2})\.(\d{4})$/);
+  if (!match) {
+    throw new Error('Введите дату рождения в формате ДД.ММ.ГГГГ');
+  }
+
+  const day = Number(match[1]);
+  const month = Number(match[2]);
+  const year = Number(match[3]);
+  const date = new Date(Date.UTC(year, month - 1, day));
+  const isValid = date.getUTCFullYear() === year
+    && date.getUTCMonth() === month - 1
+    && date.getUTCDate() === day;
+
+  if (!isValid) {
+    throw new Error('Введите корректную дату рождения');
+  }
+
+  return `${match[3]}-${match[2]}-${match[1]}`;
 }
 
 async function createPlayer() {
@@ -217,6 +267,14 @@ async function createPlayer() {
     return;
   }
 
+  let birthDate: string | null;
+  try {
+    birthDate = birthDateToApi(registrationForm.birthDate);
+  } catch (err) {
+    error.value = err instanceof Error ? err.message : 'Введите корректную дату рождения';
+    return;
+  }
+
   pending.value = true;
   error.value = '';
   try {
@@ -228,7 +286,7 @@ async function createPlayer() {
       lastName: registrationForm.lastName.trim() || null,
       nickname: null,
       homeCity: registrationForm.homeCity.trim() || null,
-      birthDate: registrationForm.birthDate || null,
+      birthDate,
       defaultPosition: registrationForm.defaultPosition
     });
     setRegisteredPlayer(player);
@@ -250,6 +308,14 @@ async function saveProfile() {
     return;
   }
 
+  let birthDate: string | null;
+  try {
+    birthDate = birthDateToApi(profileForm.birthDate);
+  } catch (err) {
+    error.value = err instanceof Error ? err.message : 'Введите корректную дату рождения';
+    return;
+  }
+
   pending.value = true;
   error.value = '';
   try {
@@ -260,7 +326,7 @@ async function saveProfile() {
       lastName: profileForm.lastName.trim() || null,
       nickname: null,
       homeCity: profileForm.homeCity.trim() || null,
-      birthDate: profileForm.birthDate || null,
+      birthDate,
       defaultPosition: profileForm.defaultPosition,
       active: true
     });
