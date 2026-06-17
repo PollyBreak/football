@@ -626,10 +626,18 @@ textarea {
   white-space: nowrap;
 }
 
-.session-results-podium__medal,
+.session-results-podium__medal {
+  flex: 0 0 auto;
+  font-size: 1.08rem;
+}
+
 .session-results-podium__color {
   flex: 0 0 auto;
   font-size: 0.98rem;
+}
+
+.session-results-podium__stats {
+  font-size: 0.8rem;
 }
 
 .session-results-leaders {

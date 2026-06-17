@@ -31,7 +31,7 @@
           <span class="session-results-podium__medal">{{ team.medal }}</span>
           <strong>{{ team.teamName }}</strong>
           <span class="session-results-podium__color">{{ team.colorEmoji }}</span>
-          <span class="muted">({{ team.points }} {{ pointsLabel(team.points) }} {{ team.goalsFor }}|{{ team.goalsAgainst }} разница {{ goalDifferenceLabel(team.goalDifference) }})</span>
+          <span class="muted session-results-podium__stats">({{ team.points }} {{ pointsLabel(team.points) }} {{ team.goalsFor }}|{{ team.goalsAgainst }} разница {{ goalDifferenceLabel(team.goalDifference) }})</span>
         </div>
       </div>
       <p v-else class="muted">Результаты появятся после матчей.</p>
