@@ -592,6 +592,72 @@ textarea {
   background: linear-gradient(135deg, #d95d5d, #9f3030);
 }
 
+.join-session-button:disabled,
+.join-session-button.is-danger:disabled {
+  color: #6d7a84;
+  background: #d7e1e8;
+  cursor: not-allowed;
+  opacity: 1;
+}
+
+.session-results-card {
+  gap: 14px;
+}
+
+.session-results-podium {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  text-align: center;
+}
+
+.session-results-podium__row {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  min-width: 0;
+  color: var(--accent-text);
+  flex-wrap: wrap;
+}
+
+.session-results-podium__row strong {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.session-results-podium__medal,
+.session-results-podium__color {
+  flex: 0 0 auto;
+  font-size: 1.12rem;
+}
+
+.session-results-leaders {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.session-results-leader {
+  min-width: 0;
+}
+
+.session-results-leader__person {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
+.session-results-leader__person strong {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .primary-button,
 .ghost-button,
 .tab-button {
@@ -640,6 +706,19 @@ textarea {
 
 .player-list-item {
   color: inherit;
+}
+
+.is-clickable {
+  cursor: pointer;
+}
+
+.player-link-button {
+  padding: 0;
+  border: 0;
+  color: inherit;
+  background: transparent;
+  cursor: pointer;
+  font: inherit;
 }
 
 .list-item__lead {
@@ -967,10 +1046,28 @@ textarea {
   display: block;
 }
 
+.session-player-group .player-list-item {
+  padding: 8px 10px;
+  gap: 8px;
+}
+
+.session-player-group .list-item__lead {
+  gap: 8px;
+}
+
+.session-player-group .player-list-item strong {
+  font-size: 0.94rem;
+}
+
+.session-player-group .item-tag {
+  padding: 5px 8px;
+  font-size: 0.72rem;
+}
+
 .session-player-stats {
-  margin: 4px 0 0;
+  margin: 2px 0 0;
   color: var(--accent-text);
-  font-size: 0.84rem;
+  font-size: 0.78rem;
   font-weight: 600;
 }
 

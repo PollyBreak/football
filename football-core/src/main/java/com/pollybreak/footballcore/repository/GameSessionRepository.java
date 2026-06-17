@@ -7,5 +7,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
 
 public interface GameSessionRepository extends JpaRepository<GameSession, Long> {
 
-    List<GameSession> findAllBySessionDateOrderByCreatedAtDesc(LocalDate sessionDate);
+    List<GameSession> findAllByOrderBySessionDateDescSessionTimeDescCreatedAtDesc();
+
+    List<GameSession> findAllBySessionDateOrderBySessionTimeDescCreatedAtDesc(LocalDate sessionDate);
 }

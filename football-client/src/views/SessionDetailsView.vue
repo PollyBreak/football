@@ -21,6 +21,58 @@
       </div>
     </div>
 
+    <div v-if="sessionIsFinished" class="card stack-sm session-results-card">
+      <div class="section-header">
+        <h3 class="section-title">Результаты</h3>
+      </div>
+
+      <div v-if="resultPodium.length" class="session-results-podium">
+        <div v-for="team in resultPodium" :key="team.teamId" class="session-results-podium__row">
+          <span class="session-results-podium__medal">{{ team.medal }}</span>
+          <strong>{{ team.teamName }}</strong>
+          <span class="session-results-podium__color">{{ team.colorEmoji }}</span>
+          <span class="muted">({{ team.points }} {{ pointsLabel(team.points) }} {{ team.goalsFor }}|{{ team.goalsAgainst }} разница {{ goalDifferenceLabel(team.goalDifference) }})</span>
+        </div>
+      </div>
+      <p v-else class="muted">Результаты появятся после матчей.</p>
+
+      <div class="session-results-leaders">
+        <div class="session-results-leader">
+          <p class="eyebrow">Бомбардир</p>
+          <template v-if="topScorer">
+            <div class="session-results-leader__person">
+              <div class="player-avatar player-avatar--sm">
+                <img v-if="topScorer.photoUrl" :src="topScorer.photoUrl" alt="Фото игрока" />
+                <span v-else>{{ resultPlayerInitials(topScorer.name) }}</span>
+              </div>
+              <div>
+                <strong>{{ topScorer.name }}</strong>
+                <p class="muted">{{ topScorer.goals }} ⚽</p>
+              </div>
+            </div>
+          </template>
+          <p v-else class="muted">Пока нет голов.</p>
+        </div>
+
+        <div class="session-results-leader">
+          <p class="eyebrow">MVP</p>
+          <template v-if="mvpPlayer">
+            <div class="session-results-leader__person">
+              <div class="player-avatar player-avatar--sm">
+                <img v-if="mvpPlayer.photoUrl" :src="mvpPlayer.photoUrl" alt="Фото игрока" />
+                <span v-else>{{ resultPlayerInitials(mvpPlayer.name) }}</span>
+              </div>
+              <div>
+                <strong>{{ mvpPlayer.name }}</strong>
+                <p class="muted">{{ mvpPlayer.goals }} ⚽ {{ mvpPlayer.assists }} 👟</p>
+              </div>
+            </div>
+          </template>
+          <p v-else class="muted">Пока нет статистики.</p>
+        </div>
+      </div>
+    </div>
+
     <div v-if="settingsOpen" class="settings-overlay" @click.self="settingsOpen = false">
       <div class="settings-window">
         <div class="section-header">
@@ -72,6 +124,32 @@
       </div>
     </div>
 
+    <div v-if="resumePasswordDialogOpen" class="settings-overlay" @click.self="closeResumeSessionDialog">
+      <form class="settings-window stack-sm" @submit.prevent="resumeSession">
+        <div>
+          <p class="eyebrow">Возобновление</p>
+          <h3 class="section-title">Введите пароль</h3>
+        </div>
+        <label class="field-label">
+          <span>Пароль</span>
+          <input
+            v-model="resumePassword"
+            class="input"
+            type="password"
+            inputmode="numeric"
+            autocomplete="off"
+            placeholder="Пароль"
+            :disabled="pendingSessionUpdate"
+          />
+        </label>
+        <p v-if="resumePasswordError" class="error-text">{{ resumePasswordError }}</p>
+        <div class="button-row">
+          <button class="ghost-button" type="button" @click="closeResumeSessionDialog" :disabled="pendingSessionUpdate">Отмена</button>
+          <button class="primary-button" type="submit" :disabled="pendingSessionUpdate">Возобновить</button>
+        </div>
+      </form>
+    </div>
+
     <div class="card stack-sm session-settings-inline">
       <div class="section-header">
         <h3 class="section-title">Настройки сессии</h3>
@@ -114,7 +192,15 @@
               <strong>{{ group.title }}</strong>
             </div>
             <div class="list">
-              <article v-for="player in group.players" :key="player.id" class="list-item">
+              <article
+                v-for="player in group.players"
+                :key="player.id"
+                class="list-item player-list-item is-clickable"
+                role="link"
+                tabindex="0"
+                @click="openPlayerProfile(player.playerId)"
+                @keydown.enter.prevent="openPlayerProfile(player.playerId)"
+              >
                 <div class="list-item__lead">
                   <div class="player-avatar player-avatar--sm">
                     <img v-if="player.photoUrl" :src="player.photoUrl" alt="Фото игрока" />
@@ -139,7 +225,15 @@
         </div>
         <p v-if="!waitlist.length" class="muted">Очередь пуста.</p>
         <div v-else class="list">
-          <article v-for="(entry, index) in waitlist" :key="entry.id" class="list-item">
+          <article
+            v-for="(entry, index) in waitlist"
+            :key="entry.id"
+            class="list-item player-list-item is-clickable"
+            role="link"
+            tabindex="0"
+            @click="openPlayerProfile(entry.playerId)"
+            @keydown.enter.prevent="openPlayerProfile(entry.playerId)"
+          >
             <div class="list-item__lead">
               <div class="player-avatar player-avatar--sm">
                 <img v-if="entry.photoUrl" :src="entry.photoUrl" alt="Фото игрока" />
@@ -205,7 +299,15 @@
           </label>
         </div>
         <div class="list">
-          <article v-for="member in teamPlayers[team.id] || []" :key="member.id" class="list-item">
+          <article
+            v-for="member in teamPlayers[team.id] || []"
+            :key="member.id"
+            class="list-item player-list-item is-clickable"
+            role="link"
+            tabindex="0"
+            @click="openPlayerProfile(member.playerId)"
+            @keydown.enter.prevent="openPlayerProfile(member.playerId)"
+          >
             <div class="list-item__lead">
               <img v-if="member.photoUrl" :src="member.photoUrl" alt="Фото игрока" class="avatar avatar--sm" />
               <strong>{{ member.playerName }}</strong>
@@ -406,6 +508,14 @@
     >
       Завершить
     </button>
+    <button
+      v-else
+      class="primary-button finish-session-button"
+      @click="openResumeSessionDialog"
+      :disabled="pendingSessionUpdate"
+    >
+      Возобновить
+    </button>
 
     <p v-if="error" class="error-text">{{ error }}</p>
   </section>
@@ -458,6 +568,10 @@ const pendingMembership = ref(false);
 const pendingSessionUpdate = ref(false);
 const settingsOpen = ref(false);
 const playersViewLoading = ref(false);
+const resumeSessionPassword = '212229';
+const resumePasswordDialogOpen = ref(false);
+const resumePassword = ref('');
+const resumePasswordError = ref('');
 
 const sessionIdNumber = computed(() => Number(props.sessionId));
 const currentUserSessionPlayer = computed(() => {
@@ -528,6 +642,93 @@ const sessionPlayerStats = computed<Record<number, { goals: number; assists: num
     });
 
   return stats;
+});
+const resultPodium = computed(() => {
+  const medals = ['🥇', '🥈', '🥉'];
+
+  return standings.value
+    .slice()
+    .sort((left, right) => {
+      return right.points - left.points
+        || right.goalDifference - left.goalDifference
+        || right.goalsFor - left.goalsFor
+        || left.teamName.localeCompare(right.teamName);
+    })
+    .slice(0, 3)
+    .map((team, index) => ({
+      ...team,
+      medal: medals[index],
+      colorEmoji: teamColorEmoji(team.teamColor ?? team.teamName)
+    }));
+});
+const resultPlayerStats = computed(() => {
+  const stats = new Map<number, {
+    playerId: number;
+    name: string;
+    photoUrl: string | null;
+    goals: number;
+    assists: number;
+  }>();
+
+  const ensurePlayer = (playerId: number, name: string | null, photoUrl: string | null) => {
+    const existing = stats.get(playerId);
+    if (existing) {
+      if (!existing.photoUrl && photoUrl) {
+        existing.photoUrl = photoUrl;
+      }
+      if (name?.trim() && existing.name === 'Игрок') {
+        existing.name = name.trim();
+      }
+      return existing;
+    }
+
+    const player = sessionPlayers.value.find((entry) => entry.playerId === playerId);
+    const created = {
+      playerId,
+      name: player ? sessionPersonDisplayName(player) : name?.trim() || 'Игрок',
+      photoUrl: player?.photoUrl ?? photoUrl,
+      goals: 0,
+      assists: 0
+    };
+    stats.set(playerId, created);
+    return created;
+  };
+
+  Object.values(matchEventsByMatchId.value)
+    .flat()
+    .forEach((event) => {
+      if (!event.playerId) {
+        return;
+      }
+
+      const player = ensurePlayer(event.playerId, event.playerName, event.playerPhotoUrl);
+      if (event.eventType === 'GOAL') {
+        player.goals += 1;
+      }
+      if (event.eventType === 'ASSIST') {
+        player.assists += 1;
+      }
+    });
+
+  return Array.from(stats.values());
+});
+const topScorer = computed(() => {
+  return resultPlayerStats.value
+    .filter((player) => player.goals > 0)
+    .sort((left, right) => {
+      return right.goals - left.goals
+        || right.assists - left.assists
+        || left.name.localeCompare(right.name);
+    })[0];
+});
+const mvpPlayer = computed(() => {
+  return resultPlayerStats.value
+    .filter((player) => player.goals + player.assists > 0)
+    .sort((left, right) => {
+      return (right.goals + right.assists) - (left.goals + left.assists)
+        || right.goals - left.goals
+        || left.name.localeCompare(right.name);
+    })[0];
 });
 const groupedSessionPlayers = computed(() => {
   if (!session.value) {
@@ -721,6 +922,45 @@ function waitlistInitials(entry: SessionWaitlistEntry): string {
     .slice(0, 2)
     .map((part) => part?.[0])
     .join('') || 'И';
+}
+
+function resultPlayerInitials(name: string): string {
+  return name
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((part) => part[0])
+    .join('') || 'И';
+}
+
+function pointsLabel(points: number): string {
+  const mod10 = points % 10;
+  const mod100 = points % 100;
+
+  if (mod10 === 1 && mod100 !== 11) {
+    return 'очко';
+  }
+  if (mod10 >= 2 && mod10 <= 4 && (mod100 < 12 || mod100 > 14)) {
+    return 'очка';
+  }
+  return 'очков';
+}
+
+function goalDifferenceLabel(goalDifference: number): string {
+  return goalDifference > 0 ? `+${goalDifference}` : `${goalDifference}`;
+}
+
+function teamColorEmoji(value: string): string {
+  const normalized = value.trim().toLowerCase();
+  if (normalized.includes('blue') || normalized.includes('син')) return '🟦';
+  if (normalized.includes('red') || normalized.includes('крас')) return '🟥';
+  if (normalized.includes('green') || normalized.includes('зелен')) return '🟩';
+  if (normalized.includes('yellow') || normalized.includes('желт')) return '🟨';
+  if (normalized.includes('orange') || normalized.includes('оранж')) return '🟧';
+  if (normalized.includes('purple') || normalized.includes('фиолет')) return '🟪';
+  if (normalized.includes('black') || normalized.includes('черн')) return '⬛';
+  if (normalized.includes('white') || normalized.includes('бел')) return '⬜';
+  return '▪️';
 }
 
 function sessionPersonDisplayName(person: SessionPlayer | SessionWaitlistEntry): string {
@@ -1160,8 +1400,70 @@ async function finishSession() {
   }
 }
 
+function openResumeSessionDialog() {
+  if (!session.value || !sessionIsFinished.value) {
+    return;
+  }
+
+  resumePassword.value = '';
+  resumePasswordError.value = '';
+  error.value = '';
+  resumePasswordDialogOpen.value = true;
+}
+
+function closeResumeSessionDialog() {
+  if (pendingSessionUpdate.value) {
+    return;
+  }
+
+  resumePasswordDialogOpen.value = false;
+  resumePassword.value = '';
+  resumePasswordError.value = '';
+}
+
+async function resumeSession() {
+  if (!session.value || !sessionIsFinished.value) {
+    return;
+  }
+
+  if (resumePassword.value !== resumeSessionPassword) {
+    resumePasswordError.value = 'Неверный пароль';
+    error.value = 'Неверный пароль. Статус сессии не изменен';
+    return;
+  }
+
+  pendingSessionUpdate.value = true;
+  resumePasswordError.value = '';
+  error.value = '';
+  try {
+    session.value = await api.updateSession(sessionIdNumber.value, {
+      title: session.value.title,
+      sessionDate: session.value.sessionDate,
+      sessionTime: session.value.sessionTime,
+      location: session.value.location,
+      locationUrl: session.value.locationUrl,
+      broadcastUrl: session.value.broadcastUrl,
+      status: 'IN_PROGRESS',
+      plannedMatchDurationMinutes: session.value.plannedMatchDurationMinutes,
+      notes: session.value.notes,
+      maxPlayers: session.value.maxPlayers
+    });
+    fillSessionSettings();
+    resumePasswordDialogOpen.value = false;
+    resumePassword.value = '';
+  } catch (err) {
+    error.value = err instanceof Error ? err.message : 'Не удалось возобновить сессию';
+  } finally {
+    pendingSessionUpdate.value = false;
+  }
+}
+
 async function openMatch(matchId: number) {
   await router.push(`/sessions/${sessionIdNumber.value}/matches/${matchId}`);
+}
+
+async function openPlayerProfile(playerId: number) {
+  await router.push(`/players/${playerId}`);
 }
 
 watch(

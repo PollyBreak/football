@@ -18,7 +18,15 @@
             <p v-for="goal in teamAGoals" :key="goal.id">
               <span v-if="goal.timeLabel" class="scoreboard-goal-time">{{ goal.timeLabel }}</span>
               <img v-if="goal.playerPhotoUrl" :src="goal.playerPhotoUrl" alt="Фото игрока" class="scoreboard-goal-avatar" />
-              <span class="scoreboard-goal-name">{{ goal.label }}</span>
+              <button
+                v-if="goal.playerId"
+                type="button"
+                class="player-link-button scoreboard-goal-name"
+                @click="openPlayerProfile(goal.playerId)"
+              >
+                {{ goal.label }}
+              </button>
+              <span v-else class="scoreboard-goal-name">{{ goal.label }}</span>
             </p>
           </div>
         </div>
@@ -32,7 +40,15 @@
             <p v-for="goal in teamBGoals" :key="goal.id">
               <span v-if="goal.timeLabel" class="scoreboard-goal-time">{{ goal.timeLabel }}</span>
               <img v-if="goal.playerPhotoUrl" :src="goal.playerPhotoUrl" alt="Фото игрока" class="scoreboard-goal-avatar" />
-              <span class="scoreboard-goal-name">{{ goal.label }}</span>
+              <button
+                v-if="goal.playerId"
+                type="button"
+                class="player-link-button scoreboard-goal-name"
+                @click="openPlayerProfile(goal.playerId)"
+              >
+                {{ goal.label }}
+              </button>
+              <span v-else class="scoreboard-goal-name">{{ goal.label }}</span>
             </p>
           </div>
         </div>
@@ -86,8 +102,28 @@
             <strong>{{ matchEventLabel(event.eventType) }}</strong>
             <p class="muted">
               <span v-if="eventTimeLabel(event)" class="event-time-label">{{ eventTimeLabel(event) }}</span>
-              {{ ownGoalEventLabel(event) }} • {{ event.teamName || 'Команда не указана' }}
-              <span v-if="event.relatedPlayerName"> • передача: {{ event.relatedPlayerName }}</span>
+              <button
+                v-if="event.playerId"
+                type="button"
+                class="player-link-button"
+                @click="openPlayerProfile(event.playerId)"
+              >
+                {{ ownGoalEventLabel(event) }}
+              </button>
+              <span v-else>{{ ownGoalEventLabel(event) }}</span>
+              <span> • {{ event.teamName || 'Команда не указана' }}</span>
+              <span v-if="event.relatedPlayerName">
+                • передача:
+                <button
+                  v-if="event.relatedPlayerId"
+                  type="button"
+                  class="player-link-button"
+                  @click="openPlayerProfile(event.relatedPlayerId)"
+                >
+                  {{ event.relatedPlayerName }}
+                </button>
+                <span v-else>{{ event.relatedPlayerName }}</span>
+              </span>
             </p>
           </div>
           <button v-if="!sessionIsFinished" class="ghost-button" @click="deleteEvent(event.id)">Удалить</button>
@@ -101,12 +137,13 @@
 
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue';
-import { RouterLink } from 'vue-router';
+import { RouterLink, useRouter } from 'vue-router';
 import { api } from '../lib/api';
 import { matchEventLabel, matchStatusLabel } from '../lib/labels';
 import type { GameSession, MatchEvent, SessionMatch, SessionTeamPlayer } from '../types';
 
 const props = defineProps<{ sessionId: string; matchId: string }>();
+const router = useRouter();
 
 const session = ref<GameSession | null>(null);
 const match = ref<SessionMatch | null>(null);
@@ -178,6 +215,7 @@ const goalSummaries = computed(() => {
       return {
         id: goal.id,
         teamId: goal.teamId as number,
+        playerId: goal.playerId,
         timeLabel: goalTimeLabel(goal),
         playerPhotoUrl: goal.playerPhotoUrl,
         label: goal.eventType === 'OWN_GOAL'
@@ -209,6 +247,10 @@ function goalTimeLabel(goal: MatchEvent): string | null {
 function ownGoalEventLabel(event: MatchEvent): string {
   const playerName = event.playerName || 'Игрок не указан';
   return event.eventType === 'OWN_GOAL' ? `${playerName} (А)` : playerName;
+}
+
+async function openPlayerProfile(playerId: number) {
+  await router.push(`/players/${playerId}`);
 }
 
 function eventTimeLabel(event: MatchEvent): string | null {

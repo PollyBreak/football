@@ -30,11 +30,11 @@ public class GameSessionService {
     private final SessionPlayerService sessionPlayerService;
 
     public List<GameSession> findAll() {
-        return gameSessionRepository.findAll();
+        return gameSessionRepository.findAllByOrderBySessionDateDescSessionTimeDescCreatedAtDesc();
     }
 
     public List<GameSession> findBySessionDate(LocalDate sessionDate) {
-        return gameSessionRepository.findAllBySessionDateOrderByCreatedAtDesc(sessionDate);
+        return gameSessionRepository.findAllBySessionDateOrderBySessionTimeDescCreatedAtDesc(sessionDate);
     }
 
     public GameSession getById(Long id) {
