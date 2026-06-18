@@ -56,16 +56,25 @@ public class TelegramContributionService {
 
         String text = buildContributionMessage(session);
         JsonNode result;
-        if (session.getTelegramContributionMessageId() == null) {
-            result = telegramBotApiClient.sendMessage(session.getTelegramChatId(), text, contributionKeyboard(session.getId()));
-            session.setTelegramContributionMessageId(result.path("message_id").asLong());
-        } else {
-            result = telegramBotApiClient.editMessageText(
+        if (session.getTelegramContributionMessageId() != null) {
+            result = telegramBotApiClient.tryEditMessageText(
                     session.getTelegramChatId(),
                     session.getTelegramContributionMessageId(),
                     text,
                     contributionKeyboard(session.getId())
             );
+            if (result != null) {
+                return new StartRegistrationResponse(
+                        session.getTelegramChatId(),
+                        session.getTelegramContributionMessageId(),
+                        buildMessageUrl(session)
+                );
+            }
+        }
+
+        {
+            result = telegramBotApiClient.sendMessage(session.getTelegramChatId(), text, contributionKeyboard(session.getId()));
+            session.setTelegramContributionMessageId(result.path("message_id").asLong());
         }
         return new StartRegistrationResponse(
                 session.getTelegramChatId(),
