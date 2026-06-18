@@ -891,10 +891,10 @@ function positionLabel(position: PlayerPosition | null): string {
 
 .overlay-lineups {
   display: grid;
-  grid-template-columns: minmax(0, 430px) 132px minmax(0, 430px);
+  grid-template-columns: minmax(0, 430px) 154px minmax(0, 430px);
   align-items: end;
   justify-content: center;
-  gap: 16px;
+  gap: 26px;
 }
 
 .overlay-team-panel {
@@ -911,6 +911,7 @@ function positionLabel(position: PlayerPosition | null): string {
 .overlay-lineups__players {
   display: flex;
   align-items: flex-end;
+  justify-content: flex-end;
   gap: 10px;
   min-width: 0;
   margin-top: -88px;
@@ -918,7 +919,7 @@ function positionLabel(position: PlayerPosition | null): string {
 }
 
 .overlay-lineups__players--right {
-  justify-content: flex-end;
+  justify-content: flex-start;
 }
 
 .overlay-lineups__divider {

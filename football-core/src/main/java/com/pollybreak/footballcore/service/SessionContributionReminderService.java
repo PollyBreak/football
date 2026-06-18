@@ -65,7 +65,7 @@ public class SessionContributionReminderService {
                 .ifPresent(reminderRepository::delete);
     }
 
-    @Scheduled(fixedDelayString = "${app.contribution-reminders.fixed-delay-ms:300000}")
+    @Scheduled(fixedDelayString = "${app.contribution-reminders.fixed-delay-ms:1800000}")
     @Transactional
     public void sendDueReminders() {
         ZoneId zoneId = ZoneId.of(appTimeZone);
