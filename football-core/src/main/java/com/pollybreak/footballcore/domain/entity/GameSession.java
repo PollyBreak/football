@@ -61,6 +61,9 @@ public class GameSession {
     @Column(name = "telegram_registration_message_id")
     private Long telegramRegistrationMessageId;
 
+    @Column(name = "telegram_contribution_message_id")
+    private Long telegramContributionMessageId;
+
     @Column(name = "fee_amount")
     private Integer feeAmount;
 

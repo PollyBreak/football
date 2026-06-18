@@ -96,6 +96,9 @@ export const api = {
   startSessionRegistration(sessionId: number, payload: Record<string, unknown>): Promise<{ chatId: number; messageId: number; messageUrl: string | null }> {
     return request(`/api/sessions/${sessionId}/registration/start`, { method: 'POST', body: JSON.stringify(payload) });
   },
+  startContributionCollection(sessionId: number, payload: Record<string, unknown>): Promise<{ chatId: number; messageId: number; messageUrl: string | null }> {
+    return request(`/api/sessions/${sessionId}/contributions/start`, { method: 'POST', body: JSON.stringify(payload) });
+  },
   getSession(sessionId: number): Promise<GameSession> {
     return request(`/api/sessions/${sessionId}`);
   },

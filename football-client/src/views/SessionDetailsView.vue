@@ -18,6 +18,9 @@
         <button class="primary-button" type="button" :disabled="pendingRegistrationStart || pendingSessionUpdate || sessionIsFinished" @click="startRegistration">
           Начать регистрацию
         </button>
+        <button class="primary-button" type="button" :disabled="pendingContributionStart || pendingSessionUpdate || sessionIsFinished" @click="startContributionCollection">
+          Начать сбор взносов
+        </button>
         <button class="icon-button" type="button" aria-label="Настройки сессии" :disabled="sessionIsFinished" @click="settingsOpen = true">
           &#9881;
         </button>
@@ -617,6 +620,7 @@ const error = ref('');
 const pendingMembership = ref(false);
 const pendingSessionUpdate = ref(false);
 const pendingRegistrationStart = ref(false);
+const pendingContributionStart = ref(false);
 const settingsOpen = ref(false);
 const playersViewLoading = ref(false);
 const resumeSessionPassword = '212229';
@@ -1350,6 +1354,37 @@ async function startRegistration() {
     error.value = err instanceof Error ? err.message : 'Не удалось начать регистрацию';
   } finally {
     pendingRegistrationStart.value = false;
+  }
+}
+
+async function startContributionCollection() {
+  if (!authState.user) {
+    error.value = 'Откройте приложение через Telegram Mini App';
+    return;
+  }
+  if (!sessionSettings.telegramChatId) {
+    error.value = 'Укажите Telegram chat ID в настройках сессии';
+    return;
+  }
+
+  pendingContributionStart.value = true;
+  error.value = '';
+  try {
+    const saved = await saveSessionSettings();
+    if (!saved) {
+      return;
+    }
+    const result = await api.startContributionCollection(sessionIdNumber.value, {
+      userId: authState.user.id
+    });
+    if (result.messageUrl) {
+      window.open(result.messageUrl, '_blank', 'noreferrer');
+    }
+    await loadSession();
+  } catch (err) {
+    error.value = err instanceof Error ? err.message : 'Не удалось начать сбор взносов';
+  } finally {
+    pendingContributionStart.value = false;
   }
 }
 

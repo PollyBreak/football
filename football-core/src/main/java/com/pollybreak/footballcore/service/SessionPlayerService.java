@@ -18,6 +18,7 @@ import java.time.OffsetDateTime;
 import java.util.List;
 import java.util.concurrent.ThreadLocalRandom;
 import lombok.RequiredArgsConstructor;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -38,6 +39,7 @@ public class SessionPlayerService {
     private final PlayerRepository playerRepository;
     private final SessionTeamPlayerService sessionTeamPlayerService;
     private final SessionWaitlistRepository sessionWaitlistRepository;
+    private final ApplicationEventPublisher eventPublisher;
 
     public List<SessionPlayerResponse> getActivePlayers(Long sessionId) {
         return sessionPlayerRepository.findAllBySessionIdAndActiveTrueOrderByJoinedAtAscIdAsc(sessionId).stream()
@@ -75,7 +77,9 @@ public class SessionPlayerService {
                 .map(existing -> reactivateExistingPlayer(existing, request, player))
                 .orElseGet(() -> createSessionPlayer(session, player, request));
 
-        return SessionPlayerResponse.fromEntity(sessionPlayerRepository.save(sessionPlayer));
+        SessionPlayerResponse response = SessionPlayerResponse.fromEntity(sessionPlayerRepository.save(sessionPlayer));
+        publishRosterChanged(sessionId);
+        return response;
     }
 
     @Transactional
@@ -94,11 +98,13 @@ public class SessionPlayerService {
             SessionPlayer sessionPlayer = sessionPlayerRepository.findBySessionIdAndPlayerId(sessionId, request.playerId())
                     .map(existing -> reactivateExistingPlayer(existing, request, player))
                     .orElseGet(() -> createSessionPlayer(session, player, request));
-            return new SessionJoinResponse(
+            SessionJoinResponse response = new SessionJoinResponse(
                     "ACTIVE",
                     SessionPlayerResponse.fromEntity(sessionPlayerRepository.save(sessionPlayer)),
                     null
             );
+            publishRosterChanged(sessionId);
+            return response;
         }
 
         SessionWaitlistEntry waitlistEntry = sessionWaitlistRepository.findBySessionIdAndPlayerId(sessionId, request.playerId())
@@ -154,7 +160,9 @@ public class SessionPlayerService {
         sessionPlayer.setPosition(savedPlayer.getDefaultPosition());
         sessionPlayer.setActive(true);
 
-        return SessionPlayerResponse.fromEntity(sessionPlayerRepository.save(sessionPlayer));
+        SessionPlayerResponse response = SessionPlayerResponse.fromEntity(sessionPlayerRepository.save(sessionPlayer));
+        publishRosterChanged(sessionId);
+        return response;
     }
 
     @Transactional
@@ -166,6 +174,7 @@ public class SessionPlayerService {
         sessionPlayer.setLeftAt(OffsetDateTime.now());
         sessionTeamPlayerService.deactivateAllForSession(sessionId, playerId);
         promoteFirstQueuedPlayer(sessionPlayer.getSession());
+        publishRosterChanged(sessionId);
     }
 
     @Transactional
@@ -176,6 +185,7 @@ public class SessionPlayerService {
                     sessionPlayer.setLeftAt(OffsetDateTime.now());
                     sessionTeamPlayerService.deactivateAllForSession(sessionId, playerId);
                     promoteFirstQueuedPlayer(sessionPlayer.getSession());
+                    publishRosterChanged(sessionId);
                 });
     }
 
@@ -203,10 +213,15 @@ public class SessionPlayerService {
     @Transactional
     public void fillAvailableSlots(Long sessionId) {
         GameSession session = getSession(sessionId);
+        boolean promoted = false;
         while (hasAvailableSlot(session) && sessionWaitlistRepository
                 .findFirstBySessionIdAndActiveTrueOrderByQueuedAtAscIdAsc(sessionId)
                 .isPresent()) {
             promoteFirstQueuedPlayer(session);
+            promoted = true;
+        }
+        if (promoted) {
+            publishRosterChanged(sessionId);
         }
     }
 
@@ -291,5 +306,9 @@ public class SessionPlayerService {
     private PlayerPosition randomPosition() {
         PlayerPosition[] positions = PlayerPosition.values();
         return positions[ThreadLocalRandom.current().nextInt(positions.length)];
+    }
+
+    private void publishRosterChanged(Long sessionId) {
+        eventPublisher.publishEvent(new SessionRosterChangedEvent(sessionId));
     }
 }

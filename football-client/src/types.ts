@@ -75,6 +75,7 @@ export interface GameSession {
   telegramChatId: number | null;
   telegramChatTitle: string | null;
   telegramRegistrationMessageId: number | null;
+  telegramContributionMessageId: number | null;
   feeAmount: number | null;
   feeRecipient: string | null;
   formatType: SessionFormatType;
