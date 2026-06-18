@@ -20,5 +20,28 @@ export function getTelegramUserLabel(): string {
 }
 
 export function getStartParam(): string | undefined {
-  return window.Telegram?.WebApp?.initDataUnsafe?.start_param;
+  const telegramStartParam = window.Telegram?.WebApp?.initDataUnsafe?.start_param;
+  if (telegramStartParam) {
+    return telegramStartParam;
+  }
+
+  const searchParams = new URLSearchParams(window.location.search);
+  return searchParams.get('tgWebAppStartParam')
+    ?? searchParams.get('startapp')
+    ?? undefined;
+}
+
+export function startParamTargetPath(): string | null {
+  const startParam = getStartParam();
+  const sessionMatch = startParam?.match(/^session_(\d+)$/);
+  if (sessionMatch) {
+    return `/sessions/${sessionMatch[1]}`;
+  }
+
+  const joinMatch = startParam?.match(/^join_(\d+)_(GOING|MAYBE|OUT)$/);
+  if (joinMatch) {
+    return `/sessions/${joinMatch[1]}`;
+  }
+
+  return null;
 }

@@ -9,6 +9,7 @@ import OnboardingView from '../views/OnboardingView.vue';
 import OverlayView from '../views/OverlayView.vue';
 import ProfileView from '../views/ProfileView.vue';
 import { authState } from '../lib/auth';
+import { startParamTargetPath } from '../lib/telegram';
 
 const router = createRouter({
   history: createWebHistory(),
@@ -45,6 +46,11 @@ router.beforeEach((to) => {
 
   if (!authState.player && to.path !== '/onboarding') {
     return '/onboarding';
+  }
+
+  const startTargetPath = startParamTargetPath();
+  if (authState.player && startTargetPath && to.path !== startTargetPath && (to.path === '/' || to.path === '/sessions' || to.path === '/onboarding')) {
+    return startTargetPath;
   }
 
   return true;

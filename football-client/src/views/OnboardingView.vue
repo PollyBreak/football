@@ -61,7 +61,7 @@ import { useRouter } from 'vue-router';
 import { api } from '../lib/api';
 import { authState, setRegisteredPlayer } from '../lib/auth';
 import { playerPositionLabel } from '../lib/labels';
-import { getStartParam } from '../lib/telegram';
+import { startParamTargetPath } from '../lib/telegram';
 import type { PlayerPosition } from '../types';
 
 const router = useRouter();
@@ -157,8 +157,6 @@ onMounted(() => {
 });
 
 function afterRegistrationPath(): string {
-  const startParam = getStartParam();
-  const match = startParam?.match(/^join_(\d+)_(GOING|MAYBE|OUT)$/);
-  return match ? `/sessions/${match[1]}` : '/sessions';
+  return startParamTargetPath() ?? '/sessions';
 }
 </script>
