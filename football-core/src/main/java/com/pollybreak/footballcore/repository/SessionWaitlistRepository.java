@@ -8,7 +8,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
 
 public interface SessionWaitlistRepository extends JpaRepository<SessionWaitlistEntry, Long> {
 
-    @EntityGraph(attributePaths = "player")
+    @EntityGraph(attributePaths = {"player", "player.user"})
     List<SessionWaitlistEntry> findAllBySessionIdAndActiveTrueOrderByQueuedAtAscIdAsc(Long sessionId);
 
     Optional<SessionWaitlistEntry> findFirstBySessionIdAndActiveTrueOrderByQueuedAtAscIdAsc(Long sessionId);

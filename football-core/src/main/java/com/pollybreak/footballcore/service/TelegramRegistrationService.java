@@ -220,6 +220,7 @@ public class TelegramRegistrationService {
                 .map(entry -> entry.getPlayer().getId())
                 .collect(Collectors.toSet());
         long activePlayersCount = sessionPlayerRepository.countBySessionIdAndActiveTrue(session.getId());
+        long expectedPlayersCount = session.getMaxPlayers() == null ? activePlayersCount : session.getMaxPlayers();
         Integer durationMinutes = session.getSessionDurationMinutes();
         LocalTime endTime = durationMinutes == null ? null : session.getSessionTime().plusMinutes(durationMinutes);
 
@@ -229,7 +230,7 @@ public class TelegramRegistrationService {
         lines.add("");
         lines.add(timeLine(session, durationMinutes, endTime));
         lines.add(locationLine(session));
-        lines.add("⚽️ " + activePlayersCount + " " + participantsWord(activePlayersCount) + playerFormatSuffix(session));
+        lines.add("⚽️ " + expectedPlayersCount + " " + participantsWord(expectedPlayersCount) + playerFormatSuffix(session));
         lines.add("🏆 Формат " + escape(formatLabel(session.getFormatType())));
         if (session.getFeeAmount() != null) {
             lines.add("💰 <b>" + session.getFeeAmount() + "</b> тенге");
@@ -242,12 +243,10 @@ public class TelegramRegistrationService {
         lines.add("❕Перед регистрацией необходимо зарегистрироваться в <a href=\"" + escapeAttribute(registrationAppUrl()) + "\">приложении</a>. Если вы зарегистрированы, просто нажмите на одну из кнопок.");
         lines.add("");
         lines.add("Участники (" + activePlayersCount + "/" + maxPlayersLabel(session) + "):");
-        lines.add("<pre>" + escape(String.join("\n",
-                "✅ Записался, иду 100%: " + namesPlain(groups.get(SessionRegistrationStatus.GOING), waitlistPlayerIds),
-                "❓ Записался, но под вопросом: " + namesPlain(groups.get(SessionRegistrationStatus.MAYBE), waitlistPlayerIds),
-                "❌ В этот раз без меня: " + namesPlain(groups.get(SessionRegistrationStatus.OUT)),
-                "⌛ Записался, в очереди: " + waitlistNamesPlain(waitlist)
-        )) + "</pre>");
+        lines.add("✅ <i>Записался, иду 100%</i>: " + code(namesPlain(groups.get(SessionRegistrationStatus.GOING), waitlistPlayerIds)));
+        lines.add("❓ <i>Записался, но под вопросом</i>: " + code(namesPlain(groups.get(SessionRegistrationStatus.MAYBE), waitlistPlayerIds)));
+        lines.add("❌ <i>В этот раз без меня</i>: " + code(namesPlain(groups.get(SessionRegistrationStatus.OUT))));
+        lines.add("⌛ <i>Записался, в очереди</i>: " + code(waitlistNamesPlain(waitlist)));
         return String.join("\n", lines);
     }
 
@@ -365,6 +364,11 @@ public class TelegramRegistrationService {
     }
 
     private String playerName(Player player) {
+        if (player.getUser() != null
+                && player.getUser().getDisplayName() != null
+                && !player.getUser().getDisplayName().isBlank()) {
+            return player.getUser().getDisplayName();
+        }
         if (player.getNickname() != null && !player.getNickname().isBlank()) {
             return player.getNickname();
         }
@@ -482,6 +486,10 @@ public class TelegramRegistrationService {
 
     private String escapeAttribute(String value) {
         return escape(value).replace("\"", "&quot;");
+    }
+
+    private String code(String value) {
+        return "<code>" + escape(value) + "</code>";
     }
 
     private record CallbackData(Long sessionId, SessionRegistrationStatus status) {
