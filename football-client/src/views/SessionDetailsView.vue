@@ -130,6 +130,32 @@
             <span>Кому скидывать взнос</span>
             <input v-model="sessionSettings.feeRecipient" class="input" placeholder="Kaspi / имя / телефон" :disabled="sessionIsFinished" />
           </label>
+          <div class="field-label reminder-settings reminder-settings--compact">
+            <span class="reminder-settings__title">Настройте напоминания по взносам</span>
+            <p class="reminder-settings__hint">Уведомления будут приходить перед игрой за ...</p>
+            <div class="reminder-options-row">
+              <label v-for="hours in contributionReminderOptionHours" :key="`modal-${hours}`" class="reminder-checkbox">
+                <span>{{ hours }} ч.</span>
+                <input
+                  type="checkbox"
+                  :checked="hasContributionReminder(hours)"
+                  :disabled="pendingReminderUpdate || sessionIsFinished"
+                  @change="toggleContributionReminder(hours, ($event.target as HTMLInputElement).checked)"
+                />
+              </label>
+              <form class="reminder-form reminder-form--compact" @submit.prevent="addCustomContributionReminderOption()">
+                <input
+                  v-model.number="reminderForm.hoursBefore"
+                  class="input"
+                  type="number"
+                  min="1"
+                  placeholder="Свое"
+                  :disabled="pendingReminderUpdate || sessionIsFinished"
+                />
+                <button class="ghost-button reminder-add-button" type="submit" :disabled="pendingReminderUpdate || sessionIsFinished">+</button>
+              </form>
+            </div>
+          </div>
           <label class="field-label">
             <span>Длительность матча, минут</span>
             <input v-model.number="sessionSettings.plannedMatchDurationMinutes" class="input" type="number" min="1" :disabled="sessionIsFinished" />
@@ -210,6 +236,32 @@
           <span>Кому скидывать взнос</span>
           <input v-model="sessionSettings.feeRecipient" class="input" placeholder="Kaspi / имя / телефон" :disabled="sessionIsFinished" />
         </label>
+      </div>
+      <div class="field-label reminder-settings reminder-settings--compact">
+        <span class="reminder-settings__title">Настройте напоминания по взносам</span>
+        <p class="reminder-settings__hint">Уведомления будут приходить перед игрой за ...</p>
+        <div class="reminder-options-row">
+          <label v-for="hours in contributionReminderOptionHours" :key="`inline-${hours}`" class="reminder-checkbox">
+            <span>{{ hours }} ч.</span>
+            <input
+              type="checkbox"
+              :checked="hasContributionReminder(hours)"
+              :disabled="pendingReminderUpdate || sessionIsFinished"
+              @change="toggleContributionReminder(hours, ($event.target as HTMLInputElement).checked)"
+            />
+          </label>
+          <form class="reminder-form reminder-form--compact" @submit.prevent="addCustomContributionReminderOption()">
+            <input
+              v-model.number="reminderForm.hoursBefore"
+              class="input"
+              type="number"
+              min="1"
+              placeholder="Свое"
+              :disabled="pendingReminderUpdate || sessionIsFinished"
+            />
+            <button class="ghost-button reminder-add-button" type="submit" :disabled="pendingReminderUpdate || sessionIsFinished">+</button>
+          </form>
+        </div>
       </div>
     </div>
 
@@ -582,6 +634,7 @@ import { authState } from '../lib/auth';
 import { matchStatusLabel, playerPositionLabel, sessionStatusLabel } from '../lib/labels';
 import { getStartParam } from '../lib/telegram';
 import type {
+  ContributionReminder,
   GameSession,
   MatchEvent,
   PlayerPosition,
@@ -604,8 +657,11 @@ const tabLabels: Record<(typeof tabs)[number], string> = {
   Standings: 'Таблица'
 };
 const positions: PlayerPosition[] = ['GOALKEEPER', 'DEFENDER', 'MIDFIELDER', 'FORWARD', 'UNIVERSAL'];
+const reminderQuickHours = [10, 5, 2];
 
 const session = ref<GameSession | null>(null);
+const contributionReminders = ref<ContributionReminder[]>([]);
+const customContributionReminderHours = ref<number[]>([]);
 const sessionPlayers = ref<SessionPlayer[]>([]);
 const waitlist = ref<SessionWaitlistEntry[]>([]);
 const allPlayers = ref<PlayerProfile[]>([]);
@@ -621,6 +677,7 @@ const pendingMembership = ref(false);
 const pendingSessionUpdate = ref(false);
 const pendingRegistrationStart = ref(false);
 const pendingContributionStart = ref(false);
+const pendingReminderUpdate = ref(false);
 const settingsOpen = ref(false);
 const playersViewLoading = ref(false);
 const resumeSessionPassword = '212229';
@@ -650,6 +707,16 @@ const membershipButtonLabel = computed(() => {
   if (currentUserWaitlistEntry.value) return 'Покинуть очередь';
   return sessionIsFull.value ? 'Встать в очередь' : 'Присоединиться к игре';
 });
+const hasContributionReminder = (hoursBefore: number) => {
+  return contributionReminders.value.some((reminder) => reminder.hoursBefore === hoursBefore);
+};
+const contributionReminderOptionHours = computed(() => {
+  return Array.from(new Set([
+    ...reminderQuickHours,
+    ...customContributionReminderHours.value,
+    ...contributionReminders.value.map((reminder) => reminder.hoursBefore)
+  ])).sort((left, right) => right - left);
+});
 
 const sessionPlayerForm = reactive({
   playerId: undefined as number | undefined,
@@ -676,6 +743,9 @@ const sessionSettings = reactive({
   notes: '',
   maxPlayers: 15 as number | null,
   playerFormat: '6x6'
+});
+const reminderForm = reactive({
+  hoursBefore: 10 as number | null
 });
 const createMatchButtonLabel = computed(() => {
   return session.value?.formatType === 'KNOCKOUT' ? 'Создать матч' : 'Создать следующий';
@@ -1153,6 +1223,7 @@ async function refreshAll() {
     await Promise.all([
       loadSessionPlayers(),
       loadWaitlist(),
+      loadContributionReminders(),
       loadPlayers(),
       loadMatches(),
       loadTeamPlayers(),
@@ -1200,6 +1271,10 @@ async function loadSessionPlayers() {
 
 async function loadWaitlist() {
   waitlist.value = await api.getSessionWaitlist(sessionIdNumber.value);
+}
+
+async function loadContributionReminders() {
+  contributionReminders.value = await api.getContributionReminders(sessionIdNumber.value);
 }
 
 async function loadMatches() {
@@ -1386,6 +1461,74 @@ async function startContributionCollection() {
   } finally {
     pendingContributionStart.value = false;
   }
+}
+
+async function addContributionReminder(hoursBeforeValue?: number) {
+  if (sessionIsFinished.value) {
+    return;
+  }
+  const hoursBefore = Number(hoursBeforeValue ?? reminderForm.hoursBefore);
+  if (!Number.isFinite(hoursBefore) || hoursBefore < 1) {
+    error.value = 'Укажите, за сколько часов до игры напомнить';
+    return;
+  }
+  if (hasContributionReminder(hoursBefore)) {
+    error.value = 'Такое напоминание уже добавлено';
+    return;
+  }
+
+  pendingReminderUpdate.value = true;
+  error.value = '';
+  try {
+    await api.createContributionReminder(sessionIdNumber.value, { hoursBefore });
+    reminderForm.hoursBefore = null;
+    await loadContributionReminders();
+  } catch (err) {
+    error.value = err instanceof Error ? err.message : 'Не удалось добавить напоминание';
+  } finally {
+    pendingReminderUpdate.value = false;
+  }
+}
+
+async function deleteContributionReminder(hoursBefore: number) {
+  if (sessionIsFinished.value) {
+    return;
+  }
+
+  pendingReminderUpdate.value = true;
+  error.value = '';
+  try {
+    await api.deleteContributionReminder(sessionIdNumber.value, hoursBefore);
+    await loadContributionReminders();
+  } catch (err) {
+    error.value = err instanceof Error ? err.message : 'Не удалось удалить напоминание';
+  } finally {
+    pendingReminderUpdate.value = false;
+  }
+}
+
+async function toggleContributionReminder(hoursBefore: number, checked: boolean) {
+  if (checked) {
+    await addContributionReminder(hoursBefore);
+  } else {
+    await deleteContributionReminder(hoursBefore);
+  }
+}
+
+async function addCustomContributionReminderOption() {
+  const hoursBefore = Number(reminderForm.hoursBefore);
+  if (!Number.isFinite(hoursBefore) || hoursBefore < 1) {
+    error.value = 'Укажите, за сколько часов до игры напомнить';
+    return;
+  }
+  if (!customContributionReminderHours.value.includes(hoursBefore)) {
+    customContributionReminderHours.value = [...customContributionReminderHours.value, hoursBefore];
+  }
+  if (!hasContributionReminder(hoursBefore)) {
+    await addContributionReminder(hoursBefore);
+    return;
+  }
+  reminderForm.hoursBefore = null;
 }
 
 async function addPlayerToSession() {

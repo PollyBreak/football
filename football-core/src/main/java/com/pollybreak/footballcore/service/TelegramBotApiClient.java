@@ -40,6 +40,15 @@ public class TelegramBotApiClient {
         ));
     }
 
+    public JsonNode sendMessage(Long chatId, String text) {
+        return call("sendMessage", Map.of(
+                "chat_id", chatId,
+                "text", text,
+                "parse_mode", "HTML",
+                "disable_web_page_preview", true
+        ));
+    }
+
     public JsonNode editMessageText(Long chatId, Long messageId, String text, List<List<Map<String, String>>> inlineKeyboard) {
         return call("editMessageText", Map.of(
                 "chat_id", chatId,

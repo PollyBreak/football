@@ -92,6 +92,13 @@ export interface GameSession {
   teams: SessionTeam[];
 }
 
+export interface ContributionReminder {
+  id: number;
+  sessionId: number;
+  hoursBefore: number;
+  sentAt: string | null;
+}
+
 export interface SessionPlayer {
   id: number;
   sessionId: number;

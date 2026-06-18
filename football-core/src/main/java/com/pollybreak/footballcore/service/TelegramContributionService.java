@@ -121,6 +121,33 @@ public class TelegramContributionService {
         );
     }
 
+    @Transactional(readOnly = true)
+    public void sendContributionReminder(Long sessionId, Integer hoursBefore) {
+        GameSession session = getSession(sessionId);
+        if (session.getTelegramChatId() == null) {
+            return;
+        }
+
+        ContributionRoster roster = contributionRoster(session.getId());
+        if (roster.unpaidPlayers().isEmpty()) {
+            return;
+        }
+
+        List<String> lines = new ArrayList<>();
+        lines.add("❗<b>Напоминание по взносам</b>");
+        lines.add("");
+        lines.add("До игры осталось " + hoursBefore + " " + hourWord(hoursBefore) + ".");
+        lines.add("Не сдали: " + roster.unpaidPlayers().stream()
+                .map(this::playerMention)
+                .collect(Collectors.joining(", ")));
+        lines.add("");
+        lines.add("Пожалуйста, сдайте взнос и ПРОГОЛОСУЙТЕ в предыдущем сообщении по <a href=\""
+                + escapeAttribute(sessionAppUrl(session.getId()))
+                + "\">игре</a> 💰");
+
+        telegramBotApiClient.sendMessage(session.getTelegramChatId(), String.join("\n", lines));
+    }
+
     @Transactional(propagation = Propagation.NOT_SUPPORTED)
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     public void refreshContributionMessageAfterRosterChange(SessionRosterChangedEvent event) {
@@ -150,19 +177,9 @@ public class TelegramContributionService {
     }
 
     private String buildContributionMessage(GameSession session) {
-        List<SessionPlayer> activePlayers = sessionPlayerRepository.findAllBySessionIdAndActiveTrueOrderByJoinedAtAscIdAsc(session.getId());
-        Map<Long, Player> activePlayersById = activePlayers.stream()
-                .collect(Collectors.toMap(item -> item.getPlayer().getId(), SessionPlayer::getPlayer, (left, right) -> left));
-        List<Player> paidPlayers = sessionContributionRepository.findAllBySessionIdAndPaidTrueOrderByUpdatedAtAscIdAsc(session.getId())
-                .stream()
-                .map(SessionContribution::getPlayer)
-                .filter(player -> activePlayersById.containsKey(player.getId()))
-                .toList();
-        Set<Long> paidPlayerIds = paidPlayers.stream().map(Player::getId).collect(Collectors.toSet());
-        List<Player> unpaidPlayers = activePlayers.stream()
-                .map(SessionPlayer::getPlayer)
-                .filter(player -> !paidPlayerIds.contains(player.getId()))
-                .toList();
+        ContributionRoster roster = contributionRoster(session.getId());
+        List<Player> paidPlayers = roster.paidPlayers();
+        List<Player> unpaidPlayers = roster.unpaidPlayers();
 
         List<String> lines = new ArrayList<>();
         lines.add("❗<b>Собираем взносы</b> 💰");
@@ -180,6 +197,23 @@ public class TelegramContributionService {
         lines.add("✅ Сдали (" + paidPlayers.size() + "/" + maxPlayersLabel(session) + "): " + code(names(paidPlayers)));
         lines.add("❌ Не сдали: " + code(names(unpaidPlayers)));
         return String.join("\n", lines);
+    }
+
+    private ContributionRoster contributionRoster(Long sessionId) {
+        List<SessionPlayer> activePlayers = sessionPlayerRepository.findAllBySessionIdAndActiveTrueOrderByJoinedAtAscIdAsc(sessionId);
+        Map<Long, Player> activePlayersById = activePlayers.stream()
+                .collect(Collectors.toMap(item -> item.getPlayer().getId(), SessionPlayer::getPlayer, (left, right) -> left));
+        List<Player> paidPlayers = sessionContributionRepository.findAllBySessionIdAndPaidTrueOrderByUpdatedAtAscIdAsc(sessionId)
+                .stream()
+                .map(SessionContribution::getPlayer)
+                .filter(player -> activePlayersById.containsKey(player.getId()))
+                .toList();
+        Set<Long> paidPlayerIds = paidPlayers.stream().map(Player::getId).collect(Collectors.toSet());
+        List<Player> unpaidPlayers = activePlayers.stream()
+                .map(SessionPlayer::getPlayer)
+                .filter(player -> !paidPlayerIds.contains(player.getId()))
+                .toList();
+        return new ContributionRoster(paidPlayers, unpaidPlayers);
     }
 
     private List<List<Map<String, String>>> contributionKeyboard(Long sessionId) {
@@ -224,6 +258,37 @@ public class TelegramContributionService {
         return java.util.Arrays.asList(player.getFirstName(), player.getLastName()).stream()
                 .filter(value -> value != null && !value.isBlank())
                 .collect(Collectors.joining(" "));
+    }
+
+    private String playerMention(Player player) {
+        AppUser user = player.getUser();
+        if (user != null && user.getUsername() != null && !user.getUsername().isBlank()) {
+            return "@" + escape(user.getUsername());
+        }
+        String name = playerName(player);
+        if (name == null || name.isBlank()) {
+            name = "Игрок";
+        }
+        if (user != null && user.getTelegramId() != null) {
+            return "<a href=\"tg://user?id=" + user.getTelegramId() + "\">" + escape(name) + "</a>";
+        }
+        return escape(name);
+    }
+
+    private String hourWord(Integer hours) {
+        int value = hours == null ? 0 : Math.abs(hours);
+        int lastTwo = value % 100;
+        int last = value % 10;
+        if (lastTwo >= 11 && lastTwo <= 14) {
+            return "часов";
+        }
+        if (last == 1) {
+            return "час";
+        }
+        if (last >= 2 && last <= 4) {
+            return "часа";
+        }
+        return "часов";
     }
 
     private String maxPlayersLabel(GameSession session) {
@@ -281,5 +346,8 @@ public class TelegramContributionService {
     }
 
     private record ContributionCallbackData(Long sessionId, boolean paid) {
+    }
+
+    private record ContributionRoster(List<Player> paidPlayers, List<Player> unpaidPlayers) {
     }
 }

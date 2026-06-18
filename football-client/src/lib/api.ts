@@ -1,5 +1,6 @@
 import type {
   TelegramAuthResponse,
+  ContributionReminder,
   GameSession,
   MatchEvent,
   OverlayState,
@@ -98,6 +99,15 @@ export const api = {
   },
   startContributionCollection(sessionId: number, payload: Record<string, unknown>): Promise<{ chatId: number; messageId: number; messageUrl: string | null }> {
     return request(`/api/sessions/${sessionId}/contributions/start`, { method: 'POST', body: JSON.stringify(payload) });
+  },
+  getContributionReminders(sessionId: number): Promise<ContributionReminder[]> {
+    return request(`/api/sessions/${sessionId}/contribution-reminders`);
+  },
+  createContributionReminder(sessionId: number, payload: Record<string, unknown>): Promise<ContributionReminder> {
+    return request(`/api/sessions/${sessionId}/contribution-reminders`, { method: 'POST', body: JSON.stringify(payload) });
+  },
+  deleteContributionReminder(sessionId: number, hoursBefore: number): Promise<void> {
+    return request(`/api/sessions/${sessionId}/contribution-reminders/${hoursBefore}`, { method: 'DELETE' });
   },
   getSession(sessionId: number): Promise<GameSession> {
     return request(`/api/sessions/${sessionId}`);

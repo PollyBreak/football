@@ -1,15 +1,21 @@
 package com.pollybreak.footballcore.api.controller;
 
 import com.fasterxml.jackson.databind.JsonNode;
+import com.pollybreak.footballcore.api.dto.telegram.ContributionReminderRequest;
+import com.pollybreak.footballcore.api.dto.telegram.ContributionReminderResponse;
 import com.pollybreak.footballcore.api.dto.telegram.StartRegistrationRequest;
 import com.pollybreak.footballcore.api.dto.telegram.StartRegistrationResponse;
 import com.pollybreak.footballcore.api.dto.telegram.ValidateTelegramChatRequest;
 import com.pollybreak.footballcore.api.dto.telegram.ValidateTelegramChatResponse;
+import com.pollybreak.footballcore.service.SessionContributionReminderService;
 import com.pollybreak.footballcore.service.TelegramContributionService;
 import com.pollybreak.footballcore.service.TelegramRegistrationService;
 import jakarta.validation.Valid;
+import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
+import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -23,6 +29,7 @@ public class TelegramController {
 
     private final TelegramRegistrationService telegramRegistrationService;
     private final TelegramContributionService telegramContributionService;
+    private final SessionContributionReminderService sessionContributionReminderService;
 
     @PostMapping("/api/sessions/{sessionId}/telegram-chat/validate")
     public ValidateTelegramChatResponse validateChat(
@@ -46,6 +53,28 @@ public class TelegramController {
             @Valid @RequestBody StartRegistrationRequest request
     ) {
         return telegramContributionService.startContributionCollection(sessionId, request.userId());
+    }
+
+    @GetMapping("/api/sessions/{sessionId}/contribution-reminders")
+    public List<ContributionReminderResponse> getContributionReminders(@PathVariable Long sessionId) {
+        return sessionContributionReminderService.getReminders(sessionId);
+    }
+
+    @PostMapping("/api/sessions/{sessionId}/contribution-reminders")
+    public ContributionReminderResponse createContributionReminder(
+            @PathVariable Long sessionId,
+            @Valid @RequestBody ContributionReminderRequest request
+    ) {
+        return sessionContributionReminderService.createReminder(sessionId, request.hoursBefore());
+    }
+
+    @DeleteMapping("/api/sessions/{sessionId}/contribution-reminders/{hoursBefore}")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void deleteContributionReminder(
+            @PathVariable Long sessionId,
+            @PathVariable Integer hoursBefore
+    ) {
+        sessionContributionReminderService.deleteReminder(sessionId, hoursBefore);
     }
 
     @PostMapping("/api/telegram/webhook")

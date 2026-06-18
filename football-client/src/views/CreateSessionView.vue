@@ -11,14 +11,16 @@
           <span>Название сессии *</span>
           <input v-model="form.title" class="input" placeholder="Название сессии" required />
         </label>
-        <label class="field-label" :class="{ 'is-invalid': shouldShowFieldError('sessionDate') }">
-          <span>Дата сессии *</span>
-          <input v-model="form.sessionDate" class="input" type="date" required />
-        </label>
-        <label class="field-label" :class="{ 'is-invalid': shouldShowFieldError('sessionTime') }">
-          <span>Время сессии *</span>
-          <input v-model="form.sessionTime" class="input" type="time" required />
-        </label>
+        <div class="date-time-row">
+          <label class="field-label" :class="{ 'is-invalid': shouldShowFieldError('sessionDate') }">
+            <span>Дата игры *</span>
+            <input v-model="form.sessionDate" class="input" type="date" required />
+          </label>
+          <label class="field-label" :class="{ 'is-invalid': shouldShowFieldError('sessionTime') }">
+            <span>Время *</span>
+            <input v-model="form.sessionTime" class="input" type="time" required />
+          </label>
+        </div>
         <input v-model="form.location" class="input" placeholder="Место" />
         <label class="field-label">
           <span>Адрес поля</span>
@@ -36,37 +38,70 @@
           <span>Telegram chat ID</span>
           <input v-model.number="form.telegramChatId" class="input" type="number" placeholder="-100..." />
         </label>
-        <label class="field-label">
-          <span>Взнос, тенге</span>
-          <input v-model.number="form.feeAmount" class="input" type="number" min="0" />
-        </label>
-        <label class="field-label">
-          <span>Кому скидывать взнос</span>
-          <input v-model="form.feeRecipient" class="input" placeholder="Kaspi / имя / телефон" />
-        </label>
-        <label class="field-label" :class="{ 'is-invalid': shouldShowFieldError('formatType') }">
-          <span>Формат игр *</span>
-          <select v-model="form.formatType" class="input" required>
-            <option value="ROUND_ROBIN">{{ sessionFormatLabel('ROUND_ROBIN') }}</option>
-            <option value="KNOCKOUT">{{ sessionFormatLabel('KNOCKOUT') }}</option>
-          </select>
-        </label>
-        <label class="field-label">
-          <span>Длительность матча, минут</span>
-          <input v-model.number="form.plannedMatchDurationMinutes" class="input" type="number" min="1" />
-        </label>
-        <label class="field-label">
-          <span>Длительность сессии, минут</span>
-          <input v-model.number="form.sessionDurationMinutes" class="input" type="number" min="1" />
-        </label>
-        <label class="field-label">
-          <span>Максимум игроков в сессии</span>
-          <input v-model.number="form.maxPlayers" class="input" type="number" min="1" />
-        </label>
-        <label class="field-label">
-          <span>Формат игроков</span>
-          <input v-model="form.playerFormat" class="input" placeholder="6x6" />
-        </label>
+        <div class="settings-group">
+          <div>
+            <p class="settings-group__title">Формат игры</p>
+          </div>
+          <label class="field-label" :class="{ 'is-invalid': shouldShowFieldError('formatType') }">
+            <span>Тип турнира *</span>
+            <select v-model="form.formatType" class="input" required>
+              <option value="ROUND_ROBIN">{{ sessionFormatLabel('ROUND_ROBIN') }}</option>
+              <option value="KNOCKOUT">{{ sessionFormatLabel('KNOCKOUT') }}</option>
+            </select>
+          </label>
+          <div class="format-metrics-row">
+            <label class="field-label">
+              <span>Длительность игры, минут</span>
+              <input v-model.number="form.plannedMatchDurationMinutes" class="input" type="number" min="1" />
+            </label>
+            <label class="field-label">
+              <span>Длительность сессии, минут</span>
+              <input v-model.number="form.sessionDurationMinutes" class="input" type="number" min="1" />
+            </label>
+            <label class="field-label">
+              <span>Максимум игроков</span>
+              <input v-model.number="form.maxPlayers" class="input" type="number" min="1" />
+            </label>
+          </div>
+          <div class="field-label">
+            <span>Команды</span>
+            <div class="reminder-options-row">
+              <label v-for="format in visiblePlayerFormatOptions" :key="format" class="reminder-checkbox">
+                <span>{{ format }}</span>
+                <input type="radio" name="player-format" :checked="form.playerFormat === format" @change="form.playerFormat = format" />
+              </label>
+              <div class="reminder-form reminder-form--compact">
+                <input v-model.number="customPlayerFormatSize" class="input" type="number" min="1" placeholder="N" />
+                <button class="ghost-button reminder-add-button" type="button" @click="applyCustomPlayerFormat">+</button>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="settings-group">
+          <p class="settings-group__title">Оплата</p>
+          <label class="field-label">
+            <span>Взнос, тенге</span>
+            <input v-model.number="form.feeAmount" class="input" type="number" min="0" />
+          </label>
+          <label class="field-label">
+            <span>Кому скидывать взнос</span>
+            <input v-model="form.feeRecipient" class="input" placeholder="Kaspi / имя / телефон" />
+          </label>
+          <div class="field-label reminder-settings reminder-settings--compact">
+            <span class="reminder-settings__title">Настройте напоминания по взносам</span>
+            <p class="reminder-settings__hint">Уведомления будут приходить перед игрой за ...</p>
+            <div class="reminder-options-row">
+              <label v-for="hours in reminderOptionHours" :key="hours" class="reminder-checkbox">
+                <span>{{ hours }} ч.</span>
+                <input type="checkbox" :checked="selectedReminderHours.includes(hours)" @change="toggleReminderHour(hours, ($event.target as HTMLInputElement).checked)" />
+              </label>
+              <div class="reminder-form reminder-form--compact">
+                <input v-model.number="customReminderHoursBefore" class="input" type="number" min="1" placeholder="Свое" />
+                <button class="ghost-button reminder-add-button" type="button" @click="addCustomReminderHour">+</button>
+              </div>
+            </div>
+          </div>
+        </div>
         <textarea v-model="form.notes" class="input textarea" placeholder="Заметки"></textarea>
         <button class="primary-button form-submit" type="button" @click="createSession" :disabled="pending">Создать</button>
       </form>
@@ -76,7 +111,7 @@
 </template>
 
 <script setup lang="ts">
-import { reactive, ref } from 'vue';
+import { computed, reactive, ref } from 'vue';
 import { RouterLink, useRouter } from 'vue-router';
 import { api } from '../lib/api';
 import { sessionFormatLabel } from '../lib/labels';
@@ -86,6 +121,21 @@ const router = useRouter();
 const pending = ref(false);
 const error = ref('');
 type RequiredField = 'title' | 'sessionDate' | 'sessionTime' | 'formatType';
+const reminderQuickHours = [10, 5, 2];
+const playerFormatOptions = ['5x5', '6x6', '7x7'];
+const selectedReminderHours = ref<number[]>([]);
+const customReminderHours = ref<number[]>([]);
+const customReminderHoursBefore = ref<number | null>(null);
+const customPlayerFormatOptions = ref<string[]>([]);
+const customPlayerFormatSize = ref<number | null>(null);
+const reminderOptionHours = computed(() => {
+  return Array.from(new Set([...reminderQuickHours, ...customReminderHours.value, ...selectedReminderHours.value]))
+    .sort((left, right) => right - left);
+});
+const visiblePlayerFormatOptions = computed(() => {
+  return Array.from(new Set([...playerFormatOptions, ...customPlayerFormatOptions.value, form.playerFormat]))
+    .filter(Boolean);
+});
 
 const form = reactive({
   title: '',
@@ -127,6 +177,45 @@ function validateForm(): boolean {
   return !firstError;
 }
 
+function toggleReminderHour(hoursBefore: number, checked: boolean) {
+  if (checked) {
+    if (!selectedReminderHours.value.includes(hoursBefore)) {
+      selectedReminderHours.value = [...selectedReminderHours.value, hoursBefore];
+    }
+    return;
+  }
+  selectedReminderHours.value = selectedReminderHours.value.filter((value) => value !== hoursBefore);
+}
+
+function addCustomReminderHour() {
+  const hoursBefore = Number(customReminderHoursBefore.value);
+  if (!Number.isFinite(hoursBefore) || hoursBefore < 1) {
+    error.value = 'Укажите, за сколько часов до игры напомнить';
+    return;
+  }
+  if (!customReminderHours.value.includes(hoursBefore)) {
+    customReminderHours.value = [...customReminderHours.value, hoursBefore];
+  }
+  toggleReminderHour(hoursBefore, true);
+  customReminderHoursBefore.value = null;
+  error.value = '';
+}
+
+function applyCustomPlayerFormat() {
+  const size = Number(customPlayerFormatSize.value);
+  if (!Number.isFinite(size) || size < 1) {
+    error.value = 'Укажите размер команд';
+    return;
+  }
+  const format = `${size}x${size}`;
+  if (!customPlayerFormatOptions.value.includes(format) && !playerFormatOptions.includes(format)) {
+    customPlayerFormatOptions.value = [...customPlayerFormatOptions.value, format];
+  }
+  form.playerFormat = format;
+  customPlayerFormatSize.value = null;
+  error.value = '';
+}
+
 async function createSession() {
   if (!validateForm()) {
     return;
@@ -158,6 +247,9 @@ async function createSession() {
         { name: 'Синие', color: 'blue', displayOrder: 3 }
       ]
     });
+    await Promise.all(
+      selectedReminderHours.value.map((hoursBefore) => api.createContributionReminder(session.id, { hoursBefore }))
+    );
     await router.push(`/sessions/${session.id}`);
   } catch (err) {
     error.value = err instanceof Error ? err.message : 'Не удалось создать сессию';
