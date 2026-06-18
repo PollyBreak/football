@@ -21,6 +21,10 @@
         </label>
         <input v-model="form.location" class="input" placeholder="Место" />
         <label class="field-label">
+          <span>Адрес поля</span>
+          <input v-model="form.locationAddress" class="input" placeholder="Улица, дом" />
+        </label>
+        <label class="field-label">
           <span>Ссылка на поле на 2GIS / Google Maps / Яндекс картах</span>
           <input v-model="form.locationUrl" class="input" type="url" placeholder="https://..." />
         </label>
@@ -52,8 +56,16 @@
           <input v-model.number="form.plannedMatchDurationMinutes" class="input" type="number" min="1" />
         </label>
         <label class="field-label">
+          <span>Длительность сессии, минут</span>
+          <input v-model.number="form.sessionDurationMinutes" class="input" type="number" min="1" />
+        </label>
+        <label class="field-label">
           <span>Максимум игроков в сессии</span>
           <input v-model.number="form.maxPlayers" class="input" type="number" min="1" />
+        </label>
+        <label class="field-label">
+          <span>Формат игроков</span>
+          <input v-model="form.playerFormat" class="input" placeholder="6x6" />
         </label>
         <textarea v-model="form.notes" class="input textarea" placeholder="Заметки"></textarea>
         <button class="primary-button form-submit" type="button" @click="createSession" :disabled="pending">Создать</button>
@@ -80,6 +92,7 @@ const form = reactive({
   sessionDate: new Date().toISOString().slice(0, 10),
   sessionTime: '20:00',
   location: '',
+  locationAddress: '',
   locationUrl: '',
   broadcastUrl: '',
   telegramChatId: null as number | null,
@@ -87,7 +100,9 @@ const form = reactive({
   feeRecipient: '',
   formatType: 'ROUND_ROBIN' as SessionFormatType,
   plannedMatchDurationMinutes: 6,
+  sessionDurationMinutes: 90,
   maxPlayers: 15,
+  playerFormat: '6x6',
   notes: ''
 });
 
@@ -125,6 +140,7 @@ async function createSession() {
       sessionDate: form.sessionDate,
       sessionTime: form.sessionTime,
       location: form.location || null,
+      locationAddress: form.locationAddress || null,
       locationUrl: form.locationUrl || null,
       broadcastUrl: form.broadcastUrl || null,
       telegramChatId: form.telegramChatId || null,
@@ -132,7 +148,9 @@ async function createSession() {
       feeRecipient: form.feeRecipient || null,
       formatType: form.formatType,
       plannedMatchDurationMinutes: form.plannedMatchDurationMinutes,
+      sessionDurationMinutes: form.sessionDurationMinutes || null,
       maxPlayers: form.maxPlayers || null,
+      playerFormat: form.playerFormat || null,
       notes: form.notes || null,
       teams: [
         { name: 'Красные', color: 'red', displayOrder: 1 },

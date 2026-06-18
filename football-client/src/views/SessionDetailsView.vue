@@ -104,6 +104,10 @@
             <input v-model="sessionSettings.location" class="input" placeholder="Место" :disabled="sessionIsFinished" />
           </label>
           <label class="field-label">
+            <span>Адрес поля</span>
+            <input v-model="sessionSettings.locationAddress" class="input" placeholder="Улица, дом" :disabled="sessionIsFinished" />
+          </label>
+          <label class="field-label">
             <span>Ссылка на поле на 2GIS / Google Maps / Яндекс картах</span>
             <input v-model="sessionSettings.locationUrl" class="input" type="url" placeholder="https://..." :disabled="sessionIsFinished" />
           </label>
@@ -128,8 +132,16 @@
             <input v-model.number="sessionSettings.plannedMatchDurationMinutes" class="input" type="number" min="1" :disabled="sessionIsFinished" />
           </label>
           <label class="field-label">
+            <span>Длительность сессии, минут</span>
+            <input v-model.number="sessionSettings.sessionDurationMinutes" class="input" type="number" min="1" :disabled="sessionIsFinished" />
+          </label>
+          <label class="field-label">
             <span>Максимум игроков</span>
             <input v-model.number="sessionSettings.maxPlayers" class="input" type="number" min="1" :disabled="sessionIsFinished" />
+          </label>
+          <label class="field-label">
+            <span>Формат игроков</span>
+            <input v-model="sessionSettings.playerFormat" class="input" placeholder="6x6" :disabled="sessionIsFinished" />
           </label>
           <label class="field-label">
             <span>Заметки</span>
@@ -173,6 +185,14 @@
       <label class="field-label">
         <span>Максимум игроков</span>
         <input v-model.number="sessionSettings.maxPlayers" class="input" type="number" min="1" :disabled="sessionIsFinished" />
+      </label>
+      <label class="field-label">
+        <span>Формат игроков</span>
+        <input v-model="sessionSettings.playerFormat" class="input" placeholder="6x6" :disabled="sessionIsFinished" />
+      </label>
+      <label class="field-label">
+        <span>Длительность сессии, минут</span>
+        <input v-model.number="sessionSettings.sessionDurationMinutes" class="input" type="number" min="1" :disabled="sessionIsFinished" />
       </label>
       <label class="field-label">
         <span>Telegram chat ID</span>
@@ -640,6 +660,7 @@ const sessionSettings = reactive({
   sessionDate: '',
   sessionTime: '',
   location: '',
+  locationAddress: '',
   locationUrl: '',
   broadcastUrl: '',
   telegramChatId: null as number | null,
@@ -647,8 +668,10 @@ const sessionSettings = reactive({
   feeAmount: null as number | null,
   feeRecipient: '',
   plannedMatchDurationMinutes: 6 as number | null,
+  sessionDurationMinutes: 90 as number | null,
   notes: '',
-  maxPlayers: 15 as number | null
+  maxPlayers: 15 as number | null,
+  playerFormat: '6x6'
 });
 const createMatchButtonLabel = computed(() => {
   return session.value?.formatType === 'KNOCKOUT' ? 'Создать матч' : 'Создать следующий';
@@ -1149,6 +1172,7 @@ function fillSessionSettings() {
   sessionSettings.sessionDate = session.value.sessionDate;
   sessionSettings.sessionTime = session.value.sessionTime?.slice(0, 5) ?? '';
   sessionSettings.location = session.value.location ?? '';
+  sessionSettings.locationAddress = session.value.locationAddress ?? '';
   sessionSettings.locationUrl = session.value.locationUrl ?? '';
   sessionSettings.broadcastUrl = session.value.broadcastUrl ?? '';
   sessionSettings.telegramChatId = session.value.telegramChatId ?? null;
@@ -1156,8 +1180,10 @@ function fillSessionSettings() {
   sessionSettings.feeAmount = session.value.feeAmount ?? null;
   sessionSettings.feeRecipient = session.value.feeRecipient ?? '';
   sessionSettings.plannedMatchDurationMinutes = session.value.plannedMatchDurationMinutes ?? null;
+  sessionSettings.sessionDurationMinutes = session.value.sessionDurationMinutes ?? null;
   sessionSettings.notes = session.value.notes ?? '';
   sessionSettings.maxPlayers = session.value.maxPlayers ?? null;
+  sessionSettings.playerFormat = session.value.playerFormat ?? '';
 }
 
 async function loadPlayers() {
@@ -1270,6 +1296,7 @@ async function saveSessionSettings() {
       sessionDate: sessionSettings.sessionDate,
       sessionTime: sessionSettings.sessionTime,
       location: sessionSettings.location.trim() || null,
+      locationAddress: sessionSettings.locationAddress.trim() || null,
       locationUrl: sessionSettings.locationUrl.trim() || null,
       broadcastUrl: sessionSettings.broadcastUrl.trim() || null,
       telegramChatId: sessionSettings.telegramChatId || null,
@@ -1278,8 +1305,10 @@ async function saveSessionSettings() {
       feeRecipient: sessionSettings.feeRecipient.trim() || null,
       status: session.value?.status ?? null,
       plannedMatchDurationMinutes: sessionSettings.plannedMatchDurationMinutes || null,
+      sessionDurationMinutes: sessionSettings.sessionDurationMinutes || null,
       notes: sessionSettings.notes.trim() || null,
-      maxPlayers: sessionSettings.maxPlayers || null
+      maxPlayers: sessionSettings.maxPlayers || null,
+      playerFormat: sessionSettings.playerFormat.trim() || null
     });
     fillSessionSettings();
     await Promise.all([loadSessionPlayers(), loadWaitlist()]);
@@ -1487,6 +1516,7 @@ async function finishSession() {
       sessionDate: session.value.sessionDate,
       sessionTime: session.value.sessionTime,
       location: session.value.location,
+      locationAddress: session.value.locationAddress,
       locationUrl: session.value.locationUrl,
       broadcastUrl: session.value.broadcastUrl,
       telegramChatId: session.value.telegramChatId,
@@ -1495,8 +1525,10 @@ async function finishSession() {
       feeRecipient: session.value.feeRecipient,
       status: 'FINISHED',
       plannedMatchDurationMinutes: session.value.plannedMatchDurationMinutes,
+      sessionDurationMinutes: session.value.sessionDurationMinutes,
       notes: session.value.notes,
-      maxPlayers: session.value.maxPlayers
+      maxPlayers: session.value.maxPlayers,
+      playerFormat: session.value.playerFormat
     });
     fillSessionSettings();
   } catch (err) {
@@ -1547,6 +1579,7 @@ async function resumeSession() {
       sessionDate: session.value.sessionDate,
       sessionTime: session.value.sessionTime,
       location: session.value.location,
+      locationAddress: session.value.locationAddress,
       locationUrl: session.value.locationUrl,
       broadcastUrl: session.value.broadcastUrl,
       telegramChatId: session.value.telegramChatId,
@@ -1555,8 +1588,10 @@ async function resumeSession() {
       feeRecipient: session.value.feeRecipient,
       status: 'IN_PROGRESS',
       plannedMatchDurationMinutes: session.value.plannedMatchDurationMinutes,
+      sessionDurationMinutes: session.value.sessionDurationMinutes,
       notes: session.value.notes,
-      maxPlayers: session.value.maxPlayers
+      maxPlayers: session.value.maxPlayers,
+      playerFormat: session.value.playerFormat
     });
     fillSessionSettings();
     resumePasswordDialogOpen.value = false;

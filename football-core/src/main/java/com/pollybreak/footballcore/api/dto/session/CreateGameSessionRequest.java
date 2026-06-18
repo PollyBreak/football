@@ -14,6 +14,7 @@ public record CreateGameSessionRequest(
         @NotNull LocalDate sessionDate,
         @NotNull LocalTime sessionTime,
         String location,
+        String locationAddress,
         String locationUrl,
         String broadcastUrl,
         Long telegramChatId,
@@ -23,7 +24,9 @@ public record CreateGameSessionRequest(
         @NotNull SessionFormatType formatType,
         SessionStatus status,
         Integer plannedMatchDurationMinutes,
+        Integer sessionDurationMinutes,
         Integer maxPlayers,
+        String playerFormat,
         String notes,
         Long createdByUserId,
         @Valid List<CreateSessionTeamRequest> teams

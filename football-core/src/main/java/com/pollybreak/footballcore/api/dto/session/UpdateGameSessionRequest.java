@@ -9,6 +9,7 @@ public record UpdateGameSessionRequest(
         LocalDate sessionDate,
         LocalTime sessionTime,
         String location,
+        String locationAddress,
         String locationUrl,
         String broadcastUrl,
         Long telegramChatId,
@@ -17,7 +18,9 @@ public record UpdateGameSessionRequest(
         String feeRecipient,
         SessionStatus status,
         Integer plannedMatchDurationMinutes,
+        Integer sessionDurationMinutes,
         String notes,
-        Integer maxPlayers
+        Integer maxPlayers,
+        String playerFormat
 ) {
 }

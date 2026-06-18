@@ -13,12 +13,16 @@ import com.pollybreak.footballcore.domain.entity.SessionWaitlistEntry;
 import com.pollybreak.footballcore.domain.entity.TelegramPendingRegistration;
 import com.pollybreak.footballcore.domain.enums.SessionFormatType;
 import com.pollybreak.footballcore.domain.enums.SessionRegistrationStatus;
+import com.pollybreak.footballcore.domain.enums.PlayerPosition;
 import com.pollybreak.footballcore.repository.AppUserRepository;
 import com.pollybreak.footballcore.repository.GameSessionRepository;
 import com.pollybreak.footballcore.repository.PlayerRepository;
 import com.pollybreak.footballcore.repository.SessionRegistrationRepository;
+import com.pollybreak.footballcore.repository.SessionPlayerRepository;
 import com.pollybreak.footballcore.repository.SessionWaitlistRepository;
 import com.pollybreak.footballcore.repository.TelegramPendingRegistrationRepository;
+import java.time.LocalTime;
+import java.time.format.DateTimeFormatter;
 import java.time.format.TextStyle;
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -38,6 +42,8 @@ import org.springframework.transaction.annotation.Transactional;
 public class TelegramRegistrationService {
 
     private static final Locale RU = Locale.forLanguageTag("ru-RU");
+    private static final DateTimeFormatter TIME_FORMAT = DateTimeFormatter.ofPattern("HH:mm");
+    private static final String DEFAULT_APP_URL = "https://t.me/football_pozitiv_bot/join";
 
     private final TelegramBotApiClient telegramBotApiClient;
     private final TelegramBotProperties telegramBotProperties;
@@ -45,6 +51,7 @@ public class TelegramRegistrationService {
     private final AppUserRepository appUserRepository;
     private final PlayerRepository playerRepository;
     private final SessionRegistrationRepository sessionRegistrationRepository;
+    private final SessionPlayerRepository sessionPlayerRepository;
     private final SessionWaitlistRepository sessionWaitlistRepository;
     private final TelegramPendingRegistrationRepository pendingRegistrationRepository;
     private final SessionPlayerService sessionPlayerService;
@@ -212,32 +219,35 @@ public class TelegramRegistrationService {
         Set<Long> waitlistPlayerIds = waitlist.stream()
                 .map(entry -> entry.getPlayer().getId())
                 .collect(Collectors.toSet());
+        long activePlayersCount = sessionPlayerRepository.countBySessionIdAndActiveTrue(session.getId());
+        Integer durationMinutes = session.getSessionDurationMinutes();
+        LocalTime endTime = durationMinutes == null ? null : session.getSessionTime().plusMinutes(durationMinutes);
 
         List<String> lines = new ArrayList<>();
         lines.add("<b>Открыта регистрация на футбол!</b>");
-        lines.add(escape(session.getSessionDate().toString()) + " | " + escape(session.getSessionTime().toString().substring(0, 5)) + " | " + escape(nullToDash(session.getTitle())));
-        lines.add("Время: " + escape(session.getSessionTime().toString().substring(0, 5) + " " + humanDate(session)));
-        if (session.getLocationUrl() != null && !session.getLocationUrl().isBlank()) {
-            lines.add("Адрес: <a href=\"" + escapeAttribute(session.getLocationUrl()) + "\">" + escape(nullToDash(session.getLocation())) + "</a>");
-        } else {
-            lines.add("Адрес: " + escape(nullToDash(session.getLocation())));
-        }
+        lines.add(headerLine(session, durationMinutes));
+        lines.add("");
+        lines.add(timeLine(session, durationMinutes, endTime));
+        lines.add(locationLine(session));
+        lines.add("⚽️ " + activePlayersCount + " " + participantsWord(activePlayersCount) + playerFormatSuffix(session));
+        lines.add("🏆 Формат " + escape(formatLabel(session.getFormatType())));
         if (session.getFeeAmount() != null) {
-            String recipient = session.getFeeRecipient() == null || session.getFeeRecipient().isBlank()
-                    ? ""
-                    : " -> " + session.getFeeRecipient();
-            lines.add("Взнос: " + escape(session.getFeeAmount() + " тенге" + recipient));
+            lines.add("💰 <b>" + session.getFeeAmount() + "</b> тенге");
         }
-        lines.add("Формат: " + escape(formatLabel(session.getFormatType())));
         if (session.getNotes() != null && !session.getNotes().isBlank()) {
-            lines.add("Описание: " + escape(session.getNotes()));
+            lines.add("");
+            lines.add(escape(session.getNotes()));
         }
         lines.add("");
-        lines.add("<b>Участники:</b>");
-        lines.add("✅ Записался, иду 100%: " + names(groups.get(SessionRegistrationStatus.GOING), waitlistPlayerIds));
-        lines.add("❓ Записался, но под вопросом: " + names(groups.get(SessionRegistrationStatus.MAYBE), waitlistPlayerIds));
-        lines.add("❌ В этот раз без меня: " + names(groups.get(SessionRegistrationStatus.OUT)));
-        lines.add("⌛ Записался, в очереди: " + waitlistNames(waitlist));
+        lines.add("❕Перед регистрацией необходимо зарегистрироваться в <a href=\"" + escapeAttribute(registrationAppUrl()) + "\">приложении</a>. Если вы зарегистрированы, просто нажмите на одну из кнопок.");
+        lines.add("");
+        lines.add("Участники (" + activePlayersCount + "/" + maxPlayersLabel(session) + "):");
+        lines.add("<pre>" + escape(String.join("\n",
+                "✅ Записался, иду 100%: " + namesPlain(groups.get(SessionRegistrationStatus.GOING), waitlistPlayerIds),
+                "❓ Записался, но под вопросом: " + namesPlain(groups.get(SessionRegistrationStatus.MAYBE), waitlistPlayerIds),
+                "❌ В этот раз без меня: " + namesPlain(groups.get(SessionRegistrationStatus.OUT)),
+                "⌛ Записался, в очереди: " + waitlistNamesPlain(waitlist)
+        )) + "</pre>");
         return String.join("\n", lines);
     }
 
@@ -249,12 +259,68 @@ public class TelegramRegistrationService {
         );
     }
 
+    private String headerLine(GameSession session, Integer durationMinutes) {
+        List<String> parts = new ArrayList<>();
+        parts.add(session.getSessionDate().toString());
+        parts.add(session.getSessionTime().format(TIME_FORMAT));
+        if (durationMinutes != null) {
+            parts.add(durationMinutes + " минут");
+        }
+        parts.add(nullToDash(session.getTitle()));
+        return escape(String.join(" | ", parts));
+    }
+
+    private String timeLine(GameSession session, Integer durationMinutes, LocalTime endTime) {
+        String value = "🕒 " + humanDateLine(session) + ", " + session.getSessionTime().format(TIME_FORMAT);
+        if (endTime != null && durationMinutes != null) {
+            value += " - " + endTime.format(TIME_FORMAT) + " (" + durationMinutes + " мин.)";
+        }
+        return escape(value);
+    }
+
+    private String locationLine(GameSession session) {
+        List<String> parts = new ArrayList<>();
+        parts.add(nullToDash(session.getLocation()));
+        if (session.getLocationAddress() != null && !session.getLocationAddress().isBlank()) {
+            parts.add(session.getLocationAddress());
+        }
+        String locationText = escape(String.join(" - ", parts));
+        if (session.getLocationUrl() == null || session.getLocationUrl().isBlank()) {
+            return "📍 " + locationText;
+        }
+        return "📍 " + locationText + " - <a href=\"" + escapeAttribute(session.getLocationUrl()) + "\">Адрес на карте</a>";
+    }
+
+    private String playerFormatSuffix(GameSession session) {
+        return session.getPlayerFormat() == null || session.getPlayerFormat().isBlank()
+                ? ""
+                : ", " + escape(session.getPlayerFormat());
+    }
+
+    private String maxPlayersLabel(GameSession session) {
+        return session.getMaxPlayers() == null ? "∞" : session.getMaxPlayers().toString();
+    }
+
+    private String registrationAppUrl() {
+        String appUrl = telegramBotProperties.getAppUrl();
+        return appUrl == null || appUrl.isBlank() ? DEFAULT_APP_URL : appUrl;
+    }
+
     private String names(List<SessionRegistration> registrations) {
         if (registrations == null || registrations.isEmpty()) {
             return "-";
         }
         return registrations.stream()
                 .map(item -> escape(playerName(item.getPlayer())))
+                .collect(Collectors.joining(", "));
+    }
+
+    private String namesPlain(List<SessionRegistration> registrations) {
+        if (registrations == null || registrations.isEmpty()) {
+            return "-";
+        }
+        return registrations.stream()
+                .map(item -> playerNameWithPosition(item.getPlayer()))
                 .collect(Collectors.joining(", "));
     }
 
@@ -269,12 +335,32 @@ public class TelegramRegistrationService {
         return value.isBlank() ? "-" : value;
     }
 
+    private String namesPlain(List<SessionRegistration> registrations, Set<Long> excludedPlayerIds) {
+        if (registrations == null || registrations.isEmpty()) {
+            return "-";
+        }
+        String value = registrations.stream()
+                .filter(item -> !excludedPlayerIds.contains(item.getPlayer().getId()))
+                .map(item -> playerNameWithPosition(item.getPlayer()))
+                .collect(Collectors.joining(", "));
+        return value.isBlank() ? "-" : value;
+    }
+
     private String waitlistNames(List<SessionWaitlistEntry> entries) {
         if (entries == null || entries.isEmpty()) {
             return "-";
         }
         return entries.stream()
                 .map(entry -> escape(playerName(entry.getPlayer())))
+                .collect(Collectors.joining(", "));
+    }
+
+    private String waitlistNamesPlain(List<SessionWaitlistEntry> entries) {
+        if (entries == null || entries.isEmpty()) {
+            return "-";
+        }
+        return entries.stream()
+                .map(entry -> playerNameWithPosition(entry.getPlayer()))
                 .collect(Collectors.joining(", "));
     }
 
@@ -287,19 +373,58 @@ public class TelegramRegistrationService {
                 .collect(Collectors.joining(" "));
     }
 
+    private String playerNameWithPosition(Player player) {
+        String name = playerName(player);
+        return player.getDefaultPosition() == null
+                ? name
+                : name + " (" + positionLabel(player.getDefaultPosition()) + ")";
+    }
+
     private String humanDate(GameSession session) {
         String month = session.getSessionDate().getMonth().getDisplayName(TextStyle.FULL, RU);
         String dayOfWeek = session.getSessionDate().getDayOfWeek().getDisplayName(TextStyle.FULL, RU);
         return session.getSessionDate().getDayOfMonth() + " " + month + " (" + dayOfWeek + ")";
     }
 
+    private String humanDateLine(GameSession session) {
+        String month = session.getSessionDate().getMonth().getDisplayName(TextStyle.FULL, RU);
+        String dayOfWeek = session.getSessionDate().getDayOfWeek().getDisplayName(TextStyle.FULL, RU);
+        String capitalizedDayOfWeek = dayOfWeek.substring(0, 1).toUpperCase(RU) + dayOfWeek.substring(1);
+        return capitalizedDayOfWeek + ", " + session.getSessionDate().getDayOfMonth() + " " + month;
+    }
+
     private String formatLabel(SessionFormatType formatType) {
         return switch (formatType) {
-            case ROUND_ROBIN -> "по кругу";
+            case ROUND_ROBIN -> "круговой, по турам";
             case KNOCKOUT -> "на вылет";
             case KING_OF_THE_HILL -> "царь горы";
             case CUSTOM -> "другой";
         };
+    }
+
+    private String positionLabel(PlayerPosition position) {
+        return switch (position) {
+            case GOALKEEPER -> "ВР";
+            case DEFENDER -> "ЗАЩ";
+            case MIDFIELDER -> "ПЗ";
+            case FORWARD -> "НАП";
+            case UNIVERSAL -> "УН";
+        };
+    }
+
+    private String participantsWord(long count) {
+        long lastTwo = count % 100;
+        long last = count % 10;
+        if (lastTwo >= 11 && lastTwo <= 14) {
+            return "участников";
+        }
+        if (last == 1) {
+            return "участник";
+        }
+        if (last >= 2 && last <= 4) {
+            return "участника";
+        }
+        return "участников";
     }
 
     private String buildMessageUrl(GameSession session) {

@@ -69,6 +69,7 @@ export interface GameSession {
   sessionDate: string;
   sessionTime: string;
   location: string | null;
+  locationAddress: string | null;
   locationUrl: string | null;
   broadcastUrl: string | null;
   telegramChatId: number | null;
@@ -79,7 +80,9 @@ export interface GameSession {
   formatType: SessionFormatType;
   status: SessionStatus;
   plannedMatchDurationMinutes: number | null;
+  sessionDurationMinutes: number | null;
   maxPlayers: number | null;
+  playerFormat: string | null;
   notes: string | null;
   createdByUserId: number | null;
   createdAt: string;

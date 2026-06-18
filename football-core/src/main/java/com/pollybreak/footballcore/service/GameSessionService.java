@@ -53,6 +53,7 @@ public class GameSessionService {
         session.setSessionDate(request.sessionDate());
         session.setSessionTime(request.sessionTime());
         session.setLocation(request.location());
+        session.setLocationAddress(request.locationAddress());
         session.setLocationUrl(request.locationUrl());
         session.setBroadcastUrl(request.broadcastUrl());
         session.setTelegramChatId(request.telegramChatId());
@@ -62,7 +63,9 @@ public class GameSessionService {
         session.setFormatType(request.formatType());
         session.setStatus(request.status() != null ? request.status() : SessionStatus.PLANNED);
         session.setPlannedMatchDurationMinutes(request.plannedMatchDurationMinutes());
+        session.setSessionDurationMinutes(request.sessionDurationMinutes());
         session.setMaxPlayers(request.maxPlayers());
+        session.setPlayerFormat(request.playerFormat());
         session.setNotes(request.notes());
 
         if (request.createdByUserId() != null) {
@@ -96,6 +99,9 @@ public class GameSessionService {
         if (request.plannedMatchDurationMinutes() != null && request.plannedMatchDurationMinutes() < 1) {
             throw new IllegalArgumentException("plannedMatchDurationMinutes must be greater than zero");
         }
+        if (request.sessionDurationMinutes() != null && request.sessionDurationMinutes() < 1) {
+            throw new IllegalArgumentException("sessionDurationMinutes must be greater than zero");
+        }
         if (request.maxPlayers() != null && request.maxPlayers() < 1) {
             throw new IllegalArgumentException("maxPlayers must be greater than zero");
         }
@@ -110,6 +116,7 @@ public class GameSessionService {
             session.setSessionTime(request.sessionTime());
         }
         session.setLocation(request.location());
+        session.setLocationAddress(request.locationAddress());
         session.setLocationUrl(request.locationUrl());
         session.setBroadcastUrl(request.broadcastUrl());
         session.setTelegramChatId(request.telegramChatId());
@@ -123,8 +130,10 @@ public class GameSessionService {
             }
         }
         session.setPlannedMatchDurationMinutes(request.plannedMatchDurationMinutes());
+        session.setSessionDurationMinutes(request.sessionDurationMinutes());
         session.setNotes(request.notes());
         session.setMaxPlayers(request.maxPlayers());
+        session.setPlayerFormat(request.playerFormat());
         sessionPlayerService.fillAvailableSlots(sessionId);
         return GameSessionResponse.fromEntity(session, sessionTeamRepository.findAllBySessionIdOrderByDisplayOrderAsc(sessionId));
     }

@@ -43,6 +43,9 @@ public class GameSession {
     @Column(length = 200)
     private String location;
 
+    @Column(name = "location_address", length = 300)
+    private String locationAddress;
+
     @Column(name = "location_url", length = 500)
     private String locationUrl;
 
@@ -75,8 +78,14 @@ public class GameSession {
     @Column(name = "planned_match_duration_minutes")
     private Integer plannedMatchDurationMinutes;
 
+    @Column(name = "session_duration_minutes")
+    private Integer sessionDurationMinutes;
+
     @Column(name = "max_players")
     private Integer maxPlayers;
+
+    @Column(name = "player_format", length = 50)
+    private String playerFormat;
 
     @Column(columnDefinition = "text")
     private String notes;
