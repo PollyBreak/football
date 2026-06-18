@@ -24,6 +24,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.event.TransactionPhase;
 import org.springframework.transaction.event.TransactionalEventListener;
 
@@ -111,14 +112,19 @@ public class TelegramContributionService {
         );
     }
 
-    @Transactional(readOnly = true)
+    @Transactional(propagation = Propagation.NOT_SUPPORTED)
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     public void refreshContributionMessageAfterRosterChange(SessionRosterChangedEvent event) {
         try {
-            refreshContributionMessage(event.sessionId());
+            refreshContributionMessageAfterCommit(event.sessionId());
         } catch (RuntimeException exception) {
             log.warn("Failed to refresh Telegram contribution message for session {}", event.sessionId(), exception);
         }
+    }
+
+    @Transactional(propagation = Propagation.REQUIRES_NEW, readOnly = true)
+    public void refreshContributionMessageAfterCommit(Long sessionId) {
+        refreshContributionMessage(sessionId);
     }
 
     private void applyContributionStatus(Long sessionId, Player player, boolean paid) {
