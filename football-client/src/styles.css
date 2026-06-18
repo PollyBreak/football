@@ -387,13 +387,39 @@ textarea {
   flex: 0 0 auto;
 }
 
-.admin-hero-button {
-  width: fit-content;
-  min-height: 30px;
+.hero-utility-row {
+  display: flex;
+  flex-wrap: nowrap;
+  gap: 6px;
+  align-items: center;
   margin-top: 6px;
-  padding: 6px 10px;
+}
+
+.admin-hero-button {
+  width: auto;
+  min-height: 30px;
+  padding: 6px 9px;
   border-radius: 999px;
   font-size: 0.78rem;
+  white-space: nowrap;
+}
+
+.ghost-button.overlay-hero-button {
+  width: auto;
+  min-height: 30px;
+  padding: 6px 9px;
+  border: 1.5px solid #2f8f57;
+  border-radius: 999px;
+  color: #21653d;
+  background: #ffffff;
+  font-size: 0.78rem;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.overlay-link-button {
+  text-align: center;
+  text-decoration: none;
 }
 
 .icon-button {

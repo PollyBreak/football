@@ -9,9 +9,14 @@
           Открыть поле на карте
         </a>
         <p class="muted">Игроки: {{ sessionPlayers.length }} / {{ session.maxPlayers || 'без лимита' }}</p>
-        <button class="ghost-button admin-hero-button" type="button" @click="openAdminDialog">
-          Администрирование
-        </button>
+        <div class="hero-utility-row">
+          <button class="ghost-button admin-hero-button" type="button" @click="openAdminDialog">
+            Администрирование
+          </button>
+          <button class="ghost-button overlay-hero-button" type="button" @click="overlayDialogOpen = true">
+            Overlay
+          </button>
+        </div>
         <a v-if="session.broadcastUrl" class="broadcast-link" :href="session.broadcastUrl" target="_blank" rel="noreferrer">
           Открыть трансляцию
         </a>
@@ -231,6 +236,23 @@
             </span>
           </div>
           <p v-else class="muted admin-panel__muted">Нет игроков для списка взносов.</p>
+        </div>
+      </div>
+    </div>
+
+    <div v-if="overlayDialogOpen" class="settings-overlay" @click.self="overlayDialogOpen = false">
+      <div class="settings-window stack-sm">
+        <div class="section-header">
+          <div>
+            <p class="eyebrow">Overlay</p>
+            <h3 class="section-title">Ссылка на оверлей</h3>
+          </div>
+          <button class="ghost-button" type="button" @click="overlayDialogOpen = false">Закрыть</button>
+        </div>
+        <input class="input" :value="overlayPageUrl" readonly />
+        <div class="button-row">
+          <a class="ghost-button overlay-link-button" :href="overlayPageUrl" target="_blank" rel="noreferrer">Открыть</a>
+          <button class="primary-button" type="button" @click="copyOverlayUrl">Скопировать</button>
         </div>
       </div>
     </div>
@@ -711,6 +733,7 @@ const pendingContributionStart = ref(false);
 const pendingReminderUpdate = ref(false);
 const settingsOpen = ref(false);
 const adminDialogOpen = ref(false);
+const overlayDialogOpen = ref(false);
 const adminUnlocked = ref(false);
 const adminPassword = ref('');
 const playersViewLoading = ref(false);
@@ -721,6 +744,10 @@ const resumePasswordError = ref('');
 const adminPasswordValue = '12112001';
 
 const sessionIdNumber = computed(() => Number(props.sessionId));
+const overlayPageUrl = computed(() => {
+  const origin = window.location.origin;
+  return `${origin}/overlay/sessions/${sessionIdNumber.value}`;
+});
 const currentUserSessionPlayer = computed(() => {
   const currentPlayerId = authState.player?.playerId;
   return currentPlayerId
@@ -1396,6 +1423,15 @@ async function openAdminDialog() {
 function closeAdminDialog() {
   adminDialogOpen.value = false;
   adminPassword.value = '';
+}
+
+async function copyOverlayUrl() {
+  try {
+    await navigator.clipboard.writeText(overlayPageUrl.value);
+    error.value = '';
+  } catch {
+    error.value = 'Не удалось скопировать ссылку';
+  }
 }
 
 async function unlockAdminPanel() {
