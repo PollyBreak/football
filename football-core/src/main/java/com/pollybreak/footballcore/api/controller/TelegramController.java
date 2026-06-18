@@ -3,6 +3,7 @@ package com.pollybreak.footballcore.api.controller;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.pollybreak.footballcore.api.dto.telegram.ContributionReminderRequest;
 import com.pollybreak.footballcore.api.dto.telegram.ContributionReminderResponse;
+import com.pollybreak.footballcore.api.dto.telegram.ContributionStatusResponse;
 import com.pollybreak.footballcore.api.dto.telegram.StartRegistrationRequest;
 import com.pollybreak.footballcore.api.dto.telegram.StartRegistrationResponse;
 import com.pollybreak.footballcore.api.dto.telegram.ValidateTelegramChatRequest;
@@ -53,6 +54,11 @@ public class TelegramController {
             @Valid @RequestBody StartRegistrationRequest request
     ) {
         return telegramContributionService.startContributionCollection(sessionId, request.userId());
+    }
+
+    @GetMapping("/api/sessions/{sessionId}/contributions/statuses")
+    public List<ContributionStatusResponse> getContributionStatuses(@PathVariable Long sessionId) {
+        return telegramContributionService.getContributionStatuses(sessionId);
     }
 
     @GetMapping("/api/sessions/{sessionId}/contribution-reminders")

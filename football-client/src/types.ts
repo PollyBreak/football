@@ -99,6 +99,12 @@ export interface ContributionReminder {
   sentAt: string | null;
 }
 
+export interface ContributionStatus {
+  playerId: number;
+  displayName: string;
+  paid: boolean;
+}
+
 export interface SessionPlayer {
   id: number;
   sessionId: number;

@@ -1,6 +1,7 @@
 package com.pollybreak.footballcore.service;
 
 import com.fasterxml.jackson.databind.JsonNode;
+import com.pollybreak.footballcore.api.dto.telegram.ContributionStatusResponse;
 import com.pollybreak.footballcore.api.dto.telegram.StartRegistrationResponse;
 import com.pollybreak.footballcore.config.TelegramBotProperties;
 import com.pollybreak.footballcore.domain.entity.AppUser;
@@ -119,6 +120,23 @@ public class TelegramContributionService {
                 buildContributionMessage(session),
                 contributionKeyboard(session.getId())
         );
+    }
+
+    @Transactional(readOnly = true)
+    public List<ContributionStatusResponse> getContributionStatuses(Long sessionId) {
+        ContributionRoster roster = contributionRoster(sessionId);
+        Set<Long> paidPlayerIds = roster.paidPlayers().stream()
+                .map(Player::getId)
+                .collect(Collectors.toSet());
+        return sessionPlayerRepository.findAllBySessionIdAndActiveTrueOrderByJoinedAtAscIdAsc(sessionId)
+                .stream()
+                .map(SessionPlayer::getPlayer)
+                .map(player -> new ContributionStatusResponse(
+                        player.getId(),
+                        playerName(player),
+                        paidPlayerIds.contains(player.getId())
+                ))
+                .toList();
     }
 
     @Transactional(readOnly = true)

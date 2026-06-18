@@ -15,6 +15,7 @@
   --ghost-bg: rgba(45, 155, 211, 0.12);
   --muted: #5d7481;
   --danger: #b63f3f;
+  --success: #2f8f57;
   --nav-bg: rgba(17, 55, 76, 0.94);
   --nav-active-text: #12334a;
   --nav-active-bg: #e9f8ff;
@@ -37,6 +38,7 @@
   --ghost-bg: rgba(70, 137, 190, 0.18);
   --muted: #abc4d7;
   --danger: #ff8585;
+  --success: #77d493;
   --nav-bg: rgba(4, 14, 24, 0.95);
   --nav-active-text: #eaf6ff;
   --nav-active-bg: #164468;
@@ -58,6 +60,7 @@
   --ghost-bg: rgba(47, 143, 87, 0.1);
   --muted: #5d7467;
   --danger: #b63f3f;
+  --success: #2f8f57;
   --nav-bg: rgba(24, 48, 36, 0.92);
   --nav-active-text: #183024;
   --nav-active-bg: #eff8ec;
@@ -79,6 +82,7 @@
   --ghost-bg: rgba(63, 74, 89, 0.1);
   --muted: #66717d;
   --danger: #b63f3f;
+  --success: #2f8f57;
   --nav-bg: rgba(36, 42, 50, 0.92);
   --nav-active-text: #20242a;
   --nav-active-bg: #f5f6f8;
@@ -100,6 +104,7 @@
   --ghost-bg: rgba(214, 222, 232, 0.1);
   --muted: #b2bac5;
   --danger: #ff8585;
+  --success: #77d493;
   --nav-bg: rgba(7, 8, 10, 0.94);
   --nav-active-text: #f2f4f7;
   --nav-active-bg: #333840;
@@ -380,6 +385,15 @@ textarea {
   align-items: flex-end;
   gap: 8px;
   flex: 0 0 auto;
+}
+
+.admin-hero-button {
+  width: fit-content;
+  min-height: 30px;
+  margin-top: 6px;
+  padding: 6px 10px;
+  border-radius: 999px;
+  font-size: 0.78rem;
 }
 
 .icon-button {
@@ -713,6 +727,63 @@ textarea {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.admin-panel {
+  display: grid;
+  gap: 8px;
+}
+
+.admin-panel__toggle {
+  width: 100%;
+}
+
+.admin-panel__body {
+  display: grid;
+  gap: 10px;
+  padding: 10px;
+  border: 1px solid var(--input-border);
+  border-radius: 14px;
+  background: var(--input-bg);
+}
+
+.admin-password-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 8px;
+}
+
+.admin-tools {
+  display: grid;
+  gap: 8px;
+}
+
+.admin-actions,
+.contribution-status-strip {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.admin-panel__muted {
+  font-size: 0.82rem;
+}
+
+.contribution-status-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  max-width: 100%;
+  padding: 4px 7px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--danger) 10%, var(--surface-bg));
+  color: var(--muted);
+  font-size: 0.76rem;
+}
+
+.contribution-status-chip.is-paid {
+  background: color-mix(in srgb, var(--success) 12%, var(--surface-bg));
+  color: var(--text);
 }
 
 .primary-button,

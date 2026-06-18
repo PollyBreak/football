@@ -9,18 +9,15 @@
           Открыть поле на карте
         </a>
         <p class="muted">Игроки: {{ sessionPlayers.length }} / {{ session.maxPlayers || 'без лимита' }}</p>
+        <button class="ghost-button admin-hero-button" type="button" @click="openAdminDialog">
+          Администрирование
+        </button>
         <a v-if="session.broadcastUrl" class="broadcast-link" :href="session.broadcastUrl" target="_blank" rel="noreferrer">
           Открыть трансляцию
         </a>
       </div>
       <div class="hero-actions">
         <span class="status-pill">{{ sessionStatusLabel(session.status) }}</span>
-        <button class="primary-button" type="button" :disabled="pendingRegistrationStart || pendingSessionUpdate || sessionIsFinished" @click="startRegistration">
-          Начать регистрацию
-        </button>
-        <button class="primary-button" type="button" :disabled="pendingContributionStart || pendingSessionUpdate || sessionIsFinished" @click="startContributionCollection">
-          Начать сбор взносов
-        </button>
         <button class="icon-button" type="button" aria-label="Настройки сессии" :disabled="sessionIsFinished" @click="settingsOpen = true">
           &#9881;
         </button>
@@ -204,6 +201,38 @@
           <button class="primary-button" type="submit" :disabled="pendingSessionUpdate">Возобновить</button>
         </div>
       </form>
+    </div>
+
+    <div v-if="adminDialogOpen" class="settings-overlay" @click.self="closeAdminDialog">
+      <div class="settings-window stack-sm">
+        <div class="section-header">
+          <div>
+            <p class="eyebrow">Администрирование</p>
+            <h3 class="section-title">Управление сессией</h3>
+          </div>
+          <button class="ghost-button" type="button" @click="closeAdminDialog">Закрыть</button>
+        </div>
+        <form v-if="!adminUnlocked" class="admin-password-row" @submit.prevent="unlockAdminPanel">
+          <input v-model="adminPassword" class="input" type="password" placeholder="Пароль" autocomplete="off" />
+          <button class="primary-button" type="submit">Открыть</button>
+        </form>
+        <div v-else class="admin-tools">
+          <div class="admin-actions">
+            <button class="ghost-button" type="button" :disabled="pendingRegistrationStart || pendingSessionUpdate || sessionIsFinished" @click="startRegistration">
+              Начать регистрацию
+            </button>
+            <button class="ghost-button" type="button" :disabled="pendingContributionStart || pendingSessionUpdate || sessionIsFinished" @click="startContributionCollection">
+              Начать сбор взносов
+            </button>
+          </div>
+          <div class="contribution-status-strip" v-if="contributionStatuses.length">
+            <span v-for="status in contributionStatuses" :key="status.playerId" class="contribution-status-chip" :class="{ 'is-paid': status.paid }">
+              {{ status.paid ? '✅' : '❌' }} {{ status.displayName }}
+            </span>
+          </div>
+          <p v-else class="muted admin-panel__muted">Нет игроков для списка взносов.</p>
+        </div>
+      </div>
     </div>
 
     <div class="card stack-sm session-settings-inline">
@@ -635,6 +664,7 @@ import { matchStatusLabel, playerPositionLabel, sessionStatusLabel } from '../li
 import { getStartParam } from '../lib/telegram';
 import type {
   ContributionReminder,
+  ContributionStatus,
   GameSession,
   MatchEvent,
   PlayerPosition,
@@ -661,6 +691,7 @@ const reminderQuickHours = [10, 5, 2];
 
 const session = ref<GameSession | null>(null);
 const contributionReminders = ref<ContributionReminder[]>([]);
+const contributionStatuses = ref<ContributionStatus[]>([]);
 const customContributionReminderHours = ref<number[]>([]);
 const sessionPlayers = ref<SessionPlayer[]>([]);
 const waitlist = ref<SessionWaitlistEntry[]>([]);
@@ -679,11 +710,15 @@ const pendingRegistrationStart = ref(false);
 const pendingContributionStart = ref(false);
 const pendingReminderUpdate = ref(false);
 const settingsOpen = ref(false);
+const adminDialogOpen = ref(false);
+const adminUnlocked = ref(false);
+const adminPassword = ref('');
 const playersViewLoading = ref(false);
 const resumeSessionPassword = '212229';
 const resumePasswordDialogOpen = ref(false);
 const resumePassword = ref('');
 const resumePasswordError = ref('');
+const adminPasswordValue = '12112001';
 
 const sessionIdNumber = computed(() => Number(props.sessionId));
 const currentUserSessionPlayer = computed(() => {
@@ -1219,10 +1254,11 @@ function teamChipStyle(teamId: number, playerId: number) {
 async function refreshAll() {
   playersViewLoading.value = true;
   try {
-    await loadSession();
+    await Promise.all([loadSession(), loadContributionStatuses()]);
     await Promise.all([
       loadSessionPlayers(),
       loadWaitlist(),
+      loadContributionStatuses(),
       loadContributionReminders(),
       loadPlayers(),
       loadMatches(),
@@ -1275,6 +1311,10 @@ async function loadWaitlist() {
 
 async function loadContributionReminders() {
   contributionReminders.value = await api.getContributionReminders(sessionIdNumber.value);
+}
+
+async function loadContributionStatuses() {
+  contributionStatuses.value = await api.getContributionStatuses(sessionIdNumber.value);
 }
 
 async function loadMatches() {
@@ -1344,6 +1384,29 @@ async function loadTeamPlayers() {
     session.value.teams.map(async (team) => [team.id, await api.getTeamPlayers(team.id)] as const)
   );
   teamPlayers.value = Object.fromEntries(entries);
+}
+
+async function openAdminDialog() {
+  adminDialogOpen.value = true;
+  if (adminUnlocked.value) {
+    await loadContributionStatuses();
+  }
+}
+
+function closeAdminDialog() {
+  adminDialogOpen.value = false;
+  adminPassword.value = '';
+}
+
+async function unlockAdminPanel() {
+  if (adminPassword.value !== adminPasswordValue) {
+    error.value = 'Неверный пароль администратора';
+    return;
+  }
+  adminUnlocked.value = true;
+  adminPassword.value = '';
+  error.value = '';
+  await loadContributionStatuses();
 }
 
 async function saveSessionSettings() {
@@ -1424,7 +1487,7 @@ async function startRegistration() {
     if (result.messageUrl) {
       window.open(result.messageUrl, '_blank', 'noreferrer');
     }
-    await loadSession();
+    await Promise.all([loadSession(), loadContributionStatuses()]);
   } catch (err) {
     error.value = err instanceof Error ? err.message : 'Не удалось начать регистрацию';
   } finally {
@@ -1538,7 +1601,7 @@ async function addPlayerToSession() {
     position: sessionPlayerForm.position
   });
   sessionPlayerForm.playerId = undefined;
-  await Promise.all([loadSessionPlayers(), loadWaitlist()]);
+  await Promise.all([loadSessionPlayers(), loadWaitlist(), loadContributionStatuses()]);
 }
 
 async function toggleCurrentUserSession() {
@@ -1563,7 +1626,7 @@ async function toggleCurrentUserSession() {
         position: authState.player.defaultPosition
       });
     }
-    await Promise.all([loadSessionPlayers(), loadWaitlist(), loadTeamPlayers()]);
+    await Promise.all([loadSessionPlayers(), loadWaitlist(), loadTeamPlayers(), loadContributionStatuses()]);
   } catch (err) {
     error.value = err instanceof Error ? err.message : 'Не удалось изменить участие в игре';
   } finally {

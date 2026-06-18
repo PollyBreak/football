@@ -1,6 +1,7 @@
 import type {
   TelegramAuthResponse,
   ContributionReminder,
+  ContributionStatus,
   GameSession,
   MatchEvent,
   OverlayState,
@@ -99,6 +100,9 @@ export const api = {
   },
   startContributionCollection(sessionId: number, payload: Record<string, unknown>): Promise<{ chatId: number; messageId: number; messageUrl: string | null }> {
     return request(`/api/sessions/${sessionId}/contributions/start`, { method: 'POST', body: JSON.stringify(payload) });
+  },
+  getContributionStatuses(sessionId: number): Promise<ContributionStatus[]> {
+    return request(`/api/sessions/${sessionId}/contributions/statuses`);
   },
   getContributionReminders(sessionId: number): Promise<ContributionReminder[]> {
     return request(`/api/sessions/${sessionId}/contribution-reminders`);
