@@ -203,7 +203,7 @@
           <div class="overlay-goal-arrow">→</div>
 
           <div class="overlay-goal-person">
-            <span>ГОЛ</span>
+            <span>{{ goalToast.ownGoal ? 'АВТОГОЛ' : 'ГОЛ' }}</span>
             <div class="overlay-goal-photo">
               <img v-if="goalToast.scorerPhotoUrl" :src="goalToast.scorerPhotoUrl" :alt="goalToast.scorer" />
               <strong v-else>{{ initials(goalToast.scorer) }}</strong>
@@ -213,7 +213,7 @@
         </template>
 
         <template v-else>
-          <p>{{ goalToast.cancelled ? 'Гол отменен' : 'ГОЛ' }}</p>
+          <p>{{ goalToast.cancelled ? 'Гол отменен' : goalToast.ownGoal ? 'АВТОГОЛ' : 'ГОЛ' }}</p>
           <div class="overlay-goal-photo overlay-goal-photo--solo">
             <img v-if="goalToast.scorerPhotoUrl" :src="goalToast.scorerPhotoUrl" :alt="goalToast.scorer" />
             <strong v-else>{{ initials(goalToast.scorer) }}</strong>
@@ -260,6 +260,7 @@ const goalToast = ref<{
   scorerPhotoUrl: string | null;
   assist: string | null;
   assistPhotoUrl: string | null;
+  ownGoal: boolean;
   cancelled: boolean;
 } | null>(null);
 
@@ -523,6 +524,7 @@ function showGoalToast(event: MatchEvent, assist: MatchEvent | null, cancelled: 
     scorerPhotoUrl: event.playerPhotoUrl,
     assist: assist?.playerName ? shortName(assist.playerName) : null,
     assistPhotoUrl: assist?.playerPhotoUrl ?? null,
+    ownGoal: event.eventType === 'OWN_GOAL',
     cancelled
   };
   if (toastTimer) {
@@ -577,7 +579,7 @@ function visiblePlayers(team: OverlayTeam | null): SessionTeamPlayer[] {
   if (!team) {
     return [];
   }
-  return team.players.filter((player) => player.active).slice(0, 4);
+  return team.players.filter((player) => player.active);
 }
 
 function teamNameStyle(team: OverlayTeam | null): Record<string, string> {
@@ -887,16 +889,16 @@ function positionLabel(position: PlayerPosition | null): string {
   position: absolute;
   left: 50%;
   bottom: 24px;
-  width: min(1060px, calc(100vw - 48px));
+  width: min(1320px, calc(100vw - 48px));
   transform: translateX(-50%);
 }
 
 .overlay-lineups {
   display: grid;
-  grid-template-columns: minmax(0, 430px) 154px minmax(0, 430px);
+  grid-template-columns: minmax(0, 1fr) 150px minmax(0, 1fr);
   align-items: end;
   justify-content: center;
-  column-gap: 42px;
+  column-gap: 30px;
 }
 
 .overlay-team-panel {
@@ -912,10 +914,11 @@ function positionLabel(position: PlayerPosition | null): string {
 }
 
 .overlay-lineups__players {
+  width: 100%;
   display: flex;
   align-items: flex-end;
   justify-content: flex-end;
-  gap: 10px;
+  gap: clamp(5px, 0.7vw, 10px);
   min-width: 0;
   margin-top: -88px;
   overflow: visible;
@@ -942,14 +945,16 @@ function positionLabel(position: PlayerPosition | null): string {
 }
 
 .overlay-player-card {
-  width: 112px;
-  min-width: 112px;
-  height: 184px;
+  width: clamp(58px, 8vw, 112px);
+  min-width: 0;
+  max-width: 112px;
+  height: clamp(132px, 14.5vw, 184px);
+  flex: 1 1 0;
   display: grid;
-  grid-template-rows: 26px 64px minmax(24px, auto) 24px;
+  grid-template-rows: minmax(20px, 26px) minmax(42px, 64px) minmax(20px, auto) minmax(20px, 24px);
   justify-items: center;
-  gap: 7px;
-  padding: 9px 9px 8px;
+  gap: clamp(4px, 0.55vw, 7px);
+  padding: clamp(6px, 0.7vw, 9px);
   border: 1px solid rgba(255, 255, 255, 0.82);
   border-radius: 9px;
   color: #101820;
@@ -970,19 +975,19 @@ function positionLabel(position: PlayerPosition | null): string {
   flex-direction: column;
   align-items: flex-start;
   gap: 3px;
-  font-size: 12px;
+  font-size: clamp(9px, 0.95vw, 12px);
   font-weight: 950;
 }
 
 .overlay-card-position img {
-  width: 20px;
-  height: 20px;
+  width: clamp(14px, 1.6vw, 20px);
+  height: clamp(14px, 1.6vw, 20px);
   object-fit: contain;
 }
 
 .overlay-player-card__photo {
-  width: 64px;
-  height: 64px;
+  width: clamp(42px, 5vw, 64px);
+  height: clamp(42px, 5vw, 64px);
   display: grid;
   place-items: center;
   overflow: hidden;
@@ -990,7 +995,7 @@ function positionLabel(position: PlayerPosition | null): string {
   border-radius: 50%;
   color: #061012;
   background: linear-gradient(135deg, #f5fff7, #aeb8be);
-  font-size: 18px;
+  font-size: clamp(13px, 1.4vw, 18px);
   font-weight: 950;
 }
 
@@ -1004,7 +1009,7 @@ function positionLabel(position: PlayerPosition | null): string {
   width: 100%;
   min-width: 0;
   overflow: hidden;
-  font-size: 15px;
+  font-size: clamp(10px, 1.15vw, 15px);
   line-height: 1.12;
   text-align: center;
   text-overflow: ellipsis;
@@ -1014,14 +1019,14 @@ function positionLabel(position: PlayerPosition | null): string {
 .overlay-player-card__stats {
   width: 100%;
   min-width: 0;
-  min-height: 22px;
+  min-height: 24px;
   display: flex;
   align-items: center;
   justify-content: center;
   border-top: 1px solid rgba(16, 24, 32, 0.22);
   padding-top: 3px;
   overflow: hidden;
-  font-size: 12px;
+  font-size: clamp(11px, 1.12vw, 15px);
   font-weight: 950;
   text-align: center;
   text-overflow: ellipsis;
