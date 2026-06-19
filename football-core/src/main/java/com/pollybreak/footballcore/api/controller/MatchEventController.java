@@ -4,6 +4,7 @@ import com.pollybreak.footballcore.api.dto.match.GoalRecordedResponse;
 import com.pollybreak.footballcore.api.dto.match.MatchEventResponse;
 import com.pollybreak.footballcore.api.dto.match.RecordAssistRequest;
 import com.pollybreak.footballcore.api.dto.match.RecordGoalRequest;
+import com.pollybreak.footballcore.api.dto.match.RecordPenaltyRequest;
 import com.pollybreak.footballcore.service.MatchEventService;
 import jakarta.validation.Valid;
 import java.util.List;
@@ -42,6 +43,14 @@ public class MatchEventController {
             @Valid @RequestBody RecordAssistRequest request
     ) {
         return matchEventService.recordAssist(matchId, request);
+    }
+
+    @PostMapping("/penalties")
+    public MatchEventResponse recordPenalty(
+            @PathVariable Long matchId,
+            @Valid @RequestBody RecordPenaltyRequest request
+    ) {
+        return matchEventService.recordPenalty(matchId, request);
     }
 
     @DeleteMapping("/{eventId}")

@@ -76,6 +76,15 @@ public class SessionMatchController {
         return sessionMatchService.finish(matchId, request);
     }
 
+    @PostMapping("/{matchId}/pause")
+    public SessionMatchResponse pauseMatch(
+            @PathVariable Long sessionId,
+            @PathVariable Long matchId
+    ) {
+        validateMatchBelongsToSession(sessionId, matchId);
+        return sessionMatchService.pause(matchId);
+    }
+
     @PostMapping("/{matchId}/resume")
     public SessionMatchResponse resumeMatch(
             @PathVariable Long sessionId,

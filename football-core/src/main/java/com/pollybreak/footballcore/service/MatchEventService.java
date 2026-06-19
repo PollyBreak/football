@@ -4,6 +4,7 @@ import com.pollybreak.footballcore.api.dto.match.GoalRecordedResponse;
 import com.pollybreak.footballcore.api.dto.match.MatchEventResponse;
 import com.pollybreak.footballcore.api.dto.match.RecordAssistRequest;
 import com.pollybreak.footballcore.api.dto.match.RecordGoalRequest;
+import com.pollybreak.footballcore.api.dto.match.RecordPenaltyRequest;
 import com.pollybreak.footballcore.domain.entity.AppUser;
 import com.pollybreak.footballcore.domain.entity.MatchEvent;
 import com.pollybreak.footballcore.domain.entity.Player;
@@ -31,6 +32,7 @@ public class MatchEventService {
     private final PlayerRepository playerRepository;
     private final AppUserRepository appUserRepository;
     private final OverlayEventService overlayEventService;
+    private final StreamBroadcastService streamBroadcastService;
 
     public List<MatchEvent> findByMatchId(Long matchId) {
         return matchEventRepository.findAllByMatchIdOrderByEventTimeAscIdAsc(matchId);
@@ -64,6 +66,7 @@ public class MatchEventService {
         goalEvent.setSecondInMatch(request.secondInMatch());
         goalEvent.setCreatedBy(createdBy);
         goalEvent.setPayload(request.payload());
+        streamBroadcastService.attachActiveStreamTimecode(goalEvent, match.getSession().getId());
         MatchEvent savedGoalEvent = matchEventRepository.save(goalEvent);
 
         incrementScore(match, team);
@@ -82,6 +85,7 @@ public class MatchEventService {
             assistEvent.setSecondInMatch(request.secondInMatch());
             assistEvent.setCreatedBy(createdBy);
             assistEvent.setPayload(request.payload());
+            streamBroadcastService.attachActiveStreamTimecode(assistEvent, match.getSession().getId());
             savedAssistEvent = matchEventRepository.save(assistEvent);
         }
 
@@ -120,7 +124,29 @@ public class MatchEventService {
             assistEvent.setRelatedPlayer(getPlayer(request.relatedPlayerId()));
         }
 
+        streamBroadcastService.attachActiveStreamTimecode(assistEvent, match.getSession().getId());
         return MatchEventResponse.fromEntity(matchEventRepository.save(assistEvent));
+    }
+
+    @Transactional
+    public MatchEventResponse recordPenalty(Long matchId, RecordPenaltyRequest request) {
+        SessionMatch match = getMatch(matchId);
+        SessionTeam team = getTeamForMatch(match, request.teamId());
+
+        MatchEvent penaltyEvent = new MatchEvent();
+        penaltyEvent.setMatch(match);
+        penaltyEvent.setEventType(MatchEventType.PENALTY);
+        penaltyEvent.setTeam(team);
+        if (request.playerId() != null) {
+            penaltyEvent.setPlayer(getPlayer(request.playerId()));
+        }
+        penaltyEvent.setMinuteInMatch(request.minuteInMatch());
+        penaltyEvent.setSecondInMatch(request.secondInMatch());
+        penaltyEvent.setCreatedBy(getUserOrNull(request.createdByUserId()));
+        penaltyEvent.setPayload(request.payload());
+        streamBroadcastService.attachActiveStreamTimecode(penaltyEvent, match.getSession().getId());
+
+        return MatchEventResponse.fromEntity(matchEventRepository.save(penaltyEvent));
     }
 
     @Transactional
@@ -132,6 +158,17 @@ public class MatchEventService {
         boolean deletedGoal = event.getEventType() == MatchEventType.GOAL || event.getEventType() == MatchEventType.OWN_GOAL;
 
         if (deletedGoal) {
+            MatchEvent cancelEvent = new MatchEvent();
+            cancelEvent.setMatch(match);
+            cancelEvent.setEventType(MatchEventType.GOAL_CANCELLED);
+            cancelEvent.setTeam(event.getTeam());
+            cancelEvent.setPlayer(event.getPlayer());
+            cancelEvent.setMinuteInMatch(event.getMinuteInMatch());
+            cancelEvent.setSecondInMatch(event.getSecondInMatch());
+            cancelEvent.setPayload(java.util.Map.of("cancelledEventId", event.getId()));
+            streamBroadcastService.attachActiveStreamTimecode(cancelEvent, match.getSession().getId());
+            matchEventRepository.save(cancelEvent);
+
             rollbackScore(match, event.getTeam());
             matchEventRepository.findAllByLinkedEventId(event.getId())
                     .forEach(matchEventRepository::delete);

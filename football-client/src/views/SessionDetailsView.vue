@@ -1,20 +1,38 @@
 <template>
   <section class="stack" v-if="session">
     <div class="card hero-card">
-      <div>
-        <p class="eyebrow">Сессия</p>
-        <h2 class="section-title">{{ session.title }}</h2>
-        <p class="muted">{{ session.sessionDate }} {{ session.sessionTime?.slice(0, 5) }} • {{ session.location || 'Место не указано' }}</p>
-        <a v-if="session.locationUrl" class="muted map-link" :href="session.locationUrl" target="_blank" rel="noreferrer">
-          Открыть поле на карте
-        </a>
-        <p class="muted">Игроки: {{ sessionPlayers.length }} / {{ session.maxPlayers || 'без лимита' }}</p>
+      <div class="session-hero-main">
+        <div class="session-hero-heading">
+          <div v-if="session.venuePhotoUrl" class="session-venue-photo">
+            <img :src="session.venuePhotoUrl" alt="Фото поля" />
+          </div>
+          <div class="session-hero-info">
+            <p class="eyebrow">Сессия</p>
+            <h2 class="section-title">{{ session.title }}</h2>
+          </div>
+        </div>
+        <div class="session-hero-facts">
+          <p>🕒 {{ sessionScheduleText }}</p>
+          <p>
+            📍 {{ sessionLocationText }}
+            <a v-if="session.locationUrl" class="map-link" :href="session.locationUrl" target="_blank" rel="noreferrer">
+              Адрес на карте
+            </a>
+          </p>
+          <p class="session-hero-inline-facts">
+            <span>⚽ Игроки {{ sessionPlayers.length }}/{{ session.maxPlayers || 'без лимита' }}</span>
+            <span>🏆 {{ sessionFormatShortLabel }}</span>
+          </p>
+        </div>
         <div class="hero-utility-row">
           <button class="ghost-button admin-hero-button" type="button" @click="openAdminDialog">
             Администрирование
           </button>
           <button class="ghost-button overlay-hero-button" type="button" @click="overlayDialogOpen = true">
             Overlay
+          </button>
+          <button class="ghost-button stream-hero-button" type="button" :disabled="sessionIsFinished || pendingStreamStart" @click="streamDialogOpen = true">
+            Stream
           </button>
         </div>
         <a v-if="session.broadcastUrl" class="broadcast-link" :href="session.broadcastUrl" target="_blank" rel="noreferrer">
@@ -87,97 +105,145 @@
           <button class="ghost-button" type="button" @click="settingsOpen = false">Назад</button>
           <button class="primary-button" type="button" @click="saveSessionSettings" :disabled="pendingSessionUpdate || sessionIsFinished">Сохранить</button>
         </div>
-        <div class="stack-sm">
+        <div class="settings-modal-body">
           <div>
             <p class="eyebrow">Настройки</p>
             <h3 class="section-title">Сессия</h3>
           </div>
-          <label class="field-label">
-            <span>Название сессии</span>
-            <input v-model="sessionSettings.title" class="input" placeholder="Название сессии" :disabled="sessionIsFinished" />
-          </label>
-          <label class="field-label">
-            <span>Дата сессии</span>
-            <input v-model="sessionSettings.sessionDate" class="input" type="date" :disabled="sessionIsFinished" />
-          </label>
-          <label class="field-label">
-            <span>Время сессии</span>
-            <input v-model="sessionSettings.sessionTime" class="input" type="time" :disabled="sessionIsFinished" />
-          </label>
-          <label class="field-label">
-            <span>Место</span>
-            <input v-model="sessionSettings.location" class="input" placeholder="Место" :disabled="sessionIsFinished" />
-          </label>
-          <label class="field-label">
-            <span>Адрес поля</span>
-            <input v-model="sessionSettings.locationAddress" class="input" placeholder="Улица, дом" :disabled="sessionIsFinished" />
-          </label>
-          <label class="field-label">
-            <span>Ссылка на поле на 2GIS / Google Maps / Яндекс картах</span>
-            <input v-model="sessionSettings.locationUrl" class="input" type="url" placeholder="https://..." :disabled="sessionIsFinished" />
-          </label>
-          <label class="field-label">
-            <span>Ссылка на трансляцию</span>
-            <input v-model="sessionSettings.broadcastUrl" class="input" type="url" placeholder="https://..." :disabled="sessionIsFinished" />
-          </label>
-          <label class="field-label">
-            <span>Telegram chat ID</span>
-            <input v-model.number="sessionSettings.telegramChatId" class="input" type="number" placeholder="-100..." :disabled="sessionIsFinished" />
-          </label>
-          <label class="field-label">
-            <span>Взнос, тенге</span>
-            <input v-model.number="sessionSettings.feeAmount" class="input" type="number" min="0" :disabled="sessionIsFinished" />
-          </label>
-          <label class="field-label">
-            <span>Кому скидывать взнос</span>
-            <input v-model="sessionSettings.feeRecipient" class="input" placeholder="Kaspi / имя / телефон" :disabled="sessionIsFinished" />
-          </label>
-          <div class="field-label reminder-settings reminder-settings--compact">
-            <span class="reminder-settings__title">Настройте напоминания по взносам</span>
-            <p class="reminder-settings__hint">Уведомления будут приходить перед игрой за ...</p>
-            <div class="reminder-options-row">
-              <label v-for="hours in contributionReminderOptionHours" :key="`modal-${hours}`" class="reminder-checkbox">
-                <span>{{ hours }} ч.</span>
-                <input
-                  type="checkbox"
-                  :checked="hasContributionReminder(hours)"
-                  :disabled="pendingReminderUpdate || sessionIsFinished"
-                  @change="toggleContributionReminder(hours, ($event.target as HTMLInputElement).checked)"
-                />
+
+          <div class="settings-group">
+            <p class="settings-group__title">Основное</p>
+            <label class="field-label">
+              <span>Название сессии</span>
+              <input v-model="sessionSettings.title" class="input" placeholder="Название сессии" :disabled="sessionIsFinished" />
+            </label>
+            <div class="date-time-row">
+              <label class="field-label">
+                <span>Дата сессии</span>
+                <input v-model="sessionSettings.sessionDate" class="input" type="date" :disabled="sessionIsFinished" />
               </label>
-              <form class="reminder-form reminder-form--compact" @submit.prevent="addCustomContributionReminderOption()">
-                <input
-                  v-model.number="reminderForm.hoursBefore"
-                  class="input"
-                  type="number"
-                  min="1"
-                  placeholder="Свое"
-                  :disabled="pendingReminderUpdate || sessionIsFinished"
-                />
-                <button class="ghost-button reminder-add-button" type="submit" :disabled="pendingReminderUpdate || sessionIsFinished">+</button>
-              </form>
+              <label class="field-label">
+                <span>Время сессии</span>
+                <input v-model="sessionSettings.sessionTime" class="input" type="time" :disabled="sessionIsFinished" />
+              </label>
             </div>
           </div>
-          <label class="field-label">
-            <span>Длительность матча, минут</span>
-            <input v-model.number="sessionSettings.plannedMatchDurationMinutes" class="input" type="number" min="1" :disabled="sessionIsFinished" />
-          </label>
-          <label class="field-label">
-            <span>Длительность сессии, минут</span>
-            <input v-model.number="sessionSettings.sessionDurationMinutes" class="input" type="number" min="1" :disabled="sessionIsFinished" />
-          </label>
-          <label class="field-label">
-            <span>Максимум игроков</span>
-            <input v-model.number="sessionSettings.maxPlayers" class="input" type="number" min="1" :disabled="sessionIsFinished" />
-          </label>
-          <label class="field-label">
-            <span>Формат игроков</span>
-            <input v-model="sessionSettings.playerFormat" class="input" placeholder="6x6" :disabled="sessionIsFinished" />
-          </label>
-          <label class="field-label">
-            <span>Заметки</span>
-            <textarea v-model="sessionSettings.notes" class="input textarea" placeholder="Заметки" :disabled="sessionIsFinished"></textarea>
-          </label>
+
+          <div class="settings-group">
+            <p class="settings-group__title">Место</p>
+            <label class="field-label">
+              <span>Место</span>
+              <input v-model="sessionSettings.location" class="input" placeholder="Место" :disabled="sessionIsFinished" />
+            </label>
+            <label class="field-label">
+              <span>Адрес поля</span>
+              <input v-model="sessionSettings.locationAddress" class="input" placeholder="Улица, дом" :disabled="sessionIsFinished" />
+            </label>
+            <label class="field-label">
+              <span>Ссылка на поле на 2GIS / Google Maps / Яндекс картах</span>
+              <input v-model="sessionSettings.locationUrl" class="input" type="url" placeholder="https://..." :disabled="sessionIsFinished" />
+            </label>
+          </div>
+
+          <div class="settings-group">
+            <p class="settings-group__title">Формат игры</p>
+            <div class="format-metrics-row">
+              <label class="field-label">
+                <span>Длительность матча, минут</span>
+                <input v-model.number="sessionSettings.plannedMatchDurationMinutes" class="input" type="number" min="1" :disabled="sessionIsFinished" />
+              </label>
+              <label class="field-label">
+                <span>Длительность сессии, минут</span>
+                <input v-model.number="sessionSettings.sessionDurationMinutes" class="input" type="number" min="1" :disabled="sessionIsFinished" />
+              </label>
+              <label class="field-label">
+                <span>Максимум игроков</span>
+                <input v-model.number="sessionSettings.maxPlayers" class="input" type="number" min="1" :disabled="sessionIsFinished" />
+              </label>
+            </div>
+            <label class="field-label">
+              <span>Формат игроков</span>
+              <input v-model="sessionSettings.playerFormat" class="input" placeholder="6x6" :disabled="sessionIsFinished" />
+            </label>
+          </div>
+
+          <div class="settings-group">
+            <p class="settings-group__title">Оплата</p>
+            <label class="field-label">
+              <span>Взнос, тенге</span>
+              <input v-model.number="sessionSettings.feeAmount" class="input" type="number" min="0" :disabled="sessionIsFinished" />
+            </label>
+            <label class="field-label">
+              <span>Кому скидывать взнос</span>
+              <input v-model="sessionSettings.feeRecipient" class="input" placeholder="Kaspi / имя / телефон" :disabled="sessionIsFinished" />
+            </label>
+            <div class="field-label reminder-settings reminder-settings--compact">
+              <span class="reminder-settings__title">Настройте напоминания по взносам</span>
+              <p class="reminder-settings__hint">Уведомления будут приходить перед игрой за ...</p>
+              <div class="reminder-options-row">
+                <label v-for="hours in contributionReminderOptionHours" :key="`modal-${hours}`" class="reminder-checkbox">
+                  <span>{{ hours }} ч.</span>
+                  <input
+                    type="checkbox"
+                    :checked="hasContributionReminder(hours)"
+                    :disabled="pendingReminderUpdate || sessionIsFinished"
+                    @change="toggleContributionReminder(hours, ($event.target as HTMLInputElement).checked)"
+                  />
+                </label>
+                <form class="reminder-form reminder-form--compact" @submit.prevent="addCustomContributionReminderOption()">
+                  <input
+                    v-model.number="reminderForm.hoursBefore"
+                    class="input"
+                    type="number"
+                    min="1"
+                    placeholder="Свое"
+                    :disabled="pendingReminderUpdate || sessionIsFinished"
+                  />
+                  <button class="ghost-button reminder-add-button" type="submit" :disabled="pendingReminderUpdate || sessionIsFinished">+</button>
+                </form>
+              </div>
+            </div>
+          </div>
+
+          <div class="settings-group">
+            <p class="settings-group__title">Дополнительно</p>
+            <label class="field-label">
+              <span>Telegram chat ID</span>
+              <input v-model.number="sessionSettings.telegramChatId" class="input" type="number" placeholder="-100..." :disabled="sessionIsFinished" />
+            </label>
+            <label class="field-label">
+              <span>Заметки</span>
+              <textarea v-model="sessionSettings.notes" class="input textarea" placeholder="Заметки" :disabled="sessionIsFinished"></textarea>
+            </label>
+          </div>
+
+          <div class="settings-group">
+            <p class="settings-group__title">Трансляция</p>
+            <label class="field-label">
+              <span>Ссылка на трансляцию</span>
+              <input v-model="sessionSettings.broadcastUrl" class="input" type="url" placeholder="https://..." :disabled="sessionIsFinished" />
+            </label>
+            <div class="stream-shift-card">
+              <label class="reminder-checkbox">
+                <span>Сдвиг вперед</span>
+                <input v-model="streamShiftForward" type="checkbox" :disabled="pendingStreamShift" />
+              </label>
+              <label class="field-label">
+                <span>Секунд</span>
+                <input v-model.number="streamShiftSeconds" class="input" type="number" min="1" placeholder="10" :disabled="pendingStreamShift" />
+              </label>
+              <button class="ghost-button" type="button" :disabled="pendingStreamShift || !streamShiftSeconds" @click="applyStreamShift">Применить сдвиг</button>
+            </div>
+            <button class="ghost-button stream-timeline-button" type="button" :disabled="pendingTimelineGeneration" @click="generateStreamTimeline">
+              Сгенерировать тайм-коды для трансляции
+            </button>
+            <div v-if="generatedTimelineText" class="stream-timeline-result">
+              <textarea class="input textarea" readonly :value="generatedTimelineText"></textarea>
+              <button class="ghost-button" type="button" @click="copyGeneratedTimeline">Скопировать</button>
+            </div>
+          </div>
+
+          <button class="primary-button settings-bottom-save" type="button" @click="saveSessionSettings" :disabled="pendingSessionUpdate || sessionIsFinished">Сохранить</button>
         </div>
       </div>
     </div>
@@ -253,6 +319,31 @@
         <div class="button-row">
           <a class="ghost-button overlay-link-button" :href="overlayPageUrl" target="_blank" rel="noreferrer">Открыть</a>
           <button class="primary-button" type="button" @click="copyOverlayUrl">Скопировать</button>
+        </div>
+      </div>
+    </div>
+
+    <div v-if="streamDialogOpen" class="settings-overlay" @click.self="closeStreamDialog">
+      <div class="settings-window stack-sm">
+        <div class="section-header">
+          <div>
+            <p class="eyebrow">Stream</p>
+            <h3 class="section-title">Начать трансляцию</h3>
+          </div>
+        </div>
+        <div class="stream-instruction">
+          <p>Для проведения трансляции ознакомьтесь с инструкцией. Данная кнопка записывает время старта трансляции на YouTube (или другой платформе).</p>
+          <ol>
+            <li>Подготовьте connection (url/etc) в приложении для записи видеотрансляции.</li>
+            <li>Добавьте overlay, ссылку на него можно взять на странице конкретной сессии (бело-зеленая кнопка).</li>
+            <li>Запустите запись трансляции. Как только трансляция начнется, сразу нажмите кнопку Stream и подтвердите трансляцию.</li>
+          </ol>
+          <p>После этого приложение передаст на сервер время начала трансляции на YouTube. Необязательно после этого сразу начинать игры, тайм-коды всех событий (в том числе начало матчей) автоматически подстроятся под это время. Если не получилось сразу нажать на кнопку, то потом в настройках сессии можно будет добавить нужное количество секунд для сдвига вперед или назад.</p>
+          <strong>Вы готовы начать трансляцию?</strong>
+        </div>
+        <div class="button-row">
+          <button class="ghost-button" type="button" @click="closeStreamDialog">Нет</button>
+          <button class="primary-button" type="button" :disabled="pendingStreamStart" @click="confirmStartStream">Да</button>
         </div>
       </div>
     </div>
@@ -682,7 +773,7 @@ import { computed, onMounted, reactive, ref, watch } from 'vue';
 import { useRouter } from 'vue-router';
 import { api } from '../lib/api';
 import { authState } from '../lib/auth';
-import { matchStatusLabel, playerPositionLabel, sessionStatusLabel } from '../lib/labels';
+import { matchStatusLabel, playerPositionLabel, sessionFormatLabel, sessionStatusLabel } from '../lib/labels';
 import { getStartParam } from '../lib/telegram';
 import type {
   ContributionReminder,
@@ -731,9 +822,16 @@ const pendingSessionUpdate = ref(false);
 const pendingRegistrationStart = ref(false);
 const pendingContributionStart = ref(false);
 const pendingReminderUpdate = ref(false);
+const pendingStreamStart = ref(false);
+const pendingStreamShift = ref(false);
+const pendingTimelineGeneration = ref(false);
+const streamShiftForward = ref(true);
+const streamShiftSeconds = ref<number | null>(null);
+const generatedTimelineText = ref('');
 const settingsOpen = ref(false);
 const adminDialogOpen = ref(false);
 const overlayDialogOpen = ref(false);
+const streamDialogOpen = ref(false);
 const adminUnlocked = ref(false);
 const adminPassword = ref('');
 const playersViewLoading = ref(false);
@@ -764,6 +862,35 @@ const sessionIsFinished = computed(() => session.value?.status === 'FINISHED');
 const sessionIsFull = computed(() => {
   return Boolean(session.value?.maxPlayers && sessionPlayers.value.length >= session.value.maxPlayers);
 });
+const sessionScheduleText = computed(() => {
+  if (!session.value) return '';
+  const date = new Date(`${session.value.sessionDate}T00:00:00`);
+  const weekday = capitalizeFirst(new Intl.DateTimeFormat('ru-RU', { weekday: 'short' }).format(date).replace('.', ''));
+  const dayMonth = new Intl.DateTimeFormat('ru-RU', { day: 'numeric', month: 'long' }).format(date);
+  const startTime = session.value.sessionTime?.slice(0, 5) || '';
+  const duration = session.value.sessionDurationMinutes;
+  if (!startTime || !duration) {
+    return `${weekday}, ${dayMonth}, ${startTime}`.trim();
+  }
+
+  const [hours, minutes] = startTime.split(':').map(Number);
+  const start = new Date(date);
+  start.setHours(hours, minutes, 0, 0);
+  const end = new Date(start.getTime() + duration * 60_000);
+  const endTime = end.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
+  return `${weekday}, ${dayMonth}, ${startTime}-${endTime} (${duration} мин)`;
+});
+const sessionLocationText = computed(() => {
+  if (!session.value) return 'Место не указано';
+  return [session.value.location, session.value.locationAddress]
+    .filter((part): part is string => Boolean(part?.trim()))
+    .join(', ') || 'Место не указано';
+});
+const sessionFormatShortLabel = computed(() => {
+  if (!session.value) return '';
+  if (session.value.formatType === 'ROUND_ROBIN') return 'Круговой';
+  return sessionFormatLabel(session.value.formatType);
+});
 const membershipButtonLabel = computed(() => {
   if (currentUserSessionPlayer.value) return 'Покинуть игру';
   if (currentUserWaitlistEntry.value) return 'Покинуть очередь';
@@ -779,6 +906,10 @@ const contributionReminderOptionHours = computed(() => {
     ...contributionReminders.value.map((reminder) => reminder.hoursBefore)
   ])).sort((left, right) => right - left);
 });
+
+function capitalizeFirst(value: string): string {
+  return value ? value.charAt(0).toUpperCase() + value.slice(1) : value;
+}
 
 const sessionPlayerForm = reactive({
   playerId: undefined as number | undefined,
@@ -1432,6 +1563,95 @@ async function copyOverlayUrl() {
   } catch {
     error.value = 'Не удалось скопировать ссылку';
   }
+}
+
+function closeStreamDialog() {
+  if (pendingStreamStart.value) {
+    return;
+  }
+  streamDialogOpen.value = false;
+}
+
+async function confirmStartStream() {
+  if (sessionIsFinished.value || pendingStreamStart.value) {
+    return;
+  }
+
+  pendingStreamStart.value = true;
+  try {
+    await api.startStream(sessionIdNumber.value);
+    streamDialogOpen.value = false;
+    error.value = '';
+  } catch (streamError) {
+    error.value = streamError instanceof Error ? streamError.message : 'Не удалось начать трансляцию';
+  } finally {
+    pendingStreamStart.value = false;
+  }
+}
+
+async function applyStreamShift() {
+  const seconds = Math.abs(Number(streamShiftSeconds.value));
+  if (!Number.isFinite(seconds) || seconds < 1 || pendingStreamShift.value) {
+    return;
+  }
+
+  pendingStreamShift.value = true;
+  error.value = '';
+  try {
+    const stream = await getPreferredStream();
+    if (!stream) {
+      error.value = 'Сначала начните трансляцию';
+      return;
+    }
+
+    await api.addStreamShift(sessionIdNumber.value, stream.id, streamShiftForward.value ? seconds : -seconds);
+    streamShiftSeconds.value = null;
+  } catch (shiftError) {
+    error.value = shiftError instanceof Error ? shiftError.message : 'Не удалось применить сдвиг трансляции';
+  } finally {
+    pendingStreamShift.value = false;
+  }
+}
+
+async function generateStreamTimeline() {
+  if (pendingTimelineGeneration.value) {
+    return;
+  }
+
+  pendingTimelineGeneration.value = true;
+  error.value = '';
+  try {
+    const stream = await getPreferredStream();
+    if (!stream) {
+      error.value = 'Сначала начните трансляцию';
+      return;
+    }
+
+    const timeline = await api.getStreamTimeline(sessionIdNumber.value, stream.id);
+    generatedTimelineText.value = timeline.descriptionBlock.trim();
+  } catch (timelineError) {
+    error.value = timelineError instanceof Error ? timelineError.message : 'Не удалось сгенерировать тайм-коды';
+  } finally {
+    pendingTimelineGeneration.value = false;
+  }
+}
+
+async function copyGeneratedTimeline() {
+  if (!generatedTimelineText.value) {
+    return;
+  }
+
+  try {
+    await navigator.clipboard.writeText(generatedTimelineText.value);
+    error.value = '';
+  } catch {
+    error.value = 'Не удалось скопировать тайм-коды';
+  }
+}
+
+async function getPreferredStream() {
+  const streams = await api.getStreams(sessionIdNumber.value);
+  return streams.find((item) => !item.streamEndedAt) ?? streams[0] ?? null;
 }
 
 async function unlockAdminPanel() {

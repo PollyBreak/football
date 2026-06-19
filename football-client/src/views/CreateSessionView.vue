@@ -21,14 +21,37 @@
             <input v-model="form.sessionTime" class="input" type="time" required />
           </label>
         </div>
-        <input v-model="form.location" class="input" placeholder="Место" />
+        <label class="field-label">
+          <span>Место</span>
+          <select v-model="form.venueId" class="input">
+            <option :value="null">Новое место / вручную</option>
+            <option v-for="venue in venues" :key="venue.id" :value="venue.id">
+              {{ venue.name }}
+            </option>
+          </select>
+          <input v-model="form.location" class="input" placeholder="Место" :disabled="Boolean(form.venueId)" />
+        </label>
         <label class="field-label">
           <span>Адрес поля</span>
-          <input v-model="form.locationAddress" class="input" placeholder="Улица, дом" />
+          <input v-model="form.locationAddress" class="input" placeholder="Улица, дом" :disabled="Boolean(form.venueId)" />
         </label>
         <label class="field-label">
           <span>Ссылка на поле на 2GIS / Google Maps / Яндекс картах</span>
-          <input v-model="form.locationUrl" class="input" type="url" placeholder="https://..." />
+          <input v-model="form.locationUrl" class="input" type="url" placeholder="https://..." :disabled="Boolean(form.venueId)" />
+        </label>
+        <div class="field-label">
+          <span>Фотография поля</span>
+          <div class="venue-photo-row">
+            <label class="venue-photo-button" :class="{ 'is-disabled': photoUploadDisabled }">
+              <span>{{ photoUploadPending ? 'Загружаем...' : 'Выбрать файл' }}</span>
+              <input class="venue-photo-input" type="file" accept="image/jpeg,image/png,image/webp" :disabled="photoUploadDisabled" @change="uploadVenuePhoto" />
+            </label>
+            <img v-if="form.venuePhotoUrl" class="venue-photo-preview" :src="form.venuePhotoUrl" alt="Фотография поля" />
+          </div>
+        </div>
+        <label class="reminder-checkbox">
+          <span>Сохранить поле для следующих сессий</span>
+          <input v-model="form.saveVenue" type="checkbox" :disabled="Boolean(form.venueId)" />
         </label>
         <label class="field-label">
           <span>Ссылка на трансляцию</span>
@@ -111,11 +134,11 @@
 </template>
 
 <script setup lang="ts">
-import { computed, reactive, ref } from 'vue';
+import { computed, onMounted, reactive, ref, watch } from 'vue';
 import { RouterLink, useRouter } from 'vue-router';
 import { api } from '../lib/api';
 import { sessionFormatLabel } from '../lib/labels';
-import type { SessionFormatType } from '../types';
+import type { SessionFormatType, SessionVenue } from '../types';
 
 const router = useRouter();
 const pending = ref(false);
@@ -128,6 +151,8 @@ const customReminderHours = ref<number[]>([]);
 const customReminderHoursBefore = ref<number | null>(null);
 const customPlayerFormatOptions = ref<string[]>([]);
 const customPlayerFormatSize = ref<number | null>(null);
+const venues = ref<SessionVenue[]>([]);
+const photoUploadPending = ref(false);
 const reminderOptionHours = computed(() => {
   return Array.from(new Set([...reminderQuickHours, ...customReminderHours.value, ...selectedReminderHours.value]))
     .sort((left, right) => right - left);
@@ -136,14 +161,20 @@ const visiblePlayerFormatOptions = computed(() => {
   return Array.from(new Set([...playerFormatOptions, ...customPlayerFormatOptions.value, form.playerFormat]))
     .filter(Boolean);
 });
+const photoUploadDisabled = computed(() => {
+  return (!form.saveVenue && !form.venueId) || Boolean(form.venueId) || photoUploadPending.value;
+});
 
 const form = reactive({
   title: '',
   sessionDate: new Date().toISOString().slice(0, 10),
   sessionTime: '20:00',
+  venueId: null as number | null,
   location: '',
   locationAddress: '',
   locationUrl: '',
+  venuePhotoUrl: '',
+  saveVenue: false,
   broadcastUrl: '',
   telegramChatId: null as number | null,
   feeAmount: null as number | null,
@@ -173,9 +204,44 @@ function validateForm(): boolean {
   const firstError = requiredFields
     .map((field) => fieldError(field))
     .find(Boolean);
-  error.value = firstError || '';
-  return !firstError;
+  if (firstError) {
+    error.value = firstError;
+    return false;
+  }
+  if (form.saveVenue && !form.venueId && !form.location.trim()) {
+    error.value = 'Укажите название места, чтобы сохранить его';
+    return false;
+  }
+  if (form.saveVenue && !form.venueId && venues.value.some((venue) => venue.name.trim().toLowerCase() === form.location.trim().toLowerCase())) {
+    error.value = 'Место с таким названием уже есть. Выберите его из списка';
+    return false;
+  }
+  error.value = '';
+  return true;
 }
+
+const selectedVenue = computed(() => {
+  return venues.value.find((venue) => venue.id === form.venueId) ?? null;
+});
+
+onMounted(async () => {
+  try {
+    venues.value = await api.getSessionVenues();
+  } catch (err) {
+    error.value = err instanceof Error ? err.message : 'Не удалось загрузить сохраненные места';
+  }
+});
+
+watch(selectedVenue, (venue) => {
+  if (!venue) {
+    return;
+  }
+  form.location = venue.name;
+  form.locationAddress = venue.address ?? '';
+  form.locationUrl = venue.gisUrl ?? '';
+  form.venuePhotoUrl = venue.photoUrl ?? '';
+  form.saveVenue = false;
+});
 
 function toggleReminderHour(hoursBefore: number, checked: boolean) {
   if (checked) {
@@ -216,6 +282,26 @@ function applyCustomPlayerFormat() {
   error.value = '';
 }
 
+async function uploadVenuePhoto(event: Event) {
+  const input = event.target as HTMLInputElement;
+  const file = input.files?.[0];
+  if (!file) {
+    return;
+  }
+
+  photoUploadPending.value = true;
+  error.value = '';
+  try {
+    const response = await api.uploadSessionVenuePhoto(file);
+    form.venuePhotoUrl = response.url;
+  } catch (err) {
+    error.value = err instanceof Error ? err.message : 'Не удалось загрузить фото поля';
+    input.value = '';
+  } finally {
+    photoUploadPending.value = false;
+  }
+}
+
 async function createSession() {
   if (!validateForm()) {
     return;
@@ -228,9 +314,12 @@ async function createSession() {
       title: form.title,
       sessionDate: form.sessionDate,
       sessionTime: form.sessionTime,
+      venueId: form.venueId,
       location: form.location || null,
       locationAddress: form.locationAddress || null,
       locationUrl: form.locationUrl || null,
+      saveVenue: form.saveVenue,
+      venuePhotoUrl: form.venuePhotoUrl || null,
       broadcastUrl: form.broadcastUrl || null,
       telegramChatId: form.telegramChatId || null,
       feeAmount: form.feeAmount || null,

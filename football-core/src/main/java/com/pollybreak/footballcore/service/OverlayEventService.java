@@ -20,6 +20,8 @@ public class OverlayEventService {
 
     public static final String MATCH_STARTED = "MATCH_STARTED";
     public static final String MATCH_FINISHED = "MATCH_FINISHED";
+    public static final String MATCH_PAUSED = "MATCH_PAUSED";
+    public static final String MATCH_RESUMED = "MATCH_RESUMED";
     public static final String GOAL_RECORDED = "GOAL_RECORDED";
     public static final String GOAL_CANCELLED = "GOAL_CANCELLED";
 

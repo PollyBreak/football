@@ -8,11 +8,14 @@ import com.pollybreak.footballcore.api.dto.match.SessionMatchResponse;
 import com.pollybreak.footballcore.api.dto.session.SessionStandingsResponse;
 import com.pollybreak.footballcore.api.dto.session.SessionStandingsRowResponse;
 import com.pollybreak.footballcore.domain.entity.GameSession;
+import com.pollybreak.footballcore.domain.entity.MatchEvent;
 import com.pollybreak.footballcore.domain.entity.SessionMatch;
 import com.pollybreak.footballcore.domain.entity.SessionTeam;
+import com.pollybreak.footballcore.domain.enums.MatchEventType;
 import com.pollybreak.footballcore.domain.enums.MatchStatus;
 import java.time.OffsetDateTime;
 import com.pollybreak.footballcore.repository.GameSessionRepository;
+import com.pollybreak.footballcore.repository.MatchEventRepository;
 import com.pollybreak.footballcore.repository.SessionMatchRepository;
 import com.pollybreak.footballcore.repository.SessionTeamRepository;
 import java.time.Duration;
@@ -33,6 +36,8 @@ public class SessionMatchService {
     private final GameSessionRepository gameSessionRepository;
     private final SessionTeamRepository sessionTeamRepository;
     private final OverlayEventService overlayEventService;
+    private final MatchEventRepository matchEventRepository;
+    private final StreamBroadcastService streamBroadcastService;
 
     public List<SessionMatch> findBySessionId(Long sessionId) {
         return sessionMatchRepository.findAllBySessionIdOrderByMatchNumberAsc(sessionId);
@@ -131,6 +136,8 @@ public class SessionMatchService {
         SessionMatch match = getById(matchId);
         match.setStatus(MatchStatus.IN_PROGRESS);
         match.setStartedAt(request.startedAt() != null ? request.startedAt() : OffsetDateTime.now());
+        match.setEndedAt(null);
+        saveSystemEvent(match, MatchEventType.MATCH_STARTED);
         SessionMatchResponse response = SessionMatchResponse.fromEntity(match);
         overlayEventService.publishAfterCommit(
                 OverlayEventService.MATCH_STARTED,
@@ -159,6 +166,7 @@ public class SessionMatchService {
         }
 
         syncWinningTeam(match);
+        saveSystemEvent(match, MatchEventType.MATCH_FINISHED);
         SessionMatchResponse response = SessionMatchResponse.fromEntity(match);
         overlayEventService.publishAfterCommit(
                 OverlayEventService.MATCH_FINISHED,
@@ -169,10 +177,29 @@ public class SessionMatchService {
     }
 
     @Transactional
+    public SessionMatchResponse pause(Long matchId) {
+        SessionMatch match = getById(matchId);
+        if (match.getStatus() != MatchStatus.IN_PROGRESS) {
+            throw new IllegalArgumentException("Only in-progress matches can be paused");
+        }
+
+        match.setStatus(MatchStatus.PAUSED);
+        match.setEndedAt(OffsetDateTime.now());
+        saveSystemEvent(match, MatchEventType.MATCH_PAUSED);
+        SessionMatchResponse response = SessionMatchResponse.fromEntity(match);
+        overlayEventService.publishAfterCommit(
+                OverlayEventService.MATCH_PAUSED,
+                match.getSession().getId(),
+                match.getId()
+        );
+        return response;
+    }
+
+    @Transactional
     public SessionMatchResponse resume(Long matchId) {
         SessionMatch match = getById(matchId);
-        if (match.getStatus() != MatchStatus.FINISHED) {
-            throw new IllegalArgumentException("Only finished matches can be resumed");
+        if (match.getStatus() != MatchStatus.FINISHED && match.getStatus() != MatchStatus.PAUSED) {
+            throw new IllegalArgumentException("Only finished or paused matches can be resumed");
         }
 
         OffsetDateTime resumedAt = OffsetDateTime.now();
@@ -181,10 +208,11 @@ public class SessionMatchService {
         match.setStartedAt(resumedAt.minus(elapsedBeforeFinish));
         match.setEndedAt(null);
         match.setWinningTeam(null);
+        saveSystemEvent(match, MatchEventType.MATCH_RESUMED);
 
         SessionMatchResponse response = SessionMatchResponse.fromEntity(match);
         overlayEventService.publishAfterCommit(
-                OverlayEventService.MATCH_STARTED,
+                OverlayEventService.MATCH_RESUMED,
                 match.getSession().getId(),
                 match.getId()
         );
@@ -222,6 +250,14 @@ public class SessionMatchService {
         OffsetDateTime end = match.getEndedAt() != null ? match.getEndedAt() : fallbackEnd;
         Duration elapsed = Duration.between(match.getStartedAt(), end);
         return elapsed.isNegative() ? Duration.ZERO : elapsed;
+    }
+
+    private MatchEvent saveSystemEvent(SessionMatch match, MatchEventType eventType) {
+        MatchEvent event = new MatchEvent();
+        event.setMatch(match);
+        event.setEventType(eventType);
+        streamBroadcastService.attachActiveStreamTimecode(event, match.getSession().getId());
+        return matchEventRepository.save(event);
     }
 
     private void applyMatchResult(Map<Long, MutableStanding> table, SessionMatch match) {

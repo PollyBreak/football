@@ -5,6 +5,7 @@ import com.pollybreak.footballcore.domain.enums.MatchEventType;
 import java.util.List;
 import java.util.Optional;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
@@ -14,9 +15,22 @@ public interface MatchEventRepository extends JpaRepository<MatchEvent, Long> {
 
     List<MatchEvent> findAllByMatchSessionIdOrderByEventTimeAscIdAsc(Long sessionId);
 
+    List<MatchEvent> findAllByStreamBroadcast_IdOrderByStreamOffsetSecondsAscIdAsc(Long streamBroadcastId);
+
     List<MatchEvent> findAllByLinkedEventId(Long linkedEventId);
 
     Optional<MatchEvent> findByIdAndMatchId(Long id, Long matchId);
+
+    @Modifying
+    @Query("""
+            delete from MatchEvent me
+            where me.match.id in (
+                select sm.id
+                from SessionMatch sm
+                where sm.session.id = :sessionId
+            )
+            """)
+    void deleteAllBySessionId(@Param("sessionId") Long sessionId);
 
     long countByPlayerIdAndEventType(Long playerId, MatchEventType eventType);
 

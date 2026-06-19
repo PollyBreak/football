@@ -1,6 +1,10 @@
 spring:
   application:
     name: football-core
+  servlet:
+    multipart:
+      max-file-size: 8MB
+      max-request-size: 8MB
   datasource:
     url: ${DB_URL:jdbc:postgresql://localhost:5432/football_app}
     username: ${DB_USERNAME:football_user}
@@ -32,6 +36,8 @@ app:
     fixed-delay-ms: ${CONTRIBUTION_REMINDER_FIXED_DELAY_MS:1800000}
   cors:
     allowed-origin-patterns: ${CORS_ALLOWED_ORIGIN_PATTERNS:http://localhost:*,http://127.0.0.1:*,https://localhost:*,https://127.0.0.1:*}
+  uploads:
+    venue-photos-dir: ${VENUE_PHOTOS_DIR:uploads/session-venues}
 
 server:
   port: ${PORT:8080}

@@ -38,6 +38,7 @@ export function matchStatusLabel(status: MatchStatus): string {
   const labels: Record<MatchStatus, string> = {
     PLANNED: 'Запланирован',
     IN_PROGRESS: 'Идет',
+    PAUSED: 'Пауза',
     FINISHED: 'Завершен',
     CANCELLED: 'Отменен'
   };
@@ -49,7 +50,13 @@ export function matchEventLabel(type: string): string {
   const labels: Record<string, string> = {
     GOAL: 'Гол',
     OWN_GOAL: 'Автогол',
-    ASSIST: 'Передача'
+    ASSIST: 'Передача',
+    PENALTY: 'Пенальти',
+    GOAL_CANCELLED: 'Гол отменен',
+    MATCH_STARTED: 'Начало матча',
+    MATCH_FINISHED: 'Завершение матча',
+    MATCH_PAUSED: 'Пауза',
+    MATCH_RESUMED: 'Возобновление'
   };
 
   return labels[type] ?? type;

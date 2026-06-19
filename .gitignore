@@ -8,6 +8,8 @@ dist/
 
 # Backend build output
 target/
+uploads/
+football-core/uploads/
 
 # Logs and local tooling
 *.log

@@ -49,6 +49,10 @@ public class GameSession {
     @Column(name = "location_url", length = 500)
     private String locationUrl;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "venue_id")
+    private SessionVenue venue;
+
     @Column(name = "broadcast_url", length = 500)
     private String broadcastUrl;
 

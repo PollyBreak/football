@@ -7,7 +7,7 @@ export type PlayerPosition =
 
 export type SessionFormatType = 'ROUND_ROBIN' | 'KNOCKOUT' | 'KING_OF_THE_HILL' | 'CUSTOM';
 export type SessionStatus = 'PLANNED' | 'IN_PROGRESS' | 'FINISHED' | 'CANCELLED';
-export type MatchStatus = 'PLANNED' | 'IN_PROGRESS' | 'FINISHED' | 'CANCELLED';
+export type MatchStatus = 'PLANNED' | 'IN_PROGRESS' | 'PAUSED' | 'FINISHED' | 'CANCELLED';
 
 export interface PlayerProfile {
   playerId: number;
@@ -71,6 +71,8 @@ export interface GameSession {
   location: string | null;
   locationAddress: string | null;
   locationUrl: string | null;
+  venueId: number | null;
+  venuePhotoUrl: string | null;
   broadcastUrl: string | null;
   telegramChatId: number | null;
   telegramChatTitle: string | null;
@@ -90,6 +92,19 @@ export interface GameSession {
   startedAt: string | null;
   endedAt: string | null;
   teams: SessionTeam[];
+}
+
+export interface SessionVenue {
+  id: number;
+  name: string;
+  address: string | null;
+  gisUrl: string | null;
+  photoUrl: string | null;
+  createdAt: string;
+}
+
+export interface FileUploadResponse {
+  url: string;
 }
 
 export interface ContributionReminder {
@@ -214,6 +229,43 @@ export interface SessionStandings {
   standings: SessionStandingsRow[];
 }
 
+export interface StreamBroadcast {
+  id: number;
+  sessionId: number;
+  title: string | null;
+  youtubeVideoId: string | null;
+  youtubeBroadcastId: string | null;
+  streamStartedAt: string;
+  streamEndedAt: string | null;
+  timelineShiftSeconds: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface StreamTimelineItem {
+  eventId: number;
+  matchId: number;
+  matchNumber: number | null;
+  roundNumber: number | null;
+  eventType: string;
+  streamOffsetSeconds: number | null;
+  adjustedStreamOffsetSeconds: number | null;
+  timecode: string;
+  playerName: string | null;
+  relatedPlayerName: string | null;
+  teamName: string | null;
+  text: string;
+}
+
+export interface StreamTimeline {
+  streamId: number;
+  sessionId: number;
+  youtubeVideoId: string | null;
+  timelineShiftSeconds: number;
+  descriptionBlock: string;
+  items: StreamTimelineItem[];
+}
+
 export interface OverlayTeam {
   id: number;
   name: string;
@@ -241,6 +293,8 @@ export type OverlayEventType =
   | 'CONNECTED'
   | 'MATCH_STARTED'
   | 'MATCH_FINISHED'
+  | 'MATCH_PAUSED'
+  | 'MATCH_RESUMED'
   | 'GOAL_RECORDED'
   | 'GOAL_CANCELLED';
 

@@ -482,6 +482,8 @@ function connectStream() {
   events.addEventListener('CONNECTED', handleOverlayEvent);
   events.addEventListener('MATCH_STARTED', handleOverlayEvent);
   events.addEventListener('MATCH_FINISHED', handleOverlayEvent);
+  events.addEventListener('MATCH_PAUSED', handleOverlayEvent);
+  events.addEventListener('MATCH_RESUMED', handleOverlayEvent);
   events.addEventListener('GOAL_RECORDED', handleOverlayEvent);
   events.addEventListener('GOAL_CANCELLED', handleOverlayEvent);
 
@@ -894,10 +896,11 @@ function positionLabel(position: PlayerPosition | null): string {
   grid-template-columns: minmax(0, 430px) 154px minmax(0, 430px);
   align-items: end;
   justify-content: center;
-  gap: 26px;
+  column-gap: 42px;
 }
 
 .overlay-team-panel {
+  width: 100%;
   min-width: 0;
   min-height: 112px;
   display: flex;

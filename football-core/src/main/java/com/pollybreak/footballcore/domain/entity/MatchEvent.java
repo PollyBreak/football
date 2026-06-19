@@ -55,11 +55,21 @@ public class MatchEvent {
     @JoinColumn(name = "linked_event_id")
     private MatchEvent linkedEvent;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "stream_broadcast_id")
+    private StreamBroadcast streamBroadcast;
+
     @Column(name = "minute_in_match")
     private Integer minuteInMatch;
 
     @Column(name = "second_in_match")
     private Integer secondInMatch;
+
+    @Column(name = "stream_offset_seconds")
+    private Integer streamOffsetSeconds;
+
+    @Column(name = "stream_event_time")
+    private OffsetDateTime streamEventTime;
 
     @Column(name = "event_time", nullable = false, insertable = false, updatable = false)
     private OffsetDateTime eventTime;

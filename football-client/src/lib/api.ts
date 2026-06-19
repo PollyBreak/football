@@ -2,6 +2,7 @@ import type {
   TelegramAuthResponse,
   ContributionReminder,
   ContributionStatus,
+  FileUploadResponse,
   GameSession,
   MatchEvent,
   OverlayState,
@@ -9,9 +10,12 @@ import type {
   SessionMatch,
   SessionPlayer,
   SessionJoinResponse,
+  SessionVenue,
   SessionStandings,
   SessionTeamPlayer,
-  SessionWaitlistEntry
+  SessionWaitlistEntry,
+  StreamBroadcast,
+  StreamTimeline
 } from '../types';
 
 const rawBaseUrl = (import.meta.env.VITE_API_BASE_URL ?? '').trim();
@@ -64,6 +68,23 @@ function parseErrorMessage(text: string, status: number): string {
   return text;
 }
 
+async function uploadFile<T>(path: string, fieldName: string, file: File): Promise<T> {
+  const formData = new FormData();
+  formData.append(fieldName, file);
+  const normalizedPath = path.startsWith('/') ? path : `/${path}`;
+  const response = await fetch(`${BASE_URL}${normalizedPath}`, {
+    method: 'POST',
+    body: formData
+  });
+
+  if (!response.ok) {
+    const text = await response.text();
+    throw new Error(parseErrorMessage(text, response.status));
+  }
+
+  return JSON.parse(await response.text()) as T;
+}
+
 export const api = {
   telegramAuth(initData: string): Promise<TelegramAuthResponse> {
     return request('/api/auth/telegram', {
@@ -91,6 +112,15 @@ export const api = {
   },
   updateSession(sessionId: number, payload: Record<string, unknown>): Promise<GameSession> {
     return request(`/api/sessions/${sessionId}`, { method: 'PATCH', body: JSON.stringify(payload) });
+  },
+  getSessionVenues(): Promise<SessionVenue[]> {
+    return request('/api/session-venues');
+  },
+  createSessionVenue(payload: Record<string, unknown>): Promise<SessionVenue> {
+    return request('/api/session-venues', { method: 'POST', body: JSON.stringify(payload) });
+  },
+  uploadSessionVenuePhoto(file: File): Promise<FileUploadResponse> {
+    return uploadFile('/api/session-venues/photos', 'file', file);
   },
   validateTelegramChat(sessionId: number, payload: Record<string, unknown>): Promise<{ chatId: number; title: string | null; valid: boolean }> {
     return request(`/api/sessions/${sessionId}/telegram-chat/validate`, { method: 'POST', body: JSON.stringify(payload) });
@@ -161,11 +191,29 @@ export const api = {
   finishMatch(sessionId: number, matchId: number): Promise<SessionMatch> {
     return request(`/api/sessions/${sessionId}/matches/${matchId}/finish`, { method: 'POST', body: JSON.stringify({}) });
   },
+  pauseMatch(sessionId: number, matchId: number): Promise<SessionMatch> {
+    return request(`/api/sessions/${sessionId}/matches/${matchId}/pause`, { method: 'POST', body: JSON.stringify({}) });
+  },
   resumeMatch(sessionId: number, matchId: number): Promise<SessionMatch> {
     return request(`/api/sessions/${sessionId}/matches/${matchId}/resume`, { method: 'POST', body: JSON.stringify({}) });
   },
   getStandings(sessionId: number): Promise<SessionStandings> {
     return request(`/api/sessions/${sessionId}/standings`);
+  },
+  startStream(sessionId: number): Promise<StreamBroadcast> {
+    return request(`/api/sessions/${sessionId}/streams/start`, { method: 'POST', body: JSON.stringify({}) });
+  },
+  getStreams(sessionId: number): Promise<StreamBroadcast[]> {
+    return request(`/api/sessions/${sessionId}/streams`);
+  },
+  addStreamShift(sessionId: number, streamId: number, shiftSeconds: number): Promise<StreamBroadcast> {
+    return request(`/api/sessions/${sessionId}/streams/${streamId}/shifts`, {
+      method: 'POST',
+      body: JSON.stringify({ shiftSeconds })
+    });
+  },
+  getStreamTimeline(sessionId: number, streamId: number): Promise<StreamTimeline> {
+    return request(`/api/sessions/${sessionId}/streams/${streamId}/timeline`);
   },
   getMatchEvents(matchId: number): Promise<MatchEvent[]> {
     return request(`/api/session-matches/${matchId}/events`);

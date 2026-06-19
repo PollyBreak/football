@@ -1,15 +1,19 @@
 package com.pollybreak.footballcore.service;
 
 import com.pollybreak.footballcore.api.dto.session.CreateGameSessionRequest;
+import com.pollybreak.footballcore.api.dto.session.CreateSessionVenueRequest;
 import com.pollybreak.footballcore.api.dto.session.CreateSessionTeamRequest;
 import com.pollybreak.footballcore.api.dto.session.GameSessionResponse;
 import com.pollybreak.footballcore.api.dto.session.UpdateGameSessionRequest;
 import com.pollybreak.footballcore.domain.entity.AppUser;
 import com.pollybreak.footballcore.domain.entity.GameSession;
+import com.pollybreak.footballcore.domain.entity.SessionVenue;
 import com.pollybreak.footballcore.domain.entity.SessionTeam;
 import com.pollybreak.footballcore.domain.enums.SessionStatus;
 import com.pollybreak.footballcore.repository.AppUserRepository;
 import com.pollybreak.footballcore.repository.GameSessionRepository;
+import com.pollybreak.footballcore.repository.MatchEventRepository;
+import com.pollybreak.footballcore.repository.SessionMatchRepository;
 import com.pollybreak.footballcore.repository.SessionTeamRepository;
 import java.time.LocalDate;
 import java.time.OffsetDateTime;
@@ -26,8 +30,11 @@ public class GameSessionService {
 
     private final GameSessionRepository gameSessionRepository;
     private final SessionTeamRepository sessionTeamRepository;
+    private final SessionMatchRepository sessionMatchRepository;
+    private final MatchEventRepository matchEventRepository;
     private final AppUserRepository appUserRepository;
     private final SessionPlayerService sessionPlayerService;
+    private final SessionVenueService sessionVenueService;
 
     public List<GameSession> findAll() {
         return gameSessionRepository.findAllByOrderBySessionDateDescSessionTimeDescCreatedAtDesc();
@@ -52,9 +59,7 @@ public class GameSessionService {
         session.setTitle(request.title());
         session.setSessionDate(request.sessionDate());
         session.setSessionTime(request.sessionTime());
-        session.setLocation(request.location());
-        session.setLocationAddress(request.locationAddress());
-        session.setLocationUrl(request.locationUrl());
+        applyVenue(session, request);
         session.setBroadcastUrl(request.broadcastUrl());
         session.setTelegramChatId(request.telegramChatId());
         session.setTelegramChatTitle(request.telegramChatTitle());
@@ -115,9 +120,9 @@ public class GameSessionService {
         if (request.sessionTime() != null) {
             session.setSessionTime(request.sessionTime());
         }
-        session.setLocation(request.location());
-        session.setLocationAddress(request.locationAddress());
-        session.setLocationUrl(request.locationUrl());
+        session.setLocation(cleanOptional(request.location()));
+        session.setLocationAddress(cleanOptional(request.locationAddress()));
+        session.setLocationUrl(cleanOptional(request.locationUrl()));
         session.setBroadcastUrl(request.broadcastUrl());
         session.setTelegramChatId(request.telegramChatId());
         session.setTelegramChatTitle(request.telegramChatTitle());
@@ -138,6 +143,17 @@ public class GameSessionService {
         return GameSessionResponse.fromEntity(session, sessionTeamRepository.findAllBySessionIdOrderByDisplayOrderAsc(sessionId));
     }
 
+    @Transactional
+    public void deleteById(Long sessionId) {
+        if (!gameSessionRepository.existsById(sessionId)) {
+            throw new IllegalArgumentException("Game session not found: " + sessionId);
+        }
+
+        matchEventRepository.deleteAllBySessionId(sessionId);
+        sessionMatchRepository.deleteAllBySessionId(sessionId);
+        gameSessionRepository.deleteById(sessionId);
+    }
+
     private SessionTeam toSessionTeam(GameSession session, CreateSessionTeamRequest request) {
         SessionTeam team = new SessionTeam();
         team.setSession(session);
@@ -149,5 +165,43 @@ public class GameSessionService {
 
     private int nextDisplayOrder(Long sessionId) {
         return sessionTeamRepository.findAllBySessionIdOrderByDisplayOrderAsc(sessionId).size() + 1;
+    }
+
+    private void applyVenue(GameSession session, CreateGameSessionRequest request) {
+        if (request.venueId() != null) {
+            applyExistingVenue(session, request.venueId());
+            return;
+        }
+
+        session.setLocation(cleanOptional(request.location()));
+        session.setLocationAddress(cleanOptional(request.locationAddress()));
+        session.setLocationUrl(cleanOptional(request.locationUrl()));
+
+        if (Boolean.TRUE.equals(request.saveVenue())) {
+            SessionVenue venue = sessionVenueService.createVenue(new CreateSessionVenueRequest(
+                    request.location(),
+                    request.locationAddress(),
+                    request.locationUrl(),
+                    request.venuePhotoUrl()
+            ));
+            session.setVenue(venue);
+            applyVenueFields(session, venue);
+        }
+    }
+
+    private void applyExistingVenue(GameSession session, Long venueId) {
+        SessionVenue venue = sessionVenueService.getById(venueId);
+        session.setVenue(venue);
+        applyVenueFields(session, venue);
+    }
+
+    private void applyVenueFields(GameSession session, SessionVenue venue) {
+        session.setLocation(venue.getName());
+        session.setLocationAddress(venue.getAddress());
+        session.setLocationUrl(venue.getGisUrl());
+    }
+
+    private String cleanOptional(String value) {
+        return value == null || value.isBlank() ? null : value.trim();
     }
 }
