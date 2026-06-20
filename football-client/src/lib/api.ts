@@ -21,6 +21,36 @@ import type {
 const rawBaseUrl = (import.meta.env.VITE_API_BASE_URL ?? '').trim();
 const BASE_URL = rawBaseUrl.endsWith('/') ? rawBaseUrl.slice(0, -1) : rawBaseUrl;
 
+export function resolveMediaUrl(url: string | null | undefined): string {
+  const value = url?.trim();
+  if (!value) {
+    return '';
+  }
+  if (value.startsWith('/')) {
+    return BASE_URL ? `${BASE_URL}${value}` : value;
+  }
+  if (value.startsWith('//')) {
+    return `${window.location.protocol}${value}`;
+  }
+
+  try {
+    const parsed = new URL(value);
+    if (
+      parsed.protocol === 'http:' &&
+      window.location.protocol === 'https:' &&
+      parsed.hostname !== 'localhost' &&
+      parsed.hostname !== '127.0.0.1'
+    ) {
+      parsed.protocol = 'https:';
+      return parsed.toString();
+    }
+  } catch {
+    // Keep the original value below.
+  }
+
+  return value;
+}
+
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
   const normalizedPath = path.startsWith('/') ? path : `/${path}`;
   const response = await fetch(`${BASE_URL}${normalizedPath}`, {

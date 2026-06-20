@@ -3,8 +3,8 @@
     <div class="card hero-card">
       <div class="session-hero-main">
         <div class="session-hero-heading">
-          <div v-if="session.venuePhotoUrl" class="session-venue-photo">
-            <img :src="session.venuePhotoUrl" alt="Фото поля" />
+          <div v-if="sessionVenuePhotoUrl && !sessionVenuePhotoFailed" class="session-venue-photo">
+            <img :src="sessionVenuePhotoUrl" alt="Фото поля" @error="sessionVenuePhotoFailed = true" />
           </div>
           <div class="session-hero-info">
             <p class="eyebrow">Сессия</p>
@@ -771,7 +771,7 @@
 <script setup lang="ts">
 import { computed, onMounted, reactive, ref, watch } from 'vue';
 import { useRouter } from 'vue-router';
-import { api } from '../lib/api';
+import { api, resolveMediaUrl } from '../lib/api';
 import { authState } from '../lib/auth';
 import { matchStatusLabel, playerPositionLabel, sessionFormatLabel, sessionStatusLabel } from '../lib/labels';
 import { getStartParam } from '../lib/telegram';
@@ -803,6 +803,7 @@ const positions: PlayerPosition[] = ['GOALKEEPER', 'DEFENDER', 'MIDFIELDER', 'FO
 const reminderQuickHours = [10, 5, 2];
 
 const session = ref<GameSession | null>(null);
+const sessionVenuePhotoFailed = ref(false);
 const contributionReminders = ref<ContributionReminder[]>([]);
 const contributionStatuses = ref<ContributionStatus[]>([]);
 const customContributionReminderHours = ref<number[]>([]);
@@ -859,6 +860,7 @@ const currentUserWaitlistEntry = computed(() => {
     : undefined;
 });
 const sessionIsFinished = computed(() => session.value?.status === 'FINISHED');
+const sessionVenuePhotoUrl = computed(() => resolveMediaUrl(session.value?.venuePhotoUrl));
 const sessionIsFull = computed(() => {
   return Boolean(session.value?.maxPlayers && sessionPlayers.value.length >= session.value.maxPlayers);
 });
@@ -2123,6 +2125,10 @@ watch(
     }
   }
 );
+
+watch(sessionVenuePhotoUrl, () => {
+  sessionVenuePhotoFailed.value = false;
+});
 
 onMounted(async () => {
   try {

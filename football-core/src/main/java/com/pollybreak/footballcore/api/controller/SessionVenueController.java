@@ -14,7 +14,6 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
-import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 import org.springframework.web.bind.annotation.RequestParam;
 
 @RestController
@@ -38,9 +37,6 @@ public class SessionVenueController {
     @PostMapping("/photos")
     public FileUploadResponse uploadPhoto(@RequestParam("file") MultipartFile file) {
         String publicPath = sessionVenuePhotoStorageService.save(file);
-        String url = ServletUriComponentsBuilder.fromCurrentContextPath()
-                .path(publicPath)
-                .toUriString();
-        return new FileUploadResponse(url);
+        return new FileUploadResponse(publicPath);
     }
 }

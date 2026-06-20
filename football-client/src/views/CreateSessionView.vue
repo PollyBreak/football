@@ -46,7 +46,7 @@
               <span>{{ photoUploadPending ? 'Загружаем...' : 'Выбрать файл' }}</span>
               <input class="venue-photo-input" type="file" accept="image/jpeg,image/png,image/webp" :disabled="photoUploadDisabled" @change="uploadVenuePhoto" />
             </label>
-            <img v-if="form.venuePhotoUrl" class="venue-photo-preview" :src="form.venuePhotoUrl" alt="Фотография поля" />
+            <img v-if="form.venuePhotoUrl" class="venue-photo-preview" :src="resolveMediaUrl(form.venuePhotoUrl)" alt="Фотография поля" />
           </div>
         </div>
         <label class="reminder-checkbox">
@@ -136,7 +136,7 @@
 <script setup lang="ts">
 import { computed, onMounted, reactive, ref, watch } from 'vue';
 import { RouterLink, useRouter } from 'vue-router';
-import { api } from '../lib/api';
+import { api, resolveMediaUrl } from '../lib/api';
 import { sessionFormatLabel } from '../lib/labels';
 import type { SessionFormatType, SessionVenue } from '../types';
 
