@@ -9,6 +9,7 @@ import com.pollybreak.footballcore.domain.entity.AppUser;
 import com.pollybreak.footballcore.domain.entity.GameSession;
 import com.pollybreak.footballcore.domain.entity.Player;
 import com.pollybreak.footballcore.domain.entity.SessionRegistration;
+import com.pollybreak.footballcore.domain.entity.SessionPlayer;
 import com.pollybreak.footballcore.domain.entity.SessionWaitlistEntry;
 import com.pollybreak.footballcore.domain.entity.TelegramPendingRegistration;
 import com.pollybreak.footballcore.domain.enums.SessionFormatType;
@@ -219,6 +220,17 @@ public class TelegramRegistrationService {
         Set<Long> waitlistPlayerIds = waitlist.stream()
                 .map(entry -> entry.getPlayer().getId())
                 .collect(Collectors.toSet());
+        Set<Long> registeredPlayerIds = groups.values().stream()
+                .flatMap(List::stream)
+                .map(item -> item.getPlayer().getId())
+                .collect(Collectors.toSet());
+        List<Player> activePlayersWithoutRegistration = sessionPlayerRepository
+                .findAllBySessionIdAndActiveTrueOrderByJoinedAtAscIdAsc(session.getId())
+                .stream()
+                .map(SessionPlayer::getPlayer)
+                .filter(player -> !registeredPlayerIds.contains(player.getId()))
+                .filter(player -> !waitlistPlayerIds.contains(player.getId()))
+                .toList();
         long activePlayersCount = sessionPlayerRepository.countBySessionIdAndActiveTrue(session.getId());
         long expectedPlayersCount = session.getMaxPlayers() == null ? activePlayersCount : session.getMaxPlayers();
         Integer durationMinutes = session.getSessionDurationMinutes();
@@ -247,7 +259,7 @@ public class TelegramRegistrationService {
         lines.add("❕Перед регистрацией необходимо зарегистрироваться в <a href=\"" + escapeAttribute(registrationAppUrl()) + "\">приложении</a>. Если вы зарегистрированы, просто нажмите на одну из кнопок.");
         lines.add("");
         lines.add("Участники (" + activePlayersCount + "/" + maxPlayersLabel(session) + "):");
-        lines.add("✅ <i>Записался, иду 100%</i>: " + code(namesPlain(groups.get(SessionRegistrationStatus.GOING), waitlistPlayerIds)));
+        lines.add("✅ <i>Записался, иду 100%</i>: " + code(namesPlain(groups.get(SessionRegistrationStatus.GOING), activePlayersWithoutRegistration, waitlistPlayerIds)));
         lines.add("❓ <i>Записался, но под вопросом</i>: " + code(namesPlain(groups.get(SessionRegistrationStatus.MAYBE), waitlistPlayerIds)));
         lines.add("❌ <i>В этот раз без меня</i>: " + code(namesPlain(groups.get(SessionRegistrationStatus.OUT))));
         lines.add("⌛ <i>Записался, в очереди</i>: " + code(waitlistNamesPlain(waitlist)));
@@ -353,6 +365,24 @@ public class TelegramRegistrationService {
                 .filter(item -> !excludedPlayerIds.contains(item.getPlayer().getId()))
                 .map(item -> playerNameWithPosition(item.getPlayer()))
                 .collect(Collectors.joining(", "));
+        return value.isBlank() ? "-" : value;
+    }
+
+    private String namesPlain(List<SessionRegistration> registrations, List<Player> fallbackPlayers, Set<Long> excludedPlayerIds) {
+        List<String> values = new ArrayList<>();
+        if (registrations != null) {
+            values.addAll(registrations.stream()
+                    .filter(item -> !excludedPlayerIds.contains(item.getPlayer().getId()))
+                    .map(item -> playerNameWithPosition(item.getPlayer()))
+                    .toList());
+        }
+        if (fallbackPlayers != null) {
+            values.addAll(fallbackPlayers.stream()
+                    .filter(player -> !excludedPlayerIds.contains(player.getId()))
+                    .map(this::playerNameWithPosition)
+                    .toList());
+        }
+        String value = String.join(", ", values);
         return value.isBlank() ? "-" : value;
     }
 
