@@ -309,6 +309,13 @@ public class TelegramRegistrationService {
         return appUrl == null || appUrl.isBlank() ? DEFAULT_APP_URL : appUrl;
     }
 
+    private String sessionAppUrl(Long sessionId) {
+        String appUrl = telegramBotProperties.getAppUrl();
+        String safeAppUrl = appUrl == null || appUrl.isBlank() ? DEFAULT_APP_URL : appUrl;
+        String separator = safeAppUrl.contains("?") ? "&" : "?";
+        return safeAppUrl + separator + "startapp=session_" + sessionId;
+    }
+
     private String names(List<SessionRegistration> registrations) {
         if (registrations == null || registrations.isEmpty()) {
             return "-";
