@@ -15,7 +15,8 @@ import type {
   SessionTeamPlayer,
   SessionWaitlistEntry,
   StreamBroadcast,
-  StreamTimeline
+  StreamTimeline,
+  TelegramKnownChat
 } from '../types';
 
 const rawBaseUrl = (import.meta.env.VITE_API_BASE_URL ?? '').trim();
@@ -121,6 +122,9 @@ export const api = {
       method: 'POST',
       body: JSON.stringify({ initData })
     });
+  },
+  getAvailableTelegramChats(userId: number): Promise<TelegramKnownChat[]> {
+    return request(`/api/telegram/chats?userId=${userId}`);
   },
   getPlayers(): Promise<PlayerProfile[]> {
     return request('/api/players?activeOnly=true');

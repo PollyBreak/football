@@ -47,6 +47,13 @@ export interface AuthUser {
   createdAt: string;
 }
 
+export interface TelegramKnownChat {
+  chatId: number;
+  title: string | null;
+  username: string | null;
+  chatType: string;
+}
+
 export interface TelegramAuthResponse {
   authenticated: boolean;
   onboardingRequired: boolean;

@@ -6,10 +6,12 @@ import com.pollybreak.footballcore.api.dto.telegram.ContributionReminderResponse
 import com.pollybreak.footballcore.api.dto.telegram.ContributionStatusResponse;
 import com.pollybreak.footballcore.api.dto.telegram.StartRegistrationRequest;
 import com.pollybreak.footballcore.api.dto.telegram.StartRegistrationResponse;
+import com.pollybreak.footballcore.api.dto.telegram.TelegramKnownChatResponse;
 import com.pollybreak.footballcore.api.dto.telegram.ValidateTelegramChatRequest;
 import com.pollybreak.footballcore.api.dto.telegram.ValidateTelegramChatResponse;
 import com.pollybreak.footballcore.service.SessionContributionReminderService;
 import com.pollybreak.footballcore.service.TelegramContributionService;
+import com.pollybreak.footballcore.service.TelegramKnownChatService;
 import com.pollybreak.footballcore.service.TelegramRegistrationService;
 import jakarta.validation.Valid;
 import java.util.List;
@@ -21,6 +23,7 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -31,6 +34,12 @@ public class TelegramController {
     private final TelegramRegistrationService telegramRegistrationService;
     private final TelegramContributionService telegramContributionService;
     private final SessionContributionReminderService sessionContributionReminderService;
+    private final TelegramKnownChatService telegramKnownChatService;
+
+    @GetMapping("/api/telegram/chats")
+    public List<TelegramKnownChatResponse> getAvailableChats(@RequestParam Long userId) {
+        return telegramKnownChatService.getAvailableChatsForUser(userId);
+    }
 
     @PostMapping("/api/sessions/{sessionId}/telegram-chat/validate")
     public ValidateTelegramChatResponse validateChat(
@@ -86,6 +95,25 @@ public class TelegramController {
     @PostMapping("/api/telegram/webhook")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void webhook(@RequestBody JsonNode update) {
+        telegramKnownChatService.registerChat(update.path("message").path("chat"));
+        telegramKnownChatService.registerChat(update.path("edited_message").path("chat"));
+        telegramKnownChatService.registerChat(update.path("channel_post").path("chat"));
+        telegramKnownChatService.registerChat(update.path("edited_channel_post").path("chat"));
+        telegramKnownChatService.registerChat(update.path("callback_query").path("message").path("chat"));
+
+        JsonNode myChatMember = update.path("my_chat_member");
+        if (!myChatMember.isMissingNode() && !myChatMember.isNull()) {
+            telegramKnownChatService.markChatMembership(
+                    myChatMember.path("chat"),
+                    myChatMember.path("new_chat_member").path("status").asText("")
+            );
+        }
+
+        JsonNode chatMember = update.path("chat_member");
+        if (!chatMember.isMissingNode() && !chatMember.isNull()) {
+            telegramKnownChatService.registerChat(chatMember.path("chat"));
+        }
+
         JsonNode callbackQuery = update.path("callback_query");
         if (!callbackQuery.isMissingNode() && !callbackQuery.isNull()) {
             String data = callbackQuery.path("data").asText("");

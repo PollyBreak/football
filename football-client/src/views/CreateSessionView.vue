@@ -58,8 +58,25 @@
           <input v-model="form.broadcastUrl" class="input" type="url" placeholder="https://..." />
         </label>
         <label class="field-label">
-          <span>Telegram chat ID</span>
-          <input v-model.number="form.telegramChatId" class="input" type="number" placeholder="-100..." />
+          <span>Telegram чат</span>
+          <select v-model="telegramChatSelection" class="input" :disabled="telegramChatsPending">
+            <option value="">Не указывать</option>
+            <option v-for="chat in telegramChats" :key="chat.chatId" :value="String(chat.chatId)">
+              {{ formatTelegramChatOption(chat) }}
+            </option>
+            <option value="manual">Ввести chat ID вручную</option>
+          </select>
+          <input
+            v-if="telegramChatSelection === 'manual'"
+            v-model.number="form.telegramChatId"
+            class="input"
+            type="number"
+            placeholder="-100..."
+          />
+          <p v-else-if="telegramChatsPending" class="muted">Загружаем доступные Telegram-чаты...</p>
+          <p v-else-if="!telegramChats.length" class="muted">
+            Пока бот не видит общих чатов. Можно ввести `chat ID` вручную или сначала добавить бота в нужную группу.
+          </p>
         </label>
         <div class="settings-group">
           <div>
@@ -136,9 +153,10 @@
 <script setup lang="ts">
 import { computed, onMounted, reactive, ref, watch } from 'vue';
 import { RouterLink, useRouter } from 'vue-router';
+import { authState } from '../lib/auth';
 import { api, resolveMediaUrl } from '../lib/api';
 import { sessionFormatLabel } from '../lib/labels';
-import type { SessionFormatType, SessionVenue } from '../types';
+import type { SessionFormatType, SessionVenue, TelegramKnownChat } from '../types';
 
 const router = useRouter();
 const pending = ref(false);
@@ -152,6 +170,9 @@ const customReminderHoursBefore = ref<number | null>(null);
 const customPlayerFormatOptions = ref<string[]>([]);
 const customPlayerFormatSize = ref<number | null>(null);
 const venues = ref<SessionVenue[]>([]);
+const telegramChats = ref<TelegramKnownChat[]>([]);
+const telegramChatsPending = ref(false);
+const telegramChatSelection = ref('');
 const photoUploadPending = ref(false);
 const reminderOptionHours = computed(() => {
   return Array.from(new Set([...reminderQuickHours, ...customReminderHours.value, ...selectedReminderHours.value]))
@@ -177,6 +198,7 @@ const form = reactive({
   saveVenue: false,
   broadcastUrl: '',
   telegramChatId: null as number | null,
+  telegramChatTitle: '',
   feeAmount: null as number | null,
   feeRecipient: '',
   formatType: 'ROUND_ROBIN' as SessionFormatType,
@@ -225,10 +247,21 @@ const selectedVenue = computed(() => {
 });
 
 onMounted(async () => {
+  telegramChatsPending.value = Boolean(authState.user?.id);
   try {
-    venues.value = await api.getSessionVenues();
+    const [loadedVenues, loadedTelegramChats] = await Promise.all([
+      api.getSessionVenues(),
+      authState.user?.id ? api.getAvailableTelegramChats(authState.user.id) : Promise.resolve([])
+    ]);
+    venues.value = loadedVenues;
+    telegramChats.value = loadedTelegramChats;
+    if (!loadedTelegramChats.length) {
+      telegramChatSelection.value = 'manual';
+    }
   } catch (err) {
     error.value = err instanceof Error ? err.message : 'Не удалось загрузить сохраненные места';
+  } finally {
+    telegramChatsPending.value = false;
   }
 });
 
@@ -243,6 +276,25 @@ watch(selectedVenue, (venue) => {
   form.saveVenue = false;
 });
 
+watch(telegramChatSelection, (value) => {
+  if (value === 'manual') {
+    form.telegramChatId = null;
+    form.telegramChatTitle = '';
+    return;
+  }
+
+  if (!value) {
+    form.telegramChatId = null;
+    form.telegramChatTitle = '';
+    return;
+  }
+
+  const chatId = Number(value);
+  const selectedChat = telegramChats.value.find((chat) => chat.chatId === chatId);
+  form.telegramChatId = Number.isFinite(chatId) ? chatId : null;
+  form.telegramChatTitle = selectedChat?.title ?? '';
+});
+
 function toggleReminderHour(hoursBefore: number, checked: boolean) {
   if (checked) {
     if (!selectedReminderHours.value.includes(hoursBefore)) {
@@ -251,6 +303,21 @@ function toggleReminderHour(hoursBefore: number, checked: boolean) {
     return;
   }
   selectedReminderHours.value = selectedReminderHours.value.filter((value) => value !== hoursBefore);
+}
+
+function formatTelegramChatOption(chat: TelegramKnownChat): string {
+  const title = chat.title?.trim();
+  const username = chat.username?.trim();
+  if (title && username) {
+    return `${title} (@${username})`;
+  }
+  if (title) {
+    return title;
+  }
+  if (username) {
+    return `@${username}`;
+  }
+  return `Chat ${chat.chatId}`;
 }
 
 function addCustomReminderHour() {
@@ -322,6 +389,7 @@ async function createSession() {
       venuePhotoUrl: form.venuePhotoUrl || null,
       broadcastUrl: form.broadcastUrl || null,
       telegramChatId: form.telegramChatId || null,
+      telegramChatTitle: form.telegramChatTitle || null,
       feeAmount: form.feeAmount || null,
       feeRecipient: form.feeRecipient || null,
       formatType: form.formatType,
