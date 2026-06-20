@@ -101,6 +101,10 @@ public class GameSession {
     @JoinColumn(name = "created_by")
     private AppUser createdBy;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "recurrence_rule_id")
+    private SessionRecurrenceRule recurrenceRule;
+
     @Column(name = "created_at", nullable = false, insertable = false, updatable = false)
     private OffsetDateTime createdAt;
 

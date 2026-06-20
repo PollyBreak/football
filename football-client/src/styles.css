@@ -1615,16 +1615,25 @@ textarea {
   display: inline-flex;
   align-items: center;
   gap: 7px;
+  min-width: 0;
+  max-width: 100%;
   padding: 7px 9px;
   border: 1px solid var(--input-border);
   border-radius: 999px;
   background: var(--surface-bg);
   color: inherit;
   font-size: 0.84rem;
-  white-space: nowrap;
+  white-space: normal;
+}
+
+.reminder-checkbox span {
+  min-width: 0;
+  overflow-wrap: anywhere;
+  line-height: 1.25;
 }
 
 .reminder-checkbox input {
+  flex: 0 0 auto;
   width: 15px;
   height: 15px;
   margin: 0;
@@ -1648,6 +1657,46 @@ textarea {
   height: 34px;
   padding: 7px 9px;
   border-radius: 999px;
+}
+
+.recurring-event-form {
+  grid-template-columns: 72px minmax(0, 1fr);
+  justify-content: flex-start;
+  gap: 6px;
+}
+
+.recurring-event-form .input {
+  min-width: 0;
+  height: 34px;
+  padding: 7px 9px;
+  border-radius: 999px;
+}
+
+.recurring-event-form__suffix {
+  min-width: 0;
+  font-size: 0.8rem;
+  line-height: 1.15;
+  overflow-wrap: anywhere;
+}
+
+.recurring-event-toggle {
+  justify-content: space-between;
+}
+
+.recurring-event-option {
+  cursor: pointer;
+}
+
+.recurring-event-option__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  width: 100%;
+}
+
+.field-label.is-disabled {
+  opacity: 0.55;
 }
 
 .reminder-add-button {
@@ -1834,5 +1883,28 @@ textarea {
 
   .profile-details {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 480px) {
+  .reminder-checkbox {
+    align-items: flex-start;
+    gap: 6px;
+    padding: 7px 8px;
+    font-size: 0.78rem;
+  }
+
+  .reminder-checkbox span {
+    line-height: 1.2;
+  }
+
+  .recurring-event-form {
+    grid-template-columns: 64px minmax(0, 1fr);
+    gap: 6px;
+  }
+
+  .recurring-event-form__suffix {
+    font-size: 0.74rem;
+    line-height: 1.2;
   }
 }

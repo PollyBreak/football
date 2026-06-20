@@ -6,6 +6,7 @@ export type PlayerPosition =
   | 'UNIVERSAL';
 
 export type SessionFormatType = 'ROUND_ROBIN' | 'KNOCKOUT' | 'KING_OF_THE_HILL' | 'CUSTOM';
+export type SessionRecurrenceType = 'DAYS' | 'MONTHLY';
 export type SessionStatus = 'PLANNED' | 'IN_PROGRESS' | 'FINISHED' | 'CANCELLED';
 export type MatchStatus = 'PLANNED' | 'IN_PROGRESS' | 'PAUSED' | 'FINISHED' | 'CANCELLED';
 
@@ -85,6 +86,10 @@ export interface GameSession {
   telegramChatTitle: string | null;
   telegramRegistrationMessageId: number | null;
   telegramContributionMessageId: number | null;
+  recurrenceRuleId: number | null;
+  recurrenceType: SessionRecurrenceType | null;
+  recurrenceIntervalDays: number | null;
+  recurrenceDayOfMonth: number | null;
   feeAmount: number | null;
   feeRecipient: string | null;
   formatType: SessionFormatType;

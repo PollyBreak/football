@@ -1,6 +1,7 @@
 package com.pollybreak.footballcore.api.dto.session;
 
 import com.pollybreak.footballcore.domain.enums.SessionFormatType;
+import com.pollybreak.footballcore.domain.enums.SessionRecurrenceType;
 import com.pollybreak.footballcore.domain.enums.SessionStatus;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
@@ -22,6 +23,11 @@ public record CreateGameSessionRequest(
         String broadcastUrl,
         Long telegramChatId,
         String telegramChatTitle,
+        Boolean autoStartRegistration,
+        Boolean autoStartContributionCollection,
+        SessionRecurrenceType recurrenceType,
+        Integer recurrenceIntervalDays,
+        Integer recurrenceDayOfMonth,
         Integer feeAmount,
         String feeRecipient,
         @NotNull SessionFormatType formatType,

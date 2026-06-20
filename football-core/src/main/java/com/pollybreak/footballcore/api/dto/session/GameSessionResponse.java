@@ -3,6 +3,7 @@ package com.pollybreak.footballcore.api.dto.session;
 import com.pollybreak.footballcore.domain.entity.GameSession;
 import com.pollybreak.footballcore.domain.entity.SessionTeam;
 import com.pollybreak.footballcore.domain.enums.SessionFormatType;
+import com.pollybreak.footballcore.domain.enums.SessionRecurrenceType;
 import com.pollybreak.footballcore.domain.enums.SessionStatus;
 import java.time.LocalDate;
 import java.time.LocalTime;
@@ -24,6 +25,10 @@ public record GameSessionResponse(
         String telegramChatTitle,
         Long telegramRegistrationMessageId,
         Long telegramContributionMessageId,
+        Long recurrenceRuleId,
+        SessionRecurrenceType recurrenceType,
+        Integer recurrenceIntervalDays,
+        Integer recurrenceDayOfMonth,
         Integer feeAmount,
         String feeRecipient,
         SessionFormatType formatType,
@@ -55,6 +60,10 @@ public record GameSessionResponse(
                 session.getTelegramChatTitle(),
                 session.getTelegramRegistrationMessageId(),
                 session.getTelegramContributionMessageId(),
+                session.getRecurrenceRule() != null ? session.getRecurrenceRule().getId() : null,
+                session.getRecurrenceRule() != null ? session.getRecurrenceRule().getRecurrenceType() : null,
+                session.getRecurrenceRule() != null ? session.getRecurrenceRule().getIntervalDays() : null,
+                session.getRecurrenceRule() != null ? session.getRecurrenceRule().getDayOfMonth() : null,
                 session.getFeeAmount(),
                 session.getFeeRecipient(),
                 session.getFormatType(),

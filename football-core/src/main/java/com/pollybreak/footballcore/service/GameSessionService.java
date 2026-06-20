@@ -9,6 +9,7 @@ import com.pollybreak.footballcore.domain.entity.AppUser;
 import com.pollybreak.footballcore.domain.entity.GameSession;
 import com.pollybreak.footballcore.domain.entity.SessionVenue;
 import com.pollybreak.footballcore.domain.entity.SessionTeam;
+import com.pollybreak.footballcore.domain.enums.SessionRecurrenceType;
 import com.pollybreak.footballcore.domain.enums.SessionStatus;
 import com.pollybreak.footballcore.repository.AppUserRepository;
 import com.pollybreak.footballcore.repository.GameSessionRepository;
@@ -35,6 +36,9 @@ public class GameSessionService {
     private final AppUserRepository appUserRepository;
     private final SessionPlayerService sessionPlayerService;
     private final SessionVenueService sessionVenueService;
+    private final TelegramRegistrationService telegramRegistrationService;
+    private final SessionContributionReminderService sessionContributionReminderService;
+    private final SessionRecurrenceService sessionRecurrenceService;
 
     public List<GameSession> findAll() {
         return gameSessionRepository.findAllByOrderBySessionDateDescSessionTimeDescCreatedAtDesc();
@@ -55,6 +59,19 @@ public class GameSessionService {
 
     @Transactional
     public GameSessionResponse create(CreateGameSessionRequest request) {
+        validateRecurrenceRequest(request);
+        if (Boolean.TRUE.equals(request.autoStartRegistration())) {
+            if (request.createdByUserId() == null) {
+                throw new IllegalArgumentException("createdByUserId is required for autoStartRegistration");
+            }
+            if (request.telegramChatId() == null) {
+                throw new IllegalArgumentException("telegramChatId is required for autoStartRegistration");
+            }
+        }
+        if (Boolean.TRUE.equals(request.autoStartContributionCollection()) && request.telegramChatId() == null) {
+            throw new IllegalArgumentException("telegramChatId is required for autoStartContributionCollection");
+        }
+
         GameSession session = new GameSession();
         session.setTitle(request.title());
         session.setSessionDate(request.sessionDate());
@@ -86,6 +103,15 @@ public class GameSessionService {
                 .map(teamRequest -> toSessionTeam(savedSession, teamRequest))
                 .map(sessionTeamRepository::save)
                 .toList();
+
+        sessionRecurrenceService.attachRecurrenceRule(savedSession, request);
+
+        if (Boolean.TRUE.equals(request.autoStartRegistration())) {
+            telegramRegistrationService.startRegistration(savedSession.getId(), request.createdByUserId());
+        }
+        if (Boolean.TRUE.equals(request.autoStartContributionCollection())) {
+            sessionContributionReminderService.createReminder(savedSession.getId(), 48);
+        }
 
         return GameSessionResponse.fromEntity(savedSession, teams);
     }
@@ -140,6 +166,9 @@ public class GameSessionService {
         session.setMaxPlayers(request.maxPlayers());
         session.setPlayerFormat(request.playerFormat());
         sessionPlayerService.fillAvailableSlots(sessionId);
+        if (session.getStatus() == SessionStatus.FINISHED) {
+            sessionRecurrenceService.createNextSessionIfDue(session);
+        }
         return GameSessionResponse.fromEntity(session, sessionTeamRepository.findAllBySessionIdOrderByDisplayOrderAsc(sessionId));
     }
 
@@ -199,6 +228,32 @@ public class GameSessionService {
         session.setLocation(venue.getName());
         session.setLocationAddress(venue.getAddress());
         session.setLocationUrl(venue.getGisUrl());
+    }
+
+    private void validateRecurrenceRequest(CreateGameSessionRequest request) {
+        if (request.recurrenceType() == null) {
+            if (request.recurrenceIntervalDays() != null || request.recurrenceDayOfMonth() != null) {
+                throw new IllegalArgumentException("recurrenceType is required when recurrence values are provided");
+            }
+            return;
+        }
+
+        if (request.recurrenceType() == SessionRecurrenceType.DAYS) {
+            if (request.recurrenceIntervalDays() == null || request.recurrenceIntervalDays() < 1) {
+                throw new IllegalArgumentException("recurrenceIntervalDays must be greater than zero");
+            }
+            if (request.recurrenceDayOfMonth() != null) {
+                throw new IllegalArgumentException("recurrenceDayOfMonth must be empty for DAYS recurrence");
+            }
+            return;
+        }
+
+        if (request.recurrenceDayOfMonth() == null || request.recurrenceDayOfMonth() < 1 || request.recurrenceDayOfMonth() > 31) {
+            throw new IllegalArgumentException("recurrenceDayOfMonth must be between 1 and 31");
+        }
+        if (request.recurrenceIntervalDays() != null) {
+            throw new IllegalArgumentException("recurrenceIntervalDays must be empty for MONTHLY recurrence");
+        }
     }
 
     private String cleanOptional(String value) {
