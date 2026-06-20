@@ -155,6 +155,20 @@ public class TelegramContributionService {
         lines.add("❗<b>Напоминание по взносам</b>");
         lines.add("");
         lines.add("До игры осталось " + hoursBefore + " " + hourWord(hoursBefore) + ".");
+        if (session.getFeeAmount() != null || (session.getFeeRecipient() != null && !session.getFeeRecipient().isBlank())) {
+            StringBuilder contributionLine = new StringBuilder("💰 ");
+            if (session.getFeeAmount() != null) {
+                contributionLine.append(session.getFeeAmount()).append(" тг");
+            }
+            if (session.getFeeRecipient() != null && !session.getFeeRecipient().isBlank()) {
+                if (session.getFeeAmount() != null) {
+                    contributionLine.append(" / ");
+                }
+                contributionLine.append(escape(session.getFeeRecipient()));
+            }
+            lines.add(contributionLine.toString());
+            lines.add("");
+        }
         lines.add("Не сдали: " + roster.unpaidPlayers().stream()
                 .map(this::playerMention)
                 .collect(Collectors.joining(", ")));

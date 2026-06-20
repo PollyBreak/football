@@ -227,6 +227,10 @@ public class TelegramRegistrationService {
         List<String> lines = new ArrayList<>();
         lines.add("<b>Открыта регистрация на футбол!</b>");
         lines.add(headerLine(session, durationMinutes));
+        String sessionUrl = sessionAppUrl(session.getId());
+        if (sessionUrl != null && !sessionUrl.isBlank()) {
+            lines.add("<a href=\"" + escapeAttribute(sessionUrl) + "\">Открыть игру в приложении</a>");
+        }
         lines.add("");
         lines.add(timeLine(session, durationMinutes, endTime));
         lines.add(locationLine(session));
