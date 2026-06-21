@@ -42,6 +42,14 @@ public class StreamBroadcastController {
         return streamBroadcastService.start(sessionId, request);
     }
 
+    @PostMapping("/restart")
+    public StreamBroadcastResponse restartStream(
+            @PathVariable Long sessionId,
+            @RequestBody(required = false) StartStreamBroadcastRequest request
+    ) {
+        return streamBroadcastService.restart(sessionId, request);
+    }
+
     @PostMapping("/{streamId}/finish")
     public StreamBroadcastResponse finishStream(
             @PathVariable Long sessionId,

@@ -24,6 +24,7 @@ public record CreateGameSessionRequest(
         Long telegramChatId,
         String telegramChatTitle,
         Boolean autoStartRegistration,
+        Integer registrationOpenHoursBefore,
         Boolean autoStartContributionCollection,
         SessionRecurrenceType recurrenceType,
         Integer recurrenceIntervalDays,

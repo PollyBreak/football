@@ -14,6 +14,8 @@ public record UpdateGameSessionRequest(
         String broadcastUrl,
         Long telegramChatId,
         String telegramChatTitle,
+        Boolean autoStartRegistration,
+        Integer registrationOpenHoursBefore,
         Integer feeAmount,
         String feeRecipient,
         SessionStatus status,

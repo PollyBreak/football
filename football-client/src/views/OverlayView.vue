@@ -61,10 +61,10 @@
                 </div>
               </div>
               <div class="overlay-player-card__photo">
-                <img v-if="player.photoUrl" :src="player.photoUrl" :alt="player.playerName" />
-                <span v-else>{{ initials(player.playerName) }}</span>
+                <img v-if="player.photoUrl" :src="player.photoUrl" :alt="displayPlayerName(player)" />
+                <span v-else>{{ initials(displayPlayerName(player)) }}</span>
               </div>
-              <strong class="overlay-player-card__name">{{ shortName(player.playerName) }}</strong>
+              <strong class="overlay-player-card__name">{{ displayPlayerName(player) }}</strong>
               <div v-if="playerStatsLabel(player.playerId)" class="overlay-player-card__stats">
                 {{ playerStatsLabel(player.playerId) }}
               </div>
@@ -91,10 +91,10 @@
                 </div>
               </div>
               <div class="overlay-player-card__photo">
-                <img v-if="player.photoUrl" :src="player.photoUrl" :alt="player.playerName" />
-                <span v-else>{{ initials(player.playerName) }}</span>
+                <img v-if="player.photoUrl" :src="player.photoUrl" :alt="displayPlayerName(player)" />
+                <span v-else>{{ initials(displayPlayerName(player)) }}</span>
               </div>
-              <strong class="overlay-player-card__name">{{ shortName(player.playerName) }}</strong>
+              <strong class="overlay-player-card__name">{{ displayPlayerName(player) }}</strong>
               <div v-if="playerStatsLabel(player.playerId)" class="overlay-player-card__stats">
                 {{ playerStatsLabel(player.playerId) }}
               </div>
@@ -319,7 +319,7 @@ const goalRows = computed(() => {
       id: event.id,
       teamId: event.teamId,
       minute: formatEventMinute(event),
-      name: event.playerName ? shortName(event.playerName) : 'Игрок'
+      name: eventDisplayName(event)
     }))
     .slice(-5);
 });
@@ -358,7 +358,7 @@ const lastFinishedMatchGoals = computed(() => {
       id: event.id,
       teamId: event.teamId,
       minute: formatEventMinute(event),
-      name: event.playerName ? shortName(event.playerName) : 'Игрок'
+      name: eventDisplayName(event)
     }));
 });
 const lastFinishedLeftGoals = computed(() => {
@@ -520,9 +520,9 @@ function handleOverlayEvent(message: MessageEvent<string>) {
 
 function showGoalToast(event: MatchEvent, assist: MatchEvent | null, cancelled: boolean) {
   goalToast.value = {
-    scorer: event.playerName ? shortName(event.playerName) : 'Игрок',
+    scorer: eventDisplayName(event),
     scorerPhotoUrl: event.playerPhotoUrl,
-    assist: assist?.playerName ? shortName(assist.playerName) : null,
+    assist: assist ? eventDisplayName(assist) : null,
     assistPhotoUrl: assist?.playerPhotoUrl ?? null,
     ownGoal: event.eventType === 'OWN_GOAL',
     cancelled
@@ -580,6 +580,22 @@ function visiblePlayers(team: OverlayTeam | null): SessionTeamPlayer[] {
     return [];
   }
   return team.players.filter((player) => player.active);
+}
+
+function displayPlayerName(player: SessionTeamPlayer): string {
+  return formatUsername(player.playerUsername) ?? shortName(player.playerName);
+}
+
+function eventDisplayName(event: MatchEvent): string {
+  return formatUsername(event.playerUsername) ?? (event.playerName ? shortName(event.playerName) : 'Игрок');
+}
+
+function formatUsername(username: string | null | undefined): string | null {
+  const value = username?.trim();
+  if (!value) {
+    return null;
+  }
+  return value.startsWith('@') ? value : `@${value}`;
 }
 
 function teamNameStyle(team: OverlayTeam | null): Record<string, string> {
@@ -889,16 +905,16 @@ function positionLabel(position: PlayerPosition | null): string {
   position: absolute;
   left: 50%;
   bottom: 24px;
-  width: min(1320px, calc(100vw - 48px));
+  width: min(1800px, calc(100vw - 48px));
   transform: translateX(-50%);
 }
 
 .overlay-lineups {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 150px minmax(0, 1fr);
+  grid-template-columns: minmax(0, 1fr) clamp(110px, 8vw, 150px) minmax(0, 1fr);
   align-items: end;
   justify-content: center;
-  column-gap: 30px;
+  column-gap: clamp(18px, 1.6vw, 30px);
 }
 
 .overlay-team-panel {
@@ -945,11 +961,12 @@ function positionLabel(position: PlayerPosition | null): string {
 }
 
 .overlay-player-card {
-  width: clamp(58px, 8vw, 112px);
+  container-type: inline-size;
+  width: clamp(72px, 8vw, 124px);
   min-width: 0;
-  max-width: 112px;
-  height: clamp(132px, 14.5vw, 184px);
-  flex: 1 1 0;
+  max-width: 124px;
+  height: clamp(140px, 14.5vw, 194px);
+  flex: 1 1 92px;
   display: grid;
   grid-template-rows: minmax(20px, 26px) minmax(42px, 64px) minmax(20px, auto) minmax(20px, 24px);
   justify-items: center;
@@ -975,7 +992,8 @@ function positionLabel(position: PlayerPosition | null): string {
   flex-direction: column;
   align-items: flex-start;
   gap: 3px;
-  font-size: clamp(9px, 0.95vw, 12px);
+  font-size: 11px;
+  font-size: clamp(9px, 11cqw, 12px);
   font-weight: 950;
 }
 
@@ -1009,7 +1027,8 @@ function positionLabel(position: PlayerPosition | null): string {
   width: 100%;
   min-width: 0;
   overflow: hidden;
-  font-size: clamp(10px, 1.15vw, 15px);
+  font-size: 13px;
+  font-size: clamp(10px, 13cqw, 15px);
   line-height: 1.12;
   text-align: center;
   text-overflow: ellipsis;
@@ -1026,7 +1045,8 @@ function positionLabel(position: PlayerPosition | null): string {
   border-top: 1px solid rgba(16, 24, 32, 0.22);
   padding-top: 3px;
   overflow: hidden;
-  font-size: clamp(11px, 1.12vw, 15px);
+  font-size: 13px;
+  font-size: clamp(10px, 12cqw, 15px);
   font-weight: 950;
   text-align: center;
   text-overflow: ellipsis;

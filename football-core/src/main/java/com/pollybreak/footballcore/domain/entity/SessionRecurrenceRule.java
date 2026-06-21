@@ -41,6 +41,9 @@ public class SessionRecurrenceRule {
     @Column(name = "auto_start_registration", nullable = false)
     private boolean autoStartRegistration;
 
+    @Column(name = "registration_open_hours_before")
+    private Integer registrationOpenHoursBefore;
+
     @Column(name = "auto_start_contribution_collection", nullable = false)
     private boolean autoStartContributionCollection;
 

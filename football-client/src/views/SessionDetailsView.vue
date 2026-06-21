@@ -31,7 +31,7 @@
           <button class="ghost-button overlay-hero-button" type="button" @click="overlayDialogOpen = true">
             Overlay
           </button>
-          <button class="ghost-button stream-hero-button" type="button" :disabled="sessionIsFinished || pendingStreamStart" @click="streamDialogOpen = true">
+          <button class="ghost-button stream-hero-button" type="button" :disabled="sessionIsFinished || pendingStreamStart" @click="openStreamDialog">
             Stream
           </button>
         </div>
@@ -217,7 +217,7 @@
             </label>
           </div>
 
-          <div class="settings-group">
+          <div class="settings-group stream-settings-group">
             <p class="settings-group__title">Трансляция</p>
             <label class="field-label">
               <span>Ссылка на трансляцию</span>
@@ -339,11 +339,21 @@
             <li>Запустите запись трансляции. Как только трансляция начнется, сразу нажмите кнопку Stream и подтвердите трансляцию.</li>
           </ol>
           <p>После этого приложение передаст на сервер время начала трансляции на YouTube. Необязательно после этого сразу начинать игры, тайм-коды всех событий (в том числе начало матчей) автоматически подстроятся под это время. Если не получилось сразу нажать на кнопку, то потом в настройках сессии можно будет добавить нужное количество секунд для сдвига вперед или назад.</p>
-          <strong>Вы готовы начать трансляцию?</strong>
+          <div v-if="streamBroadcasts.length" class="stream-start-list">
+            <p v-for="stream in streamBroadcasts" :key="stream.id" class="stream-start-list__item">
+              Трансляция была запущена в: {{ formatStreamStartedAt(stream.streamStartedAt) }}
+            </p>
+          </div>
+          <strong>{{ activeStream ? 'Трансляция уже идет. Вы хотите завершить её и начать новую?' : 'Вы готовы начать трансляцию?' }}</strong>
+          <p v-if="activeStream" class="muted stream-restart-hint">
+            нажмите эту кнопку, если у вас прервалась YouTube трансляция и вы хотите начать новую
+          </p>
         </div>
         <div class="button-row">
           <button class="ghost-button" type="button" @click="closeStreamDialog">Нет</button>
-          <button class="primary-button" type="button" :disabled="pendingStreamStart" @click="confirmStartStream">Да</button>
+          <button class="primary-button" type="button" :disabled="pendingStreamStart" @click="confirmStartStream">
+            {{ activeStream ? 'Начать новую' : 'Да' }}
+          </button>
         </div>
       </div>
     </div>
@@ -786,6 +796,7 @@ import type {
   SessionPlayer,
   SessionStandingsRow,
   SessionTeamPlayer,
+  StreamBroadcast,
   SessionWaitlistEntry
 } from '../types';
 
@@ -826,6 +837,7 @@ const pendingReminderUpdate = ref(false);
 const pendingStreamStart = ref(false);
 const pendingStreamShift = ref(false);
 const pendingTimelineGeneration = ref(false);
+const streamBroadcasts = ref<StreamBroadcast[]>([]);
 const streamShiftForward = ref(true);
 const streamShiftSeconds = ref<number | null>(null);
 const generatedTimelineText = ref('');
@@ -860,6 +872,7 @@ const currentUserWaitlistEntry = computed(() => {
     : undefined;
 });
 const sessionIsFinished = computed(() => session.value?.status === 'FINISHED');
+const activeStream = computed(() => streamBroadcasts.value.find((stream) => !stream.streamEndedAt) ?? null);
 const sessionVenuePhotoUrl = computed(() => resolveMediaUrl(session.value?.venuePhotoUrl));
 const sessionIsFull = computed(() => {
   return Boolean(session.value?.maxPlayers && sessionPlayers.value.length >= session.value.maxPlayers);
@@ -1574,6 +1587,20 @@ function closeStreamDialog() {
   streamDialogOpen.value = false;
 }
 
+async function openStreamDialog() {
+  streamDialogOpen.value = true;
+  await loadStreamBroadcasts();
+}
+
+async function loadStreamBroadcasts() {
+  try {
+    streamBroadcasts.value = await api.getStreams(sessionIdNumber.value);
+  } catch (streamError) {
+    error.value = streamError instanceof Error ? streamError.message : 'Не удалось загрузить трансляции';
+    streamBroadcasts.value = [];
+  }
+}
+
 async function confirmStartStream() {
   if (sessionIsFinished.value || pendingStreamStart.value) {
     return;
@@ -1581,7 +1608,11 @@ async function confirmStartStream() {
 
   pendingStreamStart.value = true;
   try {
-    await api.startStream(sessionIdNumber.value);
+    const stream = activeStream.value
+      ? await api.restartStream(sessionIdNumber.value)
+      : await api.startStream(sessionIdNumber.value);
+    streamBroadcasts.value = [stream, ...streamBroadcasts.value.filter((item) => item.id !== stream.id)];
+    await loadStreamBroadcasts();
     streamDialogOpen.value = false;
     error.value = '';
   } catch (streamError) {
@@ -1623,14 +1654,25 @@ async function generateStreamTimeline() {
   pendingTimelineGeneration.value = true;
   error.value = '';
   try {
-    const stream = await getPreferredStream();
-    if (!stream) {
+    const streams = await api.getStreams(sessionIdNumber.value);
+    streamBroadcasts.value = streams;
+    if (!streams.length) {
       error.value = 'Сначала начните трансляцию';
       return;
     }
 
-    const timeline = await api.getStreamTimeline(sessionIdNumber.value, stream.id);
-    generatedTimelineText.value = timeline.descriptionBlock.trim();
+    const sortedStreams = [...streams].sort((left, right) => {
+      return new Date(left.streamStartedAt).getTime() - new Date(right.streamStartedAt).getTime();
+    });
+    const timelines = await Promise.all(
+      sortedStreams.map((stream) => api.getStreamTimeline(sessionIdNumber.value, stream.id))
+    );
+    generatedTimelineText.value = timelines
+      .map((timeline, index) => {
+        const body = timeline.descriptionBlock.trim() || 'Тайм-кодов пока нет';
+        return `${index + 1} ТРАНСЛЯЦИЯ\n${body}`;
+      })
+      .join('\n\n');
   } catch (timelineError) {
     error.value = timelineError instanceof Error ? timelineError.message : 'Не удалось сгенерировать тайм-коды';
   } finally {
@@ -1653,7 +1695,18 @@ async function copyGeneratedTimeline() {
 
 async function getPreferredStream() {
   const streams = await api.getStreams(sessionIdNumber.value);
+  streamBroadcasts.value = streams;
   return streams.find((item) => !item.streamEndedAt) ?? streams[0] ?? null;
+}
+
+function formatStreamStartedAt(value: string): string {
+  return new Intl.DateTimeFormat('ru-RU', {
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit'
+  }).format(new Date(value));
 }
 
 async function unlockAdminPanel() {

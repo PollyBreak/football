@@ -161,13 +161,27 @@
           </label>
 
           <label class="reminder-checkbox">
-            <span>Автоматически начать регистрацию на игру</span>
             <input v-model="form.autoStartRegistration" type="checkbox" />
+            <span>Автоматически начать регистрацию на игру</span>
+          </label>
+
+          <label v-if="form.autoStartRegistration" class="field-label registration-delay-field">
+            <span>Регистрация начнется за</span>
+            <div class="reminder-form registration-delay-form">
+              <input
+                v-model.number="form.registrationOpenDaysBefore"
+                class="input"
+                type="number"
+                min="1"
+                step="1"
+              />
+              <span class="muted registration-delay-form__suffix">дня/дней до игры</span>
+            </div>
           </label>
 
           <label class="reminder-checkbox">
-            <span>Автоматически начать сбор оплаты за 2 дня до игры</span>
             <input v-model="form.autoStartContributionCollection" type="checkbox" />
+            <span>Автоматически начать сбор оплаты за 2 дня до игры</span>
           </label>
         </div>
 
@@ -208,8 +222,8 @@
 
         <div class="settings-group">
           <label class="reminder-checkbox recurring-event-toggle">
-            <span>Повторяющееся</span>
             <input v-model="form.recurringEnabled" type="checkbox" />
+            <span>Повторяющееся</span>
           </label>
 
           <template v-if="form.recurringEnabled">
@@ -323,6 +337,7 @@ const form = reactive({
   telegramChatId: null as number | null,
   telegramChatTitle: '',
   autoStartRegistration: false,
+  registrationOpenDaysBefore: 5,
   autoStartContributionCollection: false,
   recurringEnabled: false,
   recurringMode: null as 'days' | 'month' | null,
@@ -588,6 +603,14 @@ async function createSession() {
     return;
   }
 
+  if (
+    form.autoStartRegistration &&
+    (!Number.isFinite(form.registrationOpenDaysBefore) || form.registrationOpenDaysBefore < 1)
+  ) {
+    error.value = 'Укажите, за сколько дней до игры начинать регистрацию';
+    return;
+  }
+
   pending.value = true;
   error.value = '';
   try {
@@ -605,6 +628,7 @@ async function createSession() {
       telegramChatId: form.telegramChatId || null,
       telegramChatTitle: form.telegramChatTitle || null,
       autoStartRegistration: form.autoStartRegistration,
+      registrationOpenHoursBefore: form.autoStartRegistration ? form.registrationOpenDaysBefore * 24 : null,
       autoStartContributionCollection: form.autoStartContributionCollection,
       recurrenceType: form.recurringEnabled ? (form.recurringMode === 'days' ? 'DAYS' : 'MONTHLY') : null,
       recurrenceIntervalDays: form.recurringEnabled && form.recurringMode === 'days' ? form.recurringEveryDays || null : null,

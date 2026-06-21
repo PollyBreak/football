@@ -62,18 +62,24 @@ public class StreamBroadcastService {
                     throw new IllegalArgumentException("Session already has an active stream broadcast");
                 });
 
-        StreamBroadcast broadcast = new StreamBroadcast();
-        broadcast.setSession(session);
-        broadcast.setTitle(request != null ? request.title() : null);
-        broadcast.setYoutubeVideoId(request != null ? request.youtubeVideoId() : null);
-        broadcast.setYoutubeBroadcastId(request != null ? request.youtubeBroadcastId() : null);
-        broadcast.setStreamStartedAt(request != null && request.streamStartedAt() != null
-                ? request.streamStartedAt()
-                : OffsetDateTime.now());
-        broadcast.setTimelineShiftSeconds(0);
-        broadcast.setUpdatedAt(OffsetDateTime.now());
+        return StreamBroadcastResponse.fromEntity(createBroadcast(session, request, OffsetDateTime.now()));
+    }
 
-        return StreamBroadcastResponse.fromEntity(streamBroadcastRepository.save(broadcast));
+    @Transactional
+    public StreamBroadcastResponse restart(Long sessionId, StartStreamBroadcastRequest request) {
+        GameSession session = gameSessionRepository.findById(sessionId)
+                .orElseThrow(() -> new IllegalArgumentException("Game session not found: " + sessionId));
+        OffsetDateTime now = OffsetDateTime.now();
+        streamBroadcastRepository.findFirstBySession_IdAndStreamEndedAtIsNullOrderByStreamStartedAtDescIdDesc(sessionId)
+                .ifPresent(active -> {
+                    if (active.getStreamEndedAt() == null) {
+                        active.setStreamEndedAt(now);
+                    }
+                    active.setUpdatedAt(now);
+                    streamBroadcastRepository.saveAndFlush(active);
+                });
+
+        return StreamBroadcastResponse.fromEntity(createBroadcast(session, request, now));
     }
 
     @Transactional
@@ -129,6 +135,20 @@ public class StreamBroadcastService {
     private StreamBroadcast getByIdAndSession(Long streamId, Long sessionId) {
         return streamBroadcastRepository.findByIdAndSession_Id(streamId, sessionId)
                 .orElseThrow(() -> new IllegalArgumentException("Stream broadcast not found for this session"));
+    }
+
+    private StreamBroadcast createBroadcast(GameSession session, StartStreamBroadcastRequest request, OffsetDateTime now) {
+        StreamBroadcast broadcast = new StreamBroadcast();
+        broadcast.setSession(session);
+        broadcast.setTitle(request != null ? request.title() : null);
+        broadcast.setYoutubeVideoId(request != null ? request.youtubeVideoId() : null);
+        broadcast.setYoutubeBroadcastId(request != null ? request.youtubeBroadcastId() : null);
+        broadcast.setStreamStartedAt(request != null && request.streamStartedAt() != null
+                ? request.streamStartedAt()
+                : now);
+        broadcast.setTimelineShiftSeconds(0);
+        broadcast.setUpdatedAt(now);
+        return streamBroadcastRepository.save(broadcast);
     }
 
     private void attachStreamTimecode(MatchEvent event, StreamBroadcast broadcast, OffsetDateTime eventTime) {

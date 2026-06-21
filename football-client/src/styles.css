@@ -657,6 +657,21 @@ textarea {
   font-size: 0.92rem;
 }
 
+.stream-start-list {
+  display: grid;
+  gap: 4px;
+}
+
+.stream-start-list__item {
+  margin: 0;
+  color: var(--danger);
+  font-weight: 700;
+}
+
+.stream-restart-hint {
+  font-size: 0.82rem;
+}
+
 .nested-card {
   padding: 12px;
   background: var(--surface-bg);
@@ -799,9 +814,21 @@ textarea {
 
 .stream-shift-card {
   display: grid;
-  grid-template-columns: minmax(132px, auto) minmax(96px, 1fr) auto;
+  grid-template-columns: minmax(0, 1fr) minmax(88px, 120px);
   gap: 8px;
   align-items: end;
+}
+
+.stream-settings-group {
+  overflow: hidden;
+}
+
+.stream-settings-group > * {
+  min-width: 0;
+}
+
+.stream-settings-group .field-label {
+  min-width: 0;
 }
 
 .stream-shift-card .reminder-checkbox {
@@ -811,7 +838,12 @@ textarea {
 }
 
 .stream-shift-card .ghost-button {
+  grid-column: 1 / -1;
+  width: 100%;
+  min-width: 0;
   min-height: 45px;
+  white-space: normal;
+  overflow-wrap: anywhere;
 }
 
 .stream-timeline-button,
@@ -819,12 +851,20 @@ textarea {
   width: 100%;
 }
 
+.stream-timeline-button {
+  min-width: 0;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+
 .stream-timeline-result {
   display: grid;
   gap: 8px;
+  min-width: 0;
 }
 
 .stream-timeline-result .textarea {
+  min-width: 0;
   min-height: 180px;
   font-family: "Cascadia Mono", "SFMono-Regular", Consolas, monospace;
   font-size: 0.82rem;
@@ -1611,13 +1651,13 @@ textarea {
 }
 
 .reminder-checkbox {
-  min-height: 34px;
+  min-height: 32px;
   display: inline-flex;
   align-items: center;
-  gap: 7px;
+  gap: 6px;
   min-width: 0;
   max-width: 100%;
-  padding: 7px 9px;
+  padding: 6px 9px;
   border: 1px solid var(--input-border);
   border-radius: 999px;
   background: var(--surface-bg);
@@ -1629,14 +1669,15 @@ textarea {
 .reminder-checkbox span {
   min-width: 0;
   overflow-wrap: anywhere;
-  line-height: 1.25;
+  line-height: 1.2;
 }
 
 .reminder-checkbox input {
   flex: 0 0 auto;
-  width: 15px;
-  height: 15px;
+  width: 13px;
+  height: 13px;
   margin: 0;
+  align-self: center;
 }
 
 .reminder-form {
@@ -1679,8 +1720,28 @@ textarea {
   overflow-wrap: anywhere;
 }
 
-.recurring-event-toggle {
-  justify-content: space-between;
+.registration-delay-field {
+  padding: 2px 8px 4px;
+}
+
+.registration-delay-form {
+  grid-template-columns: 82px minmax(0, 1fr);
+  justify-content: flex-start;
+  gap: 8px;
+}
+
+.registration-delay-form .input {
+  min-width: 0;
+  height: 36px;
+  padding: 7px 10px;
+  border-radius: 999px;
+}
+
+.registration-delay-form__suffix {
+  min-width: 0;
+  font-size: 0.8rem;
+  line-height: 1.2;
+  overflow-wrap: anywhere;
 }
 
 .recurring-event-option {
@@ -1888,14 +1949,19 @@ textarea {
 
 @media (max-width: 480px) {
   .reminder-checkbox {
-    align-items: flex-start;
-    gap: 6px;
-    padding: 7px 8px;
+    align-items: center;
+    gap: 5px;
+    padding: 6px 8px;
     font-size: 0.78rem;
   }
 
   .reminder-checkbox span {
-    line-height: 1.2;
+    line-height: 1.15;
+  }
+
+  .reminder-checkbox input {
+    width: 12px;
+    height: 12px;
   }
 
   .recurring-event-form {

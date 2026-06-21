@@ -36,9 +36,9 @@ public class GameSessionService {
     private final AppUserRepository appUserRepository;
     private final SessionPlayerService sessionPlayerService;
     private final SessionVenueService sessionVenueService;
-    private final TelegramRegistrationService telegramRegistrationService;
     private final SessionContributionReminderService sessionContributionReminderService;
     private final SessionRecurrenceService sessionRecurrenceService;
+    private final SessionRegistrationScheduleService sessionRegistrationScheduleService;
 
     public List<GameSession> findAll() {
         return gameSessionRepository.findAllByOrderBySessionDateDescSessionTimeDescCreatedAtDesc();
@@ -68,6 +68,9 @@ public class GameSessionService {
                 throw new IllegalArgumentException("telegramChatId is required for autoStartRegistration");
             }
         }
+        if (request.registrationOpenHoursBefore() != null && request.registrationOpenHoursBefore() < 0) {
+            throw new IllegalArgumentException("registrationOpenHoursBefore must not be negative");
+        }
         if (Boolean.TRUE.equals(request.autoStartContributionCollection()) && request.telegramChatId() == null) {
             throw new IllegalArgumentException("telegramChatId is required for autoStartContributionCollection");
         }
@@ -80,6 +83,8 @@ public class GameSessionService {
         session.setBroadcastUrl(request.broadcastUrl());
         session.setTelegramChatId(request.telegramChatId());
         session.setTelegramChatTitle(request.telegramChatTitle());
+        session.setAutoStartRegistration(Boolean.TRUE.equals(request.autoStartRegistration()));
+        session.setRegistrationOpenHoursBefore(resolveRegistrationOpenHoursBefore(request));
         session.setFeeAmount(request.feeAmount());
         session.setFeeRecipient(request.feeRecipient());
         session.setFormatType(request.formatType());
@@ -107,7 +112,7 @@ public class GameSessionService {
         sessionRecurrenceService.attachRecurrenceRule(savedSession, request);
 
         if (Boolean.TRUE.equals(request.autoStartRegistration())) {
-            telegramRegistrationService.startRegistration(savedSession.getId(), request.createdByUserId());
+            sessionRegistrationScheduleService.startRegistrationIfDue(savedSession);
         }
         if (Boolean.TRUE.equals(request.autoStartContributionCollection())) {
             sessionContributionReminderService.createReminder(savedSession.getId(), 48);
@@ -136,6 +141,9 @@ public class GameSessionService {
         if (request.maxPlayers() != null && request.maxPlayers() < 1) {
             throw new IllegalArgumentException("maxPlayers must be greater than zero");
         }
+        if (request.registrationOpenHoursBefore() != null && request.registrationOpenHoursBefore() < 0) {
+            throw new IllegalArgumentException("registrationOpenHoursBefore must not be negative");
+        }
 
         if (request.title() != null) {
             session.setTitle(request.title());
@@ -152,6 +160,16 @@ public class GameSessionService {
         session.setBroadcastUrl(request.broadcastUrl());
         session.setTelegramChatId(request.telegramChatId());
         session.setTelegramChatTitle(request.telegramChatTitle());
+        if (request.autoStartRegistration() != null) {
+            session.setAutoStartRegistration(request.autoStartRegistration());
+        }
+        if (request.registrationOpenHoursBefore() != null) {
+            session.setRegistrationOpenHoursBefore(request.registrationOpenHoursBefore());
+        }
+        if (session.isAutoStartRegistration() && session.getRegistrationOpenHoursBefore() == null) {
+            session.setRegistrationOpenHoursBefore(SessionRegistrationScheduleService.DEFAULT_REGISTRATION_OPEN_HOURS_BEFORE);
+        }
+        validateAutoStartRegistration(session);
         session.setFeeAmount(request.feeAmount());
         session.setFeeRecipient(request.feeRecipient());
         if (request.status() != null) {
@@ -169,6 +187,7 @@ public class GameSessionService {
         if (session.getStatus() == SessionStatus.FINISHED) {
             sessionRecurrenceService.createNextSessionIfDue(session);
         }
+        sessionRegistrationScheduleService.startRegistrationIfDue(session);
         return GameSessionResponse.fromEntity(session, sessionTeamRepository.findAllBySessionIdOrderByDisplayOrderAsc(sessionId));
     }
 
@@ -253,6 +272,27 @@ public class GameSessionService {
         }
         if (request.recurrenceIntervalDays() != null) {
             throw new IllegalArgumentException("recurrenceIntervalDays must be empty for MONTHLY recurrence");
+        }
+    }
+
+    private Integer resolveRegistrationOpenHoursBefore(CreateGameSessionRequest request) {
+        if (!Boolean.TRUE.equals(request.autoStartRegistration())) {
+            return request.registrationOpenHoursBefore();
+        }
+        return request.registrationOpenHoursBefore() == null
+                ? SessionRegistrationScheduleService.DEFAULT_REGISTRATION_OPEN_HOURS_BEFORE
+                : request.registrationOpenHoursBefore();
+    }
+
+    private void validateAutoStartRegistration(GameSession session) {
+        if (!session.isAutoStartRegistration()) {
+            return;
+        }
+        if (session.getCreatedBy() == null) {
+            throw new IllegalArgumentException("createdByUserId is required for autoStartRegistration");
+        }
+        if (session.getTelegramChatId() == null) {
+            throw new IllegalArgumentException("telegramChatId is required for autoStartRegistration");
         }
     }
 

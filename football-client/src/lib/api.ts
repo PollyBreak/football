@@ -237,6 +237,9 @@ export const api = {
   startStream(sessionId: number): Promise<StreamBroadcast> {
     return request(`/api/sessions/${sessionId}/streams/start`, { method: 'POST', body: JSON.stringify({}) });
   },
+  restartStream(sessionId: number): Promise<StreamBroadcast> {
+    return request(`/api/sessions/${sessionId}/streams/restart`, { method: 'POST', body: JSON.stringify({}) });
+  },
   getStreams(sessionId: number): Promise<StreamBroadcast[]> {
     return request(`/api/sessions/${sessionId}/streams`);
   },

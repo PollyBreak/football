@@ -85,6 +85,8 @@ export interface GameSession {
   telegramChatId: number | null;
   telegramChatTitle: string | null;
   telegramRegistrationMessageId: number | null;
+  autoStartRegistration: boolean;
+  registrationOpenHoursBefore: number | null;
   telegramContributionMessageId: number | null;
   recurrenceRuleId: number | null;
   recurrenceType: SessionRecurrenceType | null;
@@ -175,6 +177,7 @@ export interface SessionTeamPlayer {
   sessionTeamId: number;
   playerId: number;
   playerName: string;
+  playerUsername: string | null;
   photoUrl: string | null;
   position: PlayerPosition | null;
   active: boolean;
@@ -209,9 +212,11 @@ export interface MatchEvent {
   teamName: string | null;
   playerId: number | null;
   playerName: string | null;
+  playerUsername: string | null;
   playerPhotoUrl: string | null;
   relatedPlayerId: number | null;
   relatedPlayerName: string | null;
+  relatedPlayerUsername: string | null;
   relatedPlayerPhotoUrl: string | null;
   linkedEventId: number | null;
   minuteInMatch: number | null;

@@ -32,7 +32,7 @@ public class SessionRecurrenceService {
     private final GameSessionRepository gameSessionRepository;
     private final SessionTeamRepository sessionTeamRepository;
     private final SessionContributionReminderRepository reminderRepository;
-    private final TelegramRegistrationService telegramRegistrationService;
+    private final SessionRegistrationScheduleService sessionRegistrationScheduleService;
 
     @Value("${app.time-zone:Asia/Almaty}")
     private String appTimeZone;
@@ -48,6 +48,7 @@ public class SessionRecurrenceService {
         rule.setIntervalDays(request.recurrenceType() == SessionRecurrenceType.DAYS ? request.recurrenceIntervalDays() : null);
         rule.setDayOfMonth(request.recurrenceType() == SessionRecurrenceType.MONTHLY ? request.recurrenceDayOfMonth() : null);
         rule.setAutoStartRegistration(Boolean.TRUE.equals(request.autoStartRegistration()));
+        rule.setRegistrationOpenHoursBefore(resolveRegistrationOpenHoursBefore(request));
         rule.setAutoStartContributionCollection(Boolean.TRUE.equals(request.autoStartContributionCollection()));
         rule.setCurrentSession(session);
         SessionRecurrenceRule savedRule = recurrenceRuleRepository.save(rule);
@@ -80,7 +81,9 @@ public class SessionRecurrenceService {
         rule.setCurrentSession(nextSession);
         recurrenceRuleRepository.save(rule);
 
-        tryAutoStartRegistration(rule, nextSession);
+        if (rule.isAutoStartRegistration()) {
+            sessionRegistrationScheduleService.tryStartRegistrationIfDue(nextSession);
+        }
         return nextSession;
     }
 
@@ -134,6 +137,8 @@ public class SessionRecurrenceService {
         nextSession.setBroadcastUrl(source.getBroadcastUrl());
         nextSession.setTelegramChatId(source.getTelegramChatId());
         nextSession.setTelegramChatTitle(source.getTelegramChatTitle());
+        nextSession.setAutoStartRegistration(rule.isAutoStartRegistration());
+        nextSession.setRegistrationOpenHoursBefore(rule.getRegistrationOpenHoursBefore());
         nextSession.setFeeAmount(source.getFeeAmount());
         nextSession.setFeeRecipient(source.getFeeRecipient());
         nextSession.setFormatType(source.getFormatType());
@@ -175,15 +180,12 @@ public class SessionRecurrenceService {
         }
     }
 
-    private void tryAutoStartRegistration(SessionRecurrenceRule rule, GameSession session) {
-        if (!rule.isAutoStartRegistration() || session.getCreatedBy() == null || session.getTelegramChatId() == null) {
-            return;
+    private Integer resolveRegistrationOpenHoursBefore(CreateGameSessionRequest request) {
+        if (!Boolean.TRUE.equals(request.autoStartRegistration())) {
+            return request.registrationOpenHoursBefore();
         }
-
-        try {
-            telegramRegistrationService.startRegistration(session.getId(), session.getCreatedBy().getId());
-        } catch (RuntimeException exception) {
-            log.warn("Failed to auto-start registration for recurring session {}", session.getId(), exception);
-        }
+        return request.registrationOpenHoursBefore() == null
+                ? SessionRegistrationScheduleService.DEFAULT_REGISTRATION_OPEN_HOURS_BEFORE
+                : request.registrationOpenHoursBefore();
     }
 }
