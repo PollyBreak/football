@@ -51,11 +51,11 @@ public class GameSessionController {
         return gameSessionService.update(sessionId, request);
     }
 
-    @DeleteMapping("/{sessionId}")
-    @ResponseStatus(HttpStatus.NO_CONTENT)
-    public void deleteSession(@PathVariable Long sessionId) {
-        gameSessionService.deleteById(sessionId);
-    }
+//    @DeleteMapping("/{sessionId}")
+//    @ResponseStatus(HttpStatus.NO_CONTENT)
+//    public void deleteSession(@PathVariable Long sessionId) {
+//        gameSessionService.deleteById(sessionId);
+//    }
 
     @GetMapping
     public List<GameSessionResponse> getSessions(
