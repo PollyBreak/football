@@ -583,11 +583,11 @@ function visiblePlayers(team: OverlayTeam | null): SessionTeamPlayer[] {
 }
 
 function displayPlayerName(player: SessionTeamPlayer): string {
-  return formatUsername(player.playerUsername) ?? shortName(player.playerName);
+  return player.playerDisplayName?.trim() || formatUsername(player.playerUsername) || shortName(player.playerName);
 }
 
 function eventDisplayName(event: MatchEvent): string {
-  return formatUsername(event.playerUsername) ?? (event.playerName ? shortName(event.playerName) : 'Игрок');
+  return event.playerDisplayName?.trim() || formatUsername(event.playerUsername) || (event.playerName ? shortName(event.playerName) : 'Игрок');
 }
 
 function formatUsername(username: string | null | undefined): string | null {

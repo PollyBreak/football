@@ -177,6 +177,7 @@ export interface SessionTeamPlayer {
   sessionTeamId: number;
   playerId: number;
   playerName: string;
+  playerDisplayName: string | null;
   playerUsername: string | null;
   photoUrl: string | null;
   position: PlayerPosition | null;
@@ -212,10 +213,12 @@ export interface MatchEvent {
   teamName: string | null;
   playerId: number | null;
   playerName: string | null;
+  playerDisplayName: string | null;
   playerUsername: string | null;
   playerPhotoUrl: string | null;
   relatedPlayerId: number | null;
   relatedPlayerName: string | null;
+  relatedPlayerDisplayName: string | null;
   relatedPlayerUsername: string | null;
   relatedPlayerPhotoUrl: string | null;
   linkedEventId: number | null;
