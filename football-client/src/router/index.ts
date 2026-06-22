@@ -27,7 +27,7 @@ const router = createRouter({
   ]
 });
 
-router.beforeEach((to) => {
+router.beforeEach((to, from) => {
   if (to.path.startsWith('/overlay/')) {
     return true;
   }
@@ -49,7 +49,8 @@ router.beforeEach((to) => {
   }
 
   const startTargetPath = startParamTargetPath();
-  if (authState.player && startTargetPath && to.path !== startTargetPath && (to.path === '/' || to.path === '/sessions' || to.path === '/onboarding')) {
+  const isInitialDefaultRoute = to.path === '/' || (to.path === '/sessions' && from.path === '/');
+  if (authState.player && startTargetPath && to.path !== startTargetPath && (isInitialDefaultRoute || to.path === '/onboarding')) {
     return startTargetPath;
   }
 

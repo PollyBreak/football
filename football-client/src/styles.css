@@ -1290,6 +1290,23 @@ textarea {
   object-fit: cover;
 }
 
+.pagination-row {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  margin-top: 12px;
+  color: var(--muted);
+  font-size: 0.88rem;
+}
+
+.pagination-row .ghost-button {
+  min-height: 30px;
+  padding: 6px 12px;
+  border-radius: 10px;
+  font-size: 0.84rem;
+}
+
 .list-item,
 .session-card,
 .match-card {
@@ -1311,7 +1328,7 @@ textarea {
   min-width: 0;
   width: 100%;
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-columns: auto minmax(0, 1fr);
   align-items: center;
   gap: 10px;
 }
@@ -1325,6 +1342,11 @@ textarea {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.session-card__text p strong {
+  color: var(--text);
+  font-weight: 800;
 }
 
 .session-card__venue-photo {

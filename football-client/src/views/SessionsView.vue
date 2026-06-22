@@ -15,25 +15,32 @@
       <p v-if="!sessions.length && !error" class="muted">Пока нет сессий.</p>
       <div v-else class="list">
         <RouterLink
-          v-for="session in sessions"
+          v-for="session in paginatedSessions"
           :key="session.id"
           :to="`/sessions/${session.id}`"
           class="session-card"
         >
           <div class="session-card__main">
-            <div class="session-card__text">
-              <strong>{{ session.title }}</strong>
-              <p class="muted">{{ session.sessionDate }} {{ session.sessionTime?.slice(0, 5) }} • {{ session.location || 'Место не указано' }}</p>
-            </div>
             <img
               v-if="session.venuePhotoUrl"
               class="session-card__venue-photo"
               :src="resolveMediaUrl(session.venuePhotoUrl)"
               alt="Фото поля"
             />
+            <div class="session-card__text">
+              <strong>{{ session.title }}</strong>
+              <p class="muted">
+                {{ sessionCardDateText(session) }}<template v-if="session.sessionTime">, <strong>{{ session.sessionTime.slice(0, 5) }}</strong></template> 📍 {{ session.location || 'Место не указано' }}
+              </p>
+            </div>
           </div>
           <span class="status-pill" :class="sessionStatusClass(session.status)">{{ sessionStatusLabel(session.status) }}</span>
         </RouterLink>
+      </div>
+      <div v-if="totalPages > 1" class="pagination-row">
+        <button class="ghost-button" type="button" :disabled="currentPage === 1" @click="currentPage -= 1">Назад</button>
+        <span>{{ currentPage }} / {{ totalPages }}</span>
+        <button class="ghost-button" type="button" :disabled="currentPage === totalPages" @click="currentPage += 1">Вперед</button>
       </div>
     </div>
 
@@ -95,7 +102,7 @@
 </template>
 
 <script setup lang="ts">
-import { onMounted, reactive, ref } from 'vue';
+import { computed, onMounted, reactive, ref, watch } from 'vue';
 import { RouterLink } from 'vue-router';
 import { api, resolveMediaUrl } from '../lib/api';
 import { sessionStatusClass, sessionStatusLabel } from '../lib/labels';
@@ -108,8 +115,10 @@ const venuesPending = ref(false);
 const venueSavePending = ref(false);
 const venuesDialogOpen = ref(false);
 const selectedVenueId = ref<number | null>(null);
+const currentPage = ref(1);
 const error = ref('');
 const venuesError = ref('');
+const pageSize = 5;
 
 const venueForm = reactive({
   name: '',
@@ -117,6 +126,34 @@ const venueForm = reactive({
   gisUrl: '',
   photoUrl: ''
 });
+
+const totalPages = computed(() => Math.max(1, Math.ceil(sessions.value.length / pageSize)));
+const paginatedSessions = computed(() => {
+  const start = (currentPage.value - 1) * pageSize;
+  return sessions.value.slice(start, start + pageSize);
+});
+
+watch(totalPages, (pages) => {
+  if (currentPage.value > pages) {
+    currentPage.value = pages;
+  }
+});
+
+const shortWeekdays = ['Вс', 'Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб'];
+const monthNames = [
+  'января',
+  'февраля',
+  'марта',
+  'апреля',
+  'мая',
+  'июня',
+  'июля',
+  'августа',
+  'сентября',
+  'октября',
+  'ноября',
+  'декабря'
+];
 
 async function loadSessions() {
   pending.value = true;
@@ -170,6 +207,22 @@ function selectVenue(venue: SessionVenue) {
   venueForm.gisUrl = venue.gisUrl ?? '';
   venueForm.photoUrl = venue.photoUrl ?? '';
   venuesError.value = '';
+}
+
+function sessionCardDateText(session: GameSession): string {
+  const date = parseSessionDate(session.sessionDate);
+  if (!date) {
+    return session.sessionDate || 'Дата не указана';
+  }
+  return `${shortWeekdays[date.getDay()]}, ${date.getDate()} ${monthNames[date.getMonth()]} ${date.getFullYear()}`;
+}
+
+function parseSessionDate(value: string): Date | null {
+  const match = value.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (!match) {
+    return null;
+  }
+  return new Date(Number(match[1]), Number(match[2]) - 1, Number(match[3]));
 }
 
 async function uploadVenuePhoto(event: Event) {
