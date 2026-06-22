@@ -517,6 +517,10 @@ textarea {
     grid-template-columns: 1fr;
   }
 
+  .venue-manager {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
   .format-metrics-row .field-label > span {
     min-height: 0;
   }
@@ -831,30 +835,62 @@ textarea {
   min-width: 0;
 }
 
-.stream-shift-card .reminder-checkbox {
-  align-self: end;
-  justify-content: space-between;
+.stream-shift-seconds-field {
+  position: relative;
+  display: block;
+}
+
+.stream-shift-seconds-field .input {
+  width: 100%;
+  height: 32px;
+  min-height: 32px;
+  padding: 6px 48px 6px 12px;
   border-radius: 14px;
 }
 
-.stream-shift-card .ghost-button {
+.stream-shift-seconds-field__suffix {
+  position: absolute;
+  top: 50%;
+  right: 14px;
+  transform: translateY(-50%);
+  color: var(--muted);
+  font-size: 0.82rem;
+  pointer-events: none;
+}
+
+.stream-shift-card .reminder-checkbox {
+  align-self: end;
+  justify-content: flex-start;
+  border-radius: 14px;
+}
+
+.stream-shift-toggle {
+  justify-content: flex-start;
+}
+
+.stream-action-row {
   grid-column: 1 / -1;
+  min-width: 0;
+  width: 100%;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.stream-action-row .ghost-button {
   width: 100%;
   min-width: 0;
-  min-height: 45px;
+  min-height: 36px;
+  padding: 8px 12px;
+  border-radius: 12px;
+  font-size: clamp(0.76rem, 3vw, 0.9rem);
+  line-height: 1.1;
   white-space: normal;
   overflow-wrap: anywhere;
 }
 
-.stream-timeline-button,
 .settings-bottom-save {
   width: 100%;
-}
-
-.stream-timeline-button {
-  min-width: 0;
-  white-space: normal;
-  overflow-wrap: anywhere;
 }
 
 .stream-timeline-result {
@@ -1150,6 +1186,110 @@ textarea {
   gap: 10px;
 }
 
+.sessions-page-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.sessions-page-header__actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.sessions-page-header .section-title {
+  margin: 0;
+}
+
+.sessions-page-header .ghost-button {
+  min-height: 30px;
+  padding: 5px 10px;
+  border-radius: 10px;
+  font-size: 0.88rem;
+  line-height: 1;
+}
+
+.guest-player-button {
+  padding: 8px 10px;
+  font-size: 0.82rem;
+  line-height: 1.15;
+}
+
+.venue-manager {
+  display: grid;
+  grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.1fr);
+  gap: 14px;
+  align-items: start;
+}
+
+.venue-manager__list,
+.venue-manager__form {
+  min-width: 0;
+  display: grid;
+  gap: 10px;
+}
+
+.venue-manager__item {
+  min-width: 0;
+  display: grid;
+  grid-template-columns: 42px minmax(0, 1fr);
+  align-items: center;
+  gap: 10px;
+  padding: 8px;
+  border: 1px solid var(--card-border);
+  border-radius: 12px;
+  color: inherit;
+  background: var(--surface-bg);
+  text-align: left;
+}
+
+.venue-manager__item.is-active {
+  border-color: var(--accent);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent) 24%, transparent);
+}
+
+.venue-manager__item img,
+.venue-manager__placeholder {
+  width: 42px;
+  height: 42px;
+  border-radius: 10px;
+}
+
+.venue-manager__item img {
+  object-fit: cover;
+}
+
+.venue-manager__placeholder {
+  display: grid;
+  place-items: center;
+  background: var(--ghost-bg);
+  color: var(--accent-text);
+  font-weight: 800;
+}
+
+.venue-manager__item strong {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.venue-manager__photo-preview {
+  overflow: hidden;
+  border: 1px solid var(--card-border);
+  border-radius: 14px;
+  aspect-ratio: 16 / 9;
+  background: var(--ghost-bg);
+}
+
+.venue-manager__photo-preview img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
 .list-item,
 .session-card,
 .match-card {
@@ -1286,19 +1426,23 @@ textarea {
   font-size: 0.8rem;
 }
 
-.status-pill--match-finished {
+.status-pill--match-finished,
+.status-pill--session-finished,
+.status-pill--session-cancelled {
   color: #8f2f2f;
   background: rgba(217, 93, 93, 0.16);
   box-shadow: inset 0 0 0 1px rgba(159, 48, 48, 0.2);
 }
 
-.status-pill--match-in_progress {
+.status-pill--match-in_progress,
+.status-pill--session-in_progress {
   color: #21653d;
   background: rgba(47, 143, 87, 0.16);
   box-shadow: inset 0 0 0 1px rgba(33, 101, 61, 0.2);
 }
 
-.status-pill--match-planned {
+.status-pill--match-planned,
+.status-pill--session-planned {
   color: var(--accent-text);
   background: var(--ghost-bg);
 }
@@ -1678,6 +1822,10 @@ textarea {
   height: 13px;
   margin: 0;
   align-self: center;
+}
+
+.recurrence-toggle {
+  justify-content: flex-start;
 }
 
 .reminder-form {

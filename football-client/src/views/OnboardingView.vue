@@ -60,14 +60,14 @@ import { onMounted, reactive, ref } from 'vue';
 import { useRouter } from 'vue-router';
 import { api } from '../lib/api';
 import { authState, setRegisteredPlayer } from '../lib/auth';
-import { playerPositionLabel } from '../lib/labels';
+import { playerPositionLabel, selectablePlayerPositions } from '../lib/labels';
 import { startParamTargetPath } from '../lib/telegram';
 import type { PlayerPosition } from '../types';
 
 const router = useRouter();
 const pending = ref(false);
 const error = ref('');
-const positions: PlayerPosition[] = ['GOALKEEPER', 'DEFENDER', 'MIDFIELDER', 'FORWARD', 'UNIVERSAL'];
+const positions = selectablePlayerPositions;
 
 const form = reactive({
   firstName: '',

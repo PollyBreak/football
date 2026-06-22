@@ -326,6 +326,7 @@ async function startMatch() {
   persistMatchStart(clientStartTimestamp);
   now.value = clientStartTimestamp;
   match.value = await api.startMatch(sessionIdNumber.value, match.value.id);
+  await loadSession();
 }
 
 async function finishMatch() {

@@ -71,7 +71,7 @@
             <strong>{{ session.title }}</strong>
             <p class="muted">{{ session.sessionDate }} {{ session.sessionTime?.slice(0, 5) }}</p>
           </div>
-          <span class="status-pill">{{ sessionStatusLabel(session.status) }}</span>
+          <span class="status-pill" :class="sessionStatusClass(session.status)">{{ sessionStatusLabel(session.status) }}</span>
         </RouterLink>
       </div>
     </div>
@@ -85,7 +85,7 @@ import { computed, onMounted, ref } from 'vue';
 import { RouterLink } from 'vue-router';
 import { api } from '../lib/api';
 import { authState } from '../lib/auth';
-import { playerPositionLabel, sessionStatusLabel } from '../lib/labels';
+import { playerPositionLabel, sessionStatusClass, sessionStatusLabel } from '../lib/labels';
 import type { PlayerProfile } from '../types';
 
 const props = defineProps<{ playerId: string }>();

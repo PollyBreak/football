@@ -183,6 +183,9 @@ public class GameSessionService {
         session.setNotes(request.notes());
         session.setMaxPlayers(request.maxPlayers());
         session.setPlayerFormat(request.playerFormat());
+        if (request.recurrenceActive() != null && session.getRecurrenceRule() != null) {
+            session.getRecurrenceRule().setActive(request.recurrenceActive());
+        }
         sessionPlayerService.fillAvailableSlots(sessionId);
         if (session.getStatus() == SessionStatus.FINISHED) {
             sessionRecurrenceService.createNextSessionIfDue(session);

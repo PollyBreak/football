@@ -1,5 +1,7 @@
 import type { MatchStatus, PlayerPosition, SessionFormatType, SessionStatus } from '../types';
 
+export const selectablePlayerPositions: PlayerPosition[] = ['GOALKEEPER', 'DEFENDER', 'MIDFIELDER', 'FORWARD'];
+
 export function playerPositionLabel(position: PlayerPosition | null | undefined): string {
   const labels: Record<PlayerPosition, string> = {
     GOALKEEPER: 'Вратарь',
@@ -32,6 +34,10 @@ export function sessionStatusLabel(status: SessionStatus): string {
   };
 
   return labels[status];
+}
+
+export function sessionStatusClass(status: SessionStatus): string {
+  return `status-pill--session-${status.toLowerCase()}`;
 }
 
 export function matchStatusLabel(status: MatchStatus): string {

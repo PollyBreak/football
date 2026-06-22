@@ -42,6 +42,23 @@ public class SessionVenueService {
         return sessionVenueRepository.save(venue);
     }
 
+    @Transactional
+    public SessionVenueResponse update(Long id, CreateSessionVenueRequest request) {
+        SessionVenue venue = getById(id);
+        String name = cleanRequired(request.name(), "Venue name must not be blank");
+        sessionVenueRepository.findByNameIgnoreCase(name)
+                .filter(existing -> !existing.getId().equals(id))
+                .ifPresent(existing -> {
+                    throw new IllegalArgumentException("Venue with this name already exists");
+                });
+
+        venue.setName(name);
+        venue.setAddress(cleanOptional(request.address()));
+        venue.setGisUrl(cleanOptional(request.gisUrl()));
+        venue.setPhotoUrl(cleanOptional(request.photoUrl()));
+        return SessionVenueResponse.fromEntity(sessionVenueRepository.save(venue));
+    }
+
     public SessionVenue getById(Long id) {
         return sessionVenueRepository.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("Session venue not found: " + id));

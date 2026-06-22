@@ -1,6 +1,7 @@
 package com.pollybreak.footballcore.api.controller;
 
 import com.pollybreak.footballcore.api.dto.session.AddPlayerToSessionRequest;
+import com.pollybreak.footballcore.api.dto.session.CreateGuestSessionPlayerRequest;
 import com.pollybreak.footballcore.api.dto.session.CreateRandomSessionPlayerRequest;
 import com.pollybreak.footballcore.api.dto.session.SessionJoinResponse;
 import com.pollybreak.footballcore.api.dto.session.SessionPlayerResponse;
@@ -79,5 +80,13 @@ public class SessionPlayerController {
                 ? new CreateRandomSessionPlayerRequest(null, null)
                 : request;
         return sessionPlayerService.createRandomPlayer(sessionId, safeRequest);
+    }
+
+    @PostMapping("/guest")
+    public SessionPlayerResponse createGuestPlayer(
+            @PathVariable Long sessionId,
+            @Valid @RequestBody CreateGuestSessionPlayerRequest request
+    ) {
+        return sessionPlayerService.createGuestPlayer(sessionId, request);
     }
 }

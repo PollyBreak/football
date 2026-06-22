@@ -92,6 +92,7 @@ export interface GameSession {
   recurrenceType: SessionRecurrenceType | null;
   recurrenceIntervalDays: number | null;
   recurrenceDayOfMonth: number | null;
+  recurrenceActive: boolean | null;
   feeAmount: number | null;
   feeRecipient: string | null;
   formatType: SessionFormatType;

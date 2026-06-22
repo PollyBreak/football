@@ -13,6 +13,7 @@ import com.pollybreak.footballcore.domain.entity.SessionMatch;
 import com.pollybreak.footballcore.domain.entity.SessionTeam;
 import com.pollybreak.footballcore.domain.enums.MatchEventType;
 import com.pollybreak.footballcore.domain.enums.MatchStatus;
+import com.pollybreak.footballcore.domain.enums.SessionStatus;
 import java.time.OffsetDateTime;
 import com.pollybreak.footballcore.repository.GameSessionRepository;
 import com.pollybreak.footballcore.repository.MatchEventRepository;
@@ -134,9 +135,11 @@ public class SessionMatchService {
     @Transactional
     public SessionMatchResponse start(Long matchId, StartSessionMatchRequest request) {
         SessionMatch match = getById(matchId);
+        OffsetDateTime startedAt = request.startedAt() != null ? request.startedAt() : OffsetDateTime.now();
         match.setStatus(MatchStatus.IN_PROGRESS);
-        match.setStartedAt(request.startedAt() != null ? request.startedAt() : OffsetDateTime.now());
+        match.setStartedAt(startedAt);
         match.setEndedAt(null);
+        markSessionInProgress(match.getSession(), startedAt);
         saveSystemEvent(match, MatchEventType.MATCH_STARTED);
         SessionMatchResponse response = SessionMatchResponse.fromEntity(match);
         overlayEventService.publishAfterCommit(
@@ -174,6 +177,17 @@ public class SessionMatchService {
                 match.getId()
         );
         return response;
+    }
+
+    private void markSessionInProgress(GameSession session, OffsetDateTime startedAt) {
+        if (session.getStatus() != SessionStatus.PLANNED) {
+            return;
+        }
+        session.setStatus(SessionStatus.IN_PROGRESS);
+        if (session.getStartedAt() == null) {
+            session.setStartedAt(startedAt);
+        }
+        session.setEndedAt(null);
     }
 
     @Transactional

@@ -1,6 +1,7 @@
 package com.pollybreak.footballcore.service;
 
 import com.pollybreak.footballcore.api.dto.session.AddPlayerToSessionRequest;
+import com.pollybreak.footballcore.api.dto.session.CreateGuestSessionPlayerRequest;
 import com.pollybreak.footballcore.api.dto.session.CreateRandomSessionPlayerRequest;
 import com.pollybreak.footballcore.api.dto.session.SessionJoinResponse;
 import com.pollybreak.footballcore.api.dto.session.SessionPlayerResponse;
@@ -158,6 +159,33 @@ public class SessionPlayerService {
         sessionPlayer.setSession(session);
         sessionPlayer.setPlayer(savedPlayer);
         sessionPlayer.setPosition(savedPlayer.getDefaultPosition());
+        sessionPlayer.setActive(true);
+
+        SessionPlayerResponse response = SessionPlayerResponse.fromEntity(sessionPlayerRepository.save(sessionPlayer));
+        publishRosterChanged(sessionId);
+        return response;
+    }
+
+    @Transactional
+    public SessionPlayerResponse createGuestPlayer(Long sessionId, CreateGuestSessionPlayerRequest request) {
+        GameSession session = getSession(sessionId);
+        String name = request.name().trim();
+        if (name.isBlank()) {
+            throw new IllegalArgumentException("Guest player name must not be blank");
+        }
+
+        Player player = new Player();
+        player.setFirstName(name);
+        player.setLastName(null);
+        player.setNickname(null);
+        player.setDefaultPosition(request.position());
+        player.setActive(true);
+        Player savedPlayer = playerRepository.save(player);
+
+        SessionPlayer sessionPlayer = new SessionPlayer();
+        sessionPlayer.setSession(session);
+        sessionPlayer.setPlayer(savedPlayer);
+        sessionPlayer.setPosition(request.position());
         sessionPlayer.setActive(true);
 
         SessionPlayerResponse response = SessionPlayerResponse.fromEntity(sessionPlayerRepository.save(sessionPlayer));

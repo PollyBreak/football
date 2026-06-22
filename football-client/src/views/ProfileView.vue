@@ -96,7 +96,7 @@
             <strong>{{ session.title }}</strong>
             <p class="muted">{{ session.sessionDate }} {{ session.sessionTime?.slice(0, 5) }}</p>
           </div>
-          <span class="status-pill">{{ sessionStatusLabel(session.status) }}</span>
+          <span class="status-pill" :class="sessionStatusClass(session.status)">{{ sessionStatusLabel(session.status) }}</span>
         </RouterLink>
       </div>
     </div>
@@ -159,12 +159,12 @@ import { computed, onMounted, reactive, ref, watch } from 'vue';
 import { RouterLink } from 'vue-router';
 import { api } from '../lib/api';
 import { authState, setRegisteredPlayer } from '../lib/auth';
-import { playerPositionLabel, sessionStatusLabel } from '../lib/labels';
+import { playerPositionLabel, selectablePlayerPositions, sessionStatusClass, sessionStatusLabel } from '../lib/labels';
 import type { PlayerProfile, PlayerPosition } from '../types';
 
 const pending = ref(false);
 const error = ref('');
-const positions: PlayerPosition[] = ['GOALKEEPER', 'DEFENDER', 'MIDFIELDER', 'FORWARD', 'UNIVERSAL'];
+const positions = selectablePlayerPositions;
 
 const registrationForm = reactive({
   displayName: '',

@@ -23,6 +23,7 @@ public record UpdateGameSessionRequest(
         Integer sessionDurationMinutes,
         String notes,
         Integer maxPlayers,
-        String playerFormat
+        String playerFormat,
+        Boolean recurrenceActive
 ) {
 }

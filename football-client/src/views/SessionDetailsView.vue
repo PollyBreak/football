@@ -40,7 +40,7 @@
         </a>
       </div>
       <div class="hero-actions">
-        <span class="status-pill">{{ sessionStatusLabel(session.status) }}</span>
+        <span class="status-pill" :class="sessionStatusClass(session.status)">{{ sessionStatusLabel(session.status) }}</span>
         <button class="icon-button" type="button" aria-label="Настройки сессии" :disabled="sessionIsFinished" @click="settingsOpen = true">
           &#9881;
         </button>
@@ -207,6 +207,13 @@
 
           <div class="settings-group">
             <p class="settings-group__title">Дополнительно</p>
+            <label v-if="session.recurrenceRuleId" class="reminder-checkbox recurrence-toggle">
+              <input v-model="sessionSettings.recurrenceActive" type="checkbox" :disabled="sessionIsFinished" />
+              <span>Повторять следующие события</span>
+            </label>
+            <p v-if="session.recurrenceRuleId && !sessionSettings.recurrenceActive" class="muted">
+              После завершения текущей сессии новая повторяющаяся сессия больше не создастся.
+            </p>
             <label class="field-label">
               <span>Telegram chat ID</span>
               <input v-model.number="sessionSettings.telegramChatId" class="input" type="number" placeholder="-100..." :disabled="sessionIsFinished" />
@@ -224,19 +231,21 @@
               <input v-model="sessionSettings.broadcastUrl" class="input" type="url" placeholder="https://..." :disabled="sessionIsFinished" />
             </label>
             <div class="stream-shift-card">
-              <label class="reminder-checkbox">
-                <span>Сдвиг вперед</span>
+              <label class="reminder-checkbox stream-shift-toggle">
                 <input v-model="streamShiftForward" type="checkbox" :disabled="pendingStreamShift" />
+                <span>Сдвиг вперед</span>
               </label>
-              <label class="field-label">
-                <span>Секунд</span>
+              <label class="field-label stream-shift-seconds-field" aria-label="Сдвиг в секундах">
                 <input v-model.number="streamShiftSeconds" class="input" type="number" min="1" placeholder="10" :disabled="pendingStreamShift" />
+                <span class="stream-shift-seconds-field__suffix">сек.</span>
               </label>
-              <button class="ghost-button" type="button" :disabled="pendingStreamShift || !streamShiftSeconds" @click="applyStreamShift">Применить сдвиг</button>
+              <div class="stream-action-row">
+                <button class="ghost-button stream-action-button" type="button" :disabled="pendingStreamShift || !streamShiftSeconds" @click="applyStreamShift">Применить сдвиг</button>
+                <button class="ghost-button stream-timeline-button" type="button" :disabled="pendingTimelineGeneration" @click="generateStreamTimeline">
+                  Тайм-коды
+                </button>
+              </div>
             </div>
-            <button class="ghost-button stream-timeline-button" type="button" :disabled="pendingTimelineGeneration" @click="generateStreamTimeline">
-              Сгенерировать тайм-коды для трансляции
-            </button>
             <div v-if="generatedTimelineText" class="stream-timeline-result">
               <textarea class="input textarea" readonly :value="generatedTimelineText"></textarea>
               <button class="ghost-button" type="button" @click="copyGeneratedTimeline">Скопировать</button>
@@ -508,6 +517,9 @@
       <div class="card stack-sm">
         <div class="section-header">
           <h3 class="section-title">Добавить игрока</h3>
+          <button class="ghost-button guest-player-button" type="button" :disabled="sessionIsFinished" @click="openGuestPlayerDialog">
+            Добавить игрока без профиля
+          </button>
         </div>
         <div class="grid-form">
           <select v-model.number="sessionPlayerForm.playerId" class="input" :disabled="sessionIsFinished">
@@ -517,11 +529,41 @@
             </option>
           </select>
           <select v-model="sessionPlayerForm.position" class="input" :disabled="sessionIsFinished">
+            <option :value="null">По умолчанию</option>
             <option v-for="position in positions" :key="position" :value="position">{{ playerPositionLabel(position) }}</option>
           </select>
           <button class="primary-button" @click="addPlayerToSession" :disabled="sessionIsFinished">Добавить в сессию</button>
         </div>
       </div>
+    </div>
+
+    <div v-if="guestPlayerDialogOpen" class="settings-overlay" @click.self="closeGuestPlayerDialog">
+      <form class="settings-window stack-sm" @submit.prevent="createGuestPlayer">
+        <div class="section-header">
+          <div>
+            <p class="eyebrow">Гость</p>
+            <h3 class="section-title">Игрок без профиля</h3>
+          </div>
+          <button class="ghost-button" type="button" @click="closeGuestPlayerDialog" :disabled="pendingGuestPlayerCreate">Закрыть</button>
+        </div>
+
+        <label class="field-label">
+          <span>Имя игрока</span>
+          <input v-model="guestPlayerForm.name" class="input" placeholder="Например, Арман" :disabled="pendingGuestPlayerCreate" />
+        </label>
+        <label class="field-label">
+          <span>Позиция</span>
+          <select v-model="guestPlayerForm.position" class="input" :disabled="pendingGuestPlayerCreate">
+            <option v-for="position in positions" :key="position" :value="position">{{ playerPositionLabel(position) }}</option>
+          </select>
+        </label>
+
+        <p v-if="guestPlayerError" class="error-text">{{ guestPlayerError }}</p>
+        <div class="button-row">
+          <button class="ghost-button" type="button" @click="closeGuestPlayerDialog" :disabled="pendingGuestPlayerCreate">Отмена</button>
+          <button class="primary-button" type="submit" :disabled="pendingGuestPlayerCreate">Добавить</button>
+        </div>
+      </form>
     </div>
 
     <div v-if="activeTab === 'Teams'" class="card stack-sm">
@@ -783,7 +825,7 @@ import { computed, onMounted, reactive, ref, watch } from 'vue';
 import { useRouter } from 'vue-router';
 import { api, resolveMediaUrl } from '../lib/api';
 import { authState } from '../lib/auth';
-import { matchStatusLabel, playerPositionLabel, sessionFormatLabel, sessionStatusLabel } from '../lib/labels';
+import { matchStatusLabel, playerPositionLabel, selectablePlayerPositions, sessionFormatLabel, sessionStatusClass, sessionStatusLabel } from '../lib/labels';
 import { getStartParam } from '../lib/telegram';
 import type {
   ContributionReminder,
@@ -810,7 +852,7 @@ const tabLabels: Record<(typeof tabs)[number], string> = {
   Matches: 'Матчи',
   Standings: 'Таблица'
 };
-const positions: PlayerPosition[] = ['GOALKEEPER', 'DEFENDER', 'MIDFIELDER', 'FORWARD', 'UNIVERSAL'];
+const positions = selectablePlayerPositions;
 const reminderQuickHours = [10, 5, 2];
 
 const session = ref<GameSession | null>(null);
@@ -834,6 +876,7 @@ const pendingSessionUpdate = ref(false);
 const pendingRegistrationStart = ref(false);
 const pendingContributionStart = ref(false);
 const pendingReminderUpdate = ref(false);
+const pendingGuestPlayerCreate = ref(false);
 const pendingStreamStart = ref(false);
 const pendingStreamShift = ref(false);
 const pendingTimelineGeneration = ref(false);
@@ -842,12 +885,14 @@ const streamShiftForward = ref(true);
 const streamShiftSeconds = ref<number | null>(null);
 const generatedTimelineText = ref('');
 const settingsOpen = ref(false);
+const guestPlayerDialogOpen = ref(false);
 const adminDialogOpen = ref(false);
 const overlayDialogOpen = ref(false);
 const streamDialogOpen = ref(false);
 const adminUnlocked = ref(false);
 const adminPassword = ref('');
 const playersViewLoading = ref(false);
+const guestPlayerError = ref('');
 const resumeSessionPassword = '212229';
 const resumePasswordDialogOpen = ref(false);
 const resumePassword = ref('');
@@ -928,6 +973,10 @@ function capitalizeFirst(value: string): string {
 
 const sessionPlayerForm = reactive({
   playerId: undefined as number | undefined,
+  position: null as PlayerPosition | null
+});
+const guestPlayerForm = reactive({
+  name: '',
   position: 'MIDFIELDER' as PlayerPosition
 });
 const knockoutMatchForm = reactive({
@@ -950,7 +999,8 @@ const sessionSettings = reactive({
   sessionDurationMinutes: 90 as number | null,
   notes: '',
   maxPlayers: 15 as number | null,
-  playerFormat: '6x6'
+  playerFormat: '6x6',
+  recurrenceActive: true
 });
 const reminderForm = reactive({
   hoursBefore: 10 as number | null
@@ -1468,6 +1518,7 @@ function fillSessionSettings() {
   sessionSettings.notes = session.value.notes ?? '';
   sessionSettings.maxPlayers = session.value.maxPlayers ?? null;
   sessionSettings.playerFormat = session.value.playerFormat ?? '';
+  sessionSettings.recurrenceActive = session.value.recurrenceActive ?? true;
 }
 
 async function loadPlayers() {
@@ -1761,7 +1812,8 @@ async function saveSessionSettings() {
       sessionDurationMinutes: sessionSettings.sessionDurationMinutes || null,
       notes: sessionSettings.notes.trim() || null,
       maxPlayers: sessionSettings.maxPlayers || null,
-      playerFormat: sessionSettings.playerFormat.trim() || null
+      playerFormat: sessionSettings.playerFormat.trim() || null,
+      recurrenceActive: session.value?.recurrenceRuleId ? sessionSettings.recurrenceActive : null
     });
     fillSessionSettings();
     await Promise.all([loadSessionPlayers(), loadWaitlist()]);
@@ -1912,7 +1964,49 @@ async function addPlayerToSession() {
     position: sessionPlayerForm.position
   });
   sessionPlayerForm.playerId = undefined;
+  sessionPlayerForm.position = null;
   await Promise.all([loadSessionPlayers(), loadWaitlist(), loadContributionStatuses()]);
+}
+
+function openGuestPlayerDialog() {
+  if (sessionIsFinished.value) return;
+  guestPlayerForm.name = '';
+  guestPlayerForm.position = 'MIDFIELDER';
+  guestPlayerError.value = '';
+  guestPlayerDialogOpen.value = true;
+}
+
+function closeGuestPlayerDialog() {
+  if (pendingGuestPlayerCreate.value) return;
+  guestPlayerDialogOpen.value = false;
+  guestPlayerError.value = '';
+}
+
+async function createGuestPlayer() {
+  if (sessionIsFinished.value) return;
+  const name = guestPlayerForm.name.trim();
+  if (!name) {
+    guestPlayerError.value = 'Укажите имя игрока';
+    return;
+  }
+
+  pendingGuestPlayerCreate.value = true;
+  guestPlayerError.value = '';
+  error.value = '';
+  try {
+    await api.createGuestSessionPlayer(sessionIdNumber.value, {
+      name,
+      position: guestPlayerForm.position
+    });
+    guestPlayerDialogOpen.value = false;
+    guestPlayerForm.name = '';
+    guestPlayerForm.position = 'MIDFIELDER';
+    await Promise.all([loadSessionPlayers(), loadWaitlist(), loadContributionStatuses(), loadPlayers()]);
+  } catch (err) {
+    guestPlayerError.value = err instanceof Error ? err.message : 'Не удалось добавить игрока без профиля';
+  } finally {
+    pendingGuestPlayerCreate.value = false;
+  }
 }
 
 async function toggleCurrentUserSession() {
@@ -2040,7 +2134,7 @@ function ensureRoundRobinPairSelection() {
 async function startMatch(matchId: number) {
   if (sessionIsFinished.value) return;
   await api.startMatch(sessionIdNumber.value, matchId);
-  await loadMatches();
+  await Promise.all([loadSession(), loadMatches()]);
 }
 
 async function finishMatch(matchId: number) {

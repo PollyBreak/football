@@ -153,6 +153,9 @@ export const api = {
   createSessionVenue(payload: Record<string, unknown>): Promise<SessionVenue> {
     return request('/api/session-venues', { method: 'POST', body: JSON.stringify(payload) });
   },
+  updateSessionVenue(venueId: number, payload: Record<string, unknown>): Promise<SessionVenue> {
+    return request(`/api/session-venues/${venueId}`, { method: 'PUT', body: JSON.stringify(payload) });
+  },
   uploadSessionVenuePhoto(file: File): Promise<FileUploadResponse> {
     return uploadFile('/api/session-venues/photos', 'file', file);
   },
@@ -185,6 +188,9 @@ export const api = {
   },
   addPlayerToSession(sessionId: number, payload: Record<string, unknown>): Promise<SessionPlayer> {
     return request(`/api/sessions/${sessionId}/players`, { method: 'POST', body: JSON.stringify(payload) });
+  },
+  createGuestSessionPlayer(sessionId: number, payload: Record<string, unknown>): Promise<SessionPlayer> {
+    return request(`/api/sessions/${sessionId}/players/guest`, { method: 'POST', body: JSON.stringify(payload) });
   },
   joinSession(sessionId: number, payload: Record<string, unknown>): Promise<SessionJoinResponse> {
     return request(`/api/sessions/${sessionId}/players/join`, { method: 'POST', body: JSON.stringify(payload) });
