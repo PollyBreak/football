@@ -29,8 +29,11 @@
             />
             <div class="session-card__text">
               <strong>{{ session.title }}</strong>
-              <p class="muted">
-                {{ sessionCardDateText(session) }}<template v-if="session.sessionTime">, <strong>{{ session.sessionTime.slice(0, 5) }}</strong></template> 📍 {{ session.location || 'Место не указано' }}
+              <p class="muted session-card__date">
+                {{ sessionCardDateText(session) }}<template v-if="session.sessionTime">, <strong>{{ session.sessionTime.slice(0, 5) }}</strong></template>
+              </p>
+              <p class="muted session-card__location">
+                📍 {{ session.location || 'Место не указано' }}
               </p>
             </div>
           </div>

@@ -1344,14 +1344,22 @@ textarea {
   white-space: nowrap;
 }
 
+.session-card__text p {
+  margin: 0;
+}
+
+.session-card__location {
+  margin-top: 2px;
+}
+
 .session-card__text p strong {
   color: var(--text);
   font-weight: 800;
 }
 
 .session-card__venue-photo {
-  width: 54px;
-  height: 42px;
+  width: 60px;
+  height: 46px;
   border: 1px solid var(--card-border);
   border-radius: 10px;
   object-fit: cover;
