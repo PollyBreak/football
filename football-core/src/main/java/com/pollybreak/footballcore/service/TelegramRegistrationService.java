@@ -34,11 +34,13 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 @Service
 @RequiredArgsConstructor
+@Slf4j
 @Transactional(readOnly = true)
 public class TelegramRegistrationService {
 
@@ -87,7 +89,7 @@ public class TelegramRegistrationService {
             result = telegramBotApiClient.sendMessage(session.getTelegramChatId(), text, registrationKeyboard(session.getId()));
             session.setTelegramRegistrationMessageId(result.path("message_id").asLong());
         } else {
-            result = telegramBotApiClient.editMessageText(
+            result = telegramBotApiClient.editMessageTextIgnoringNotModified(
                     session.getTelegramChatId(),
                     session.getTelegramRegistrationMessageId(),
                     text,
@@ -126,8 +128,8 @@ public class TelegramRegistrationService {
         }
 
         applyRegistration(callbackData.sessionId(), player.get(), callbackData.status());
-        refreshRegistrationMessage(callbackData.sessionId());
-        telegramBotApiClient.answerCallbackQuery(callbackId, "Готово, список обновлен", false, null);
+        answerCallbackSafely(callbackId, "Готово, список обновлен");
+        refreshRegistrationMessageSafely(callbackData.sessionId());
     }
 
     @Transactional
@@ -177,12 +179,28 @@ public class TelegramRegistrationService {
         if (session.getTelegramChatId() == null || session.getTelegramRegistrationMessageId() == null) {
             return;
         }
-        telegramBotApiClient.editMessageText(
+        telegramBotApiClient.editMessageTextIgnoringNotModified(
                 session.getTelegramChatId(),
                 session.getTelegramRegistrationMessageId(),
                 buildAnnouncement(session),
                 registrationKeyboard(session.getId())
         );
+    }
+
+    private void refreshRegistrationMessageSafely(Long sessionId) {
+        try {
+            refreshRegistrationMessage(sessionId);
+        } catch (RuntimeException exception) {
+            log.warn("Failed to refresh Telegram registration message for session {}", sessionId, exception);
+        }
+    }
+
+    private void answerCallbackSafely(String callbackId, String message) {
+        try {
+            telegramBotApiClient.answerCallbackQuery(callbackId, message, false, null);
+        } catch (RuntimeException exception) {
+            log.warn("Failed to answer Telegram registration callback {}", callbackId, exception);
+        }
     }
 
     private void savePendingRegistration(Long telegramId, Long sessionId, SessionRegistrationStatus status) {

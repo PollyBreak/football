@@ -60,11 +60,22 @@ public class TelegramBotApiClient {
         ));
     }
 
+    public JsonNode editMessageTextIgnoringNotModified(Long chatId, Long messageId, String text, List<List<Map<String, String>>> inlineKeyboard) {
+        try {
+            return editMessageText(chatId, messageId, text, inlineKeyboard);
+        } catch (HttpClientErrorException exception) {
+            if (isMessageNotModified(exception)) {
+                return objectMapper.createObjectNode();
+            }
+            throw exception;
+        }
+    }
+
     public @Nullable JsonNode tryEditMessageText(Long chatId, Long messageId, String text, List<List<Map<String, String>>> inlineKeyboard) {
         try {
             return editMessageText(chatId, messageId, text, inlineKeyboard);
         } catch (HttpClientErrorException exception) {
-            if (exception.getResponseBodyAsString().contains("message is not modified")) {
+            if (isMessageNotModified(exception)) {
                 return objectMapper.createObjectNode();
             }
             return null;
@@ -100,5 +111,9 @@ public class TelegramBotApiClient {
             throw new IllegalStateException("Telegram Bot API error: " + objectMapper.valueToTree(response));
         }
         return response.path("result");
+    }
+
+    private boolean isMessageNotModified(HttpClientErrorException exception) {
+        return exception.getResponseBodyAsString().contains("message is not modified");
     }
 }

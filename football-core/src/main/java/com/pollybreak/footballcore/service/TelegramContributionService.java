@@ -104,8 +104,8 @@ public class TelegramContributionService {
         }
 
         applyContributionStatus(callbackData.sessionId(), player.get(), callbackData.paid());
-        refreshContributionMessage(callbackData.sessionId());
-        telegramBotApiClient.answerCallbackQuery(callbackId, "Готово, список взносов обновлен", false, null);
+        answerCallbackSafely(callbackId, "Готово, список взносов обновлен");
+        refreshContributionMessageSafely(callbackData.sessionId());
     }
 
     @Transactional
@@ -114,7 +114,7 @@ public class TelegramContributionService {
         if (session.getTelegramChatId() == null || session.getTelegramContributionMessageId() == null) {
             return;
         }
-        telegramBotApiClient.editMessageText(
+        telegramBotApiClient.editMessageTextIgnoringNotModified(
                 session.getTelegramChatId(),
                 session.getTelegramContributionMessageId(),
                 buildContributionMessage(session),
@@ -193,6 +193,22 @@ public class TelegramContributionService {
     @Transactional(propagation = Propagation.REQUIRES_NEW, readOnly = true)
     public void refreshContributionMessageAfterCommit(Long sessionId) {
         refreshContributionMessage(sessionId);
+    }
+
+    private void refreshContributionMessageSafely(Long sessionId) {
+        try {
+            refreshContributionMessage(sessionId);
+        } catch (RuntimeException exception) {
+            log.warn("Failed to refresh Telegram contribution message for session {}", sessionId, exception);
+        }
+    }
+
+    private void answerCallbackSafely(String callbackId, String message) {
+        try {
+            telegramBotApiClient.answerCallbackQuery(callbackId, message, false, null);
+        } catch (RuntimeException exception) {
+            log.warn("Failed to answer Telegram contribution callback {}", callbackId, exception);
+        }
     }
 
     private void applyContributionStatus(Long sessionId, Player player, boolean paid) {
