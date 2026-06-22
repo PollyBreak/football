@@ -1307,6 +1307,34 @@ textarea {
   color: inherit;
 }
 
+.session-card__main {
+  min-width: 0;
+  width: 100%;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+}
+
+.session-card__text {
+  min-width: 0;
+}
+
+.session-card__text strong,
+.session-card__text p {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.session-card__venue-photo {
+  width: 54px;
+  height: 42px;
+  border: 1px solid var(--card-border);
+  border-radius: 10px;
+  object-fit: cover;
+}
+
 .is-clickable {
   cursor: pointer;
 }

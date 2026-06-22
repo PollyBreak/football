@@ -20,9 +20,17 @@
           :to="`/sessions/${session.id}`"
           class="session-card"
         >
-          <div>
-            <strong>{{ session.title }}</strong>
-            <p class="muted">{{ session.sessionDate }} {{ session.sessionTime?.slice(0, 5) }} • {{ session.location || 'Место не указано' }}</p>
+          <div class="session-card__main">
+            <div class="session-card__text">
+              <strong>{{ session.title }}</strong>
+              <p class="muted">{{ session.sessionDate }} {{ session.sessionTime?.slice(0, 5) }} • {{ session.location || 'Место не указано' }}</p>
+            </div>
+            <img
+              v-if="session.venuePhotoUrl"
+              class="session-card__venue-photo"
+              :src="resolveMediaUrl(session.venuePhotoUrl)"
+              alt="Фото поля"
+            />
           </div>
           <span class="status-pill" :class="sessionStatusClass(session.status)">{{ sessionStatusLabel(session.status) }}</span>
         </RouterLink>
