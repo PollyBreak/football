@@ -3,6 +3,7 @@ package com.pollybreak.footballcore.api.dto.session;
 import com.pollybreak.footballcore.domain.entity.GameSession;
 import com.pollybreak.footballcore.domain.entity.SessionTeam;
 import com.pollybreak.footballcore.domain.enums.SessionFormatType;
+import com.pollybreak.footballcore.domain.enums.MvpVotingParticipantScope;
 import com.pollybreak.footballcore.domain.enums.SessionRecurrenceType;
 import com.pollybreak.footballcore.domain.enums.SessionStatus;
 import java.time.LocalDate;
@@ -27,6 +28,14 @@ public record GameSessionResponse(
         Boolean autoStartRegistration,
         Integer registrationOpenHoursBefore,
         Long telegramContributionMessageId,
+        Boolean mvpVotingEnabled,
+        Integer mvpVotingDurationHours,
+        MvpVotingParticipantScope mvpVotingParticipantScope,
+        Boolean mvpVotingTelegramEnabled,
+        OffsetDateTime mvpVotingStartedAt,
+        OffsetDateTime mvpVotingEndsAt,
+        Long telegramMvpVotingMessageId,
+        OffsetDateTime telegramMvpResultSentAt,
         Long recurrenceRuleId,
         SessionRecurrenceType recurrenceType,
         Integer recurrenceIntervalDays,
@@ -65,6 +74,14 @@ public record GameSessionResponse(
                 session.isAutoStartRegistration(),
                 session.getRegistrationOpenHoursBefore(),
                 session.getTelegramContributionMessageId(),
+                session.isMvpVotingEnabled(),
+                session.getMvpVotingDurationHours(),
+                session.getMvpVotingParticipantScope(),
+                session.isMvpVotingTelegramEnabled(),
+                session.getMvpVotingStartedAt(),
+                session.getMvpVotingEndsAt(),
+                session.getTelegramMvpVotingMessageId(),
+                session.getTelegramMvpResultSentAt(),
                 session.getRecurrenceRule() != null ? session.getRecurrenceRule().getId() : null,
                 session.getRecurrenceRule() != null ? session.getRecurrenceRule().getRecurrenceType() : null,
                 session.getRecurrenceRule() != null ? session.getRecurrenceRule().getIntervalDays() : null,

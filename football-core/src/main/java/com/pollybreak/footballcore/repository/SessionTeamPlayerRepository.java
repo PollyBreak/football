@@ -9,6 +9,8 @@ public interface SessionTeamPlayerRepository extends JpaRepository<SessionTeamPl
 
     List<SessionTeamPlayer> findAllBySessionTeamIdAndActiveTrue(Long sessionTeamId);
 
+    List<SessionTeamPlayer> findAllBySessionTeamSessionIdAndActiveTrue(Long sessionId);
+
     List<SessionTeamPlayer> findAllBySessionTeamSessionIdAndPlayerIdAndActiveTrue(Long sessionId, Long playerId);
 
     Optional<SessionTeamPlayer> findBySessionTeamIdAndPlayerIdAndActiveTrue(Long sessionTeamId, Long playerId);

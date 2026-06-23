@@ -8,6 +8,7 @@ import type {
   OverlayState,
   PlayerProfile,
   SessionMatch,
+  SessionMvpVoting,
   SessionPlayer,
   SessionJoinResponse,
   SessionVenue,
@@ -182,6 +183,13 @@ export const api = {
   },
   getSession(sessionId: number): Promise<GameSession> {
     return request(`/api/sessions/${sessionId}`);
+  },
+  getSessionMvpVoting(sessionId: number, userId?: number | null): Promise<SessionMvpVoting> {
+    const search = userId ? `?userId=${userId}` : '';
+    return request(`/api/sessions/${sessionId}/mvp${search}`);
+  },
+  voteForSessionMvp(sessionId: number, payload: Record<string, unknown>): Promise<SessionMvpVoting> {
+    return request(`/api/sessions/${sessionId}/mvp/votes`, { method: 'POST', body: JSON.stringify(payload) });
   },
   getSessionPlayers(sessionId: number): Promise<SessionPlayer[]> {
     return request(`/api/sessions/${sessionId}/players`);

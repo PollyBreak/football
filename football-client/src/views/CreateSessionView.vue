@@ -186,6 +186,39 @@
         </div>
 
         <div class="settings-group">
+          <label class="reminder-checkbox recurring-event-toggle">
+            <input v-model="form.mvpVotingEnabled" type="checkbox" />
+            <span>Голосование за MVP</span>
+          </label>
+
+          <template v-if="form.mvpVotingEnabled">
+            <label class="field-label">
+              <span>Сколько часов после игры длится голосование?</span>
+              <input v-model.number="form.mvpVotingDurationHours" class="input" type="number" min="1" />
+            </label>
+
+            <div class="field-label">
+              <span>Участвовать в голосовании могут</span>
+              <div class="reminder-options-row">
+                <label class="reminder-checkbox">
+                  <span>Все</span>
+                  <input type="radio" name="mvp-voting-scope" value="ALL" :checked="form.mvpVotingParticipantScope === 'ALL'" @change="form.mvpVotingParticipantScope = 'ALL'" />
+                </label>
+                <label class="reminder-checkbox">
+                  <span>Только те, кто играл</span>
+                  <input type="radio" name="mvp-voting-scope" value="PLAYERS_ONLY" :checked="form.mvpVotingParticipantScope === 'PLAYERS_ONLY'" @change="form.mvpVotingParticipantScope = 'PLAYERS_ONLY'" />
+                </label>
+              </div>
+            </div>
+
+            <label class="reminder-checkbox" :class="{ 'is-disabled': !form.telegramChatId }">
+              <input v-model="form.mvpVotingTelegramEnabled" type="checkbox" :disabled="!form.telegramChatId" />
+              <span>Делать рассылку в чате</span>
+            </label>
+          </template>
+        </div>
+
+        <div class="settings-group">
           <p class="settings-group__title">Оплата</p>
 
           <label class="field-label">
@@ -339,6 +372,10 @@ const form = reactive({
   autoStartRegistration: false,
   registrationOpenDaysBefore: 5,
   autoStartContributionCollection: false,
+  mvpVotingEnabled: false,
+  mvpVotingDurationHours: 24,
+  mvpVotingParticipantScope: 'ALL' as 'ALL' | 'PLAYERS_ONLY',
+  mvpVotingTelegramEnabled: false,
   recurringEnabled: false,
   recurringMode: null as 'days' | 'month' | null,
   recurringEveryDays: null as number | null,
@@ -485,6 +522,15 @@ watch(telegramChatSelection, (value) => {
 });
 
 watch(
+  () => form.telegramChatId,
+  (chatId) => {
+    if (!chatId) {
+      form.mvpVotingTelegramEnabled = false;
+    }
+  }
+);
+
+watch(
   () => form.recurringEnabled,
   (enabled) => {
     if (enabled) {
@@ -611,6 +657,16 @@ async function createSession() {
     return;
   }
 
+  if (form.mvpVotingEnabled && (!Number.isFinite(form.mvpVotingDurationHours) || form.mvpVotingDurationHours < 1)) {
+    error.value = 'Укажите, сколько часов длится голосование за MVP';
+    return;
+  }
+
+  if (form.mvpVotingEnabled && form.mvpVotingTelegramEnabled && !form.telegramChatId) {
+    error.value = 'Укажите Telegram чат для рассылки голосования за MVP';
+    return;
+  }
+
   pending.value = true;
   error.value = '';
   try {
@@ -630,6 +686,10 @@ async function createSession() {
       autoStartRegistration: form.autoStartRegistration,
       registrationOpenHoursBefore: form.autoStartRegistration ? form.registrationOpenDaysBefore * 24 : null,
       autoStartContributionCollection: form.autoStartContributionCollection,
+      mvpVotingEnabled: form.mvpVotingEnabled,
+      mvpVotingDurationHours: form.mvpVotingEnabled ? form.mvpVotingDurationHours : null,
+      mvpVotingParticipantScope: form.mvpVotingParticipantScope,
+      mvpVotingTelegramEnabled: form.mvpVotingEnabled && form.mvpVotingTelegramEnabled,
       recurrenceType: form.recurringEnabled ? (form.recurringMode === 'days' ? 'DAYS' : 'MONTHLY') : null,
       recurrenceIntervalDays: form.recurringEnabled && form.recurringMode === 'days' ? form.recurringEveryDays || null : null,
       recurrenceDayOfMonth: form.recurringEnabled && form.recurringMode === 'month' ? form.recurringDayOfMonth || null : null,

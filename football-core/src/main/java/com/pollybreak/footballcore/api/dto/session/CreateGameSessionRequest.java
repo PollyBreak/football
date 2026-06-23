@@ -1,6 +1,7 @@
 package com.pollybreak.footballcore.api.dto.session;
 
 import com.pollybreak.footballcore.domain.enums.SessionFormatType;
+import com.pollybreak.footballcore.domain.enums.MvpVotingParticipantScope;
 import com.pollybreak.footballcore.domain.enums.SessionRecurrenceType;
 import com.pollybreak.footballcore.domain.enums.SessionStatus;
 import jakarta.validation.Valid;
@@ -26,6 +27,10 @@ public record CreateGameSessionRequest(
         Boolean autoStartRegistration,
         Integer registrationOpenHoursBefore,
         Boolean autoStartContributionCollection,
+        Boolean mvpVotingEnabled,
+        Integer mvpVotingDurationHours,
+        MvpVotingParticipantScope mvpVotingParticipantScope,
+        Boolean mvpVotingTelegramEnabled,
         SessionRecurrenceType recurrenceType,
         Integer recurrenceIntervalDays,
         Integer recurrenceDayOfMonth,

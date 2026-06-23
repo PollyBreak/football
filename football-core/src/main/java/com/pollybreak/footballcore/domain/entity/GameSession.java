@@ -1,6 +1,7 @@
 package com.pollybreak.footballcore.domain.entity;
 
 import com.pollybreak.footballcore.domain.enums.SessionFormatType;
+import com.pollybreak.footballcore.domain.enums.MvpVotingParticipantScope;
 import com.pollybreak.footballcore.domain.enums.SessionStatus;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -73,6 +74,31 @@ public class GameSession {
 
     @Column(name = "telegram_contribution_message_id")
     private Long telegramContributionMessageId;
+
+    @Column(name = "mvp_voting_enabled", nullable = false)
+    private boolean mvpVotingEnabled;
+
+    @Column(name = "mvp_voting_duration_hours")
+    private Integer mvpVotingDurationHours;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "mvp_voting_participant_scope", nullable = false, length = 50)
+    private MvpVotingParticipantScope mvpVotingParticipantScope = MvpVotingParticipantScope.ALL;
+
+    @Column(name = "mvp_voting_telegram_enabled", nullable = false)
+    private boolean mvpVotingTelegramEnabled;
+
+    @Column(name = "mvp_voting_started_at")
+    private OffsetDateTime mvpVotingStartedAt;
+
+    @Column(name = "mvp_voting_ends_at")
+    private OffsetDateTime mvpVotingEndsAt;
+
+    @Column(name = "telegram_mvp_voting_message_id")
+    private Long telegramMvpVotingMessageId;
+
+    @Column(name = "telegram_mvp_result_sent_at")
+    private OffsetDateTime telegramMvpResultSentAt;
 
     @Column(name = "fee_amount")
     private Integer feeAmount;

@@ -41,7 +41,7 @@
       </div>
       <div class="hero-actions">
         <span class="status-pill" :class="sessionStatusClass(session.status)">{{ sessionStatusLabel(session.status) }}</span>
-        <button class="icon-button" type="button" aria-label="Настройки сессии" :disabled="sessionIsFinished" @click="settingsOpen = true">
+        <button class="icon-button" type="button" aria-label="Настройки сессии" @click="settingsOpen = true">
           &#9881;
         </button>
       </div>
@@ -81,20 +81,41 @@
         </div>
 
         <div class="session-results-leader">
-          <p class="eyebrow">MVP</p>
-          <template v-if="mvpPlayer">
+          <p class="eyebrow">Ассисты</p>
+          <template v-if="topAssistPlayer">
             <div class="session-results-leader__person">
               <div class="player-avatar player-avatar--sm">
-                <img v-if="mvpPlayer.photoUrl" :src="mvpPlayer.photoUrl" alt="Фото игрока" />
-                <span v-else>{{ resultPlayerInitials(mvpPlayer.name) }}</span>
+                <img v-if="topAssistPlayer.photoUrl" :src="topAssistPlayer.photoUrl" alt="Фото игрока" />
+                <span v-else>{{ resultPlayerInitials(topAssistPlayer.name) }}</span>
               </div>
               <div>
-                <strong>{{ mvpPlayer.name }}</strong>
-                <p class="muted">{{ mvpPlayer.goals }} ⚽ {{ mvpPlayer.assists }} 👟</p>
+                <strong>{{ topAssistPlayer.name }}</strong>
+                <p class="muted">{{ topAssistPlayer.assists }} 👟</p>
               </div>
             </div>
           </template>
-          <p v-else class="muted">Пока нет статистики.</p>
+          <p v-else class="muted">Пока нет передач.</p>
+        </div>
+      </div>
+      <button
+        v-if="showMvpVotingButton"
+        class="ghost-button current-match-button"
+        type="button"
+        @click="openMvpVoting"
+      >
+        Голосование за MVP
+      </button>
+      <div v-if="showMvpWinners" class="session-mvp-result">
+        <p class="eyebrow">MVP</p>
+        <div v-for="winner in mvpVoting?.winners" :key="winner.playerId" class="session-results-leader__person">
+          <div class="player-avatar player-avatar--sm">
+            <img v-if="winner.photoUrl" :src="winner.photoUrl" alt="Фото игрока" />
+            <span v-else>{{ resultPlayerInitials(mvpCandidateName(winner)) }}</span>
+          </div>
+          <div>
+            <strong>{{ mvpCandidateName(winner) }}</strong>
+            <p class="muted">{{ mvpCandidateStats(winner) }} · {{ winner.votes }} голосов</p>
+          </div>
         </div>
       </div>
     </div>
@@ -103,7 +124,7 @@
       <div class="settings-window">
         <div class="section-header">
           <button class="ghost-button" type="button" @click="settingsOpen = false">Назад</button>
-          <button class="primary-button" type="button" @click="saveSessionSettings" :disabled="pendingSessionUpdate || sessionIsFinished">Сохранить</button>
+          <button class="primary-button" type="button" @click="saveSessionSettings" :disabled="pendingSessionUpdate">Сохранить</button>
         </div>
         <div class="settings-modal-body">
           <div>
@@ -216,8 +237,35 @@
             </p>
             <label class="field-label">
               <span>Telegram chat ID</span>
-              <input v-model.number="sessionSettings.telegramChatId" class="input" type="number" placeholder="-100..." :disabled="sessionIsFinished" />
+              <input v-model.number="sessionSettings.telegramChatId" class="input" type="number" placeholder="-100..." />
             </label>
+            <label class="reminder-checkbox recurrence-toggle">
+              <input v-model="sessionSettings.mvpVotingEnabled" type="checkbox" />
+              <span>Голосование за MVP</span>
+            </label>
+            <template v-if="sessionSettings.mvpVotingEnabled">
+              <label class="field-label">
+                <span>Сколько часов после игры длится голосование?</span>
+                <input v-model.number="sessionSettings.mvpVotingDurationHours" class="input" type="number" min="1" />
+              </label>
+              <div class="field-label">
+                <span>Участвовать в голосовании могут</span>
+                <div class="reminder-options-row">
+                  <label class="reminder-checkbox">
+                    <span>Все</span>
+                    <input type="radio" name="session-mvp-voting-scope" value="ALL" :checked="sessionSettings.mvpVotingParticipantScope === 'ALL'" @change="sessionSettings.mvpVotingParticipantScope = 'ALL'" />
+                  </label>
+                  <label class="reminder-checkbox">
+                    <span>Только те, кто играл</span>
+                    <input type="radio" name="session-mvp-voting-scope" value="PLAYERS_ONLY" :checked="sessionSettings.mvpVotingParticipantScope === 'PLAYERS_ONLY'" @change="sessionSettings.mvpVotingParticipantScope = 'PLAYERS_ONLY'" />
+                  </label>
+                </div>
+              </div>
+              <label class="reminder-checkbox" :class="{ 'is-disabled': !sessionSettings.telegramChatId }">
+                <input v-model="sessionSettings.mvpVotingTelegramEnabled" type="checkbox" :disabled="!sessionSettings.telegramChatId" />
+                <span>Делать рассылку в чате</span>
+              </label>
+            </template>
             <label class="field-label">
               <span>Заметки</span>
               <textarea v-model="sessionSettings.notes" class="input textarea" placeholder="Заметки" :disabled="sessionIsFinished"></textarea>
@@ -228,7 +276,7 @@
             <p class="settings-group__title">Трансляция</p>
             <label class="field-label">
               <span>Ссылка на трансляцию</span>
-              <input v-model="sessionSettings.broadcastUrl" class="input" type="url" placeholder="https://..." :disabled="sessionIsFinished" />
+              <input v-model="sessionSettings.broadcastUrl" class="input" type="url" placeholder="https://..." />
             </label>
             <div class="stream-shift-card">
               <label class="reminder-checkbox stream-shift-toggle">
@@ -252,7 +300,7 @@
             </div>
           </div>
 
-          <button class="primary-button settings-bottom-save" type="button" @click="saveSessionSettings" :disabled="pendingSessionUpdate || sessionIsFinished">Сохранить</button>
+          <button class="primary-button settings-bottom-save" type="button" @click="saveSessionSettings" :disabled="pendingSessionUpdate">Сохранить</button>
         </div>
       </div>
     </div>
@@ -535,6 +583,23 @@
           <button class="primary-button" @click="addPlayerToSession" :disabled="sessionIsFinished">Добавить в сессию</button>
         </div>
       </div>
+
+      <div class="card stack-sm">
+        <div class="section-header">
+          <h3 class="section-title">Удалить игрока</h3>
+        </div>
+        <div class="grid-form">
+          <select v-model.number="removePlayerForm.playerId" class="input" :disabled="pendingPlayerRemove">
+            <option :value="undefined">Выберите игрока</option>
+            <option v-for="player in sessionPlayers" :key="`remove-${player.playerId}`" :value="player.playerId">
+              {{ sessionPersonDisplayName(player) }}
+            </option>
+          </select>
+          <button class="ghost-button soft-danger-button" type="button" :disabled="!removePlayerForm.playerId || pendingPlayerRemove" @click="openRemovePlayerDialog">
+            Удалить из сессии
+          </button>
+        </div>
+      </div>
     </div>
 
     <div v-if="guestPlayerDialogOpen" class="settings-overlay" @click.self="closeGuestPlayerDialog">
@@ -562,6 +627,30 @@
         <div class="button-row">
           <button class="ghost-button" type="button" @click="closeGuestPlayerDialog" :disabled="pendingGuestPlayerCreate">Отмена</button>
           <button class="primary-button" type="submit" :disabled="pendingGuestPlayerCreate">Добавить</button>
+        </div>
+      </form>
+    </div>
+
+    <div v-if="removePlayerDialogOpen" class="settings-overlay" @click.self="closeRemovePlayerDialog">
+      <form class="settings-window stack-sm" @submit.prevent="confirmRemovePlayerFromSession">
+        <div class="section-header">
+          <div>
+            <p class="eyebrow">Удаление</p>
+            <h3 class="section-title">Удалить игрока из сессии?</h3>
+          </div>
+          <button class="ghost-button" type="button" @click="closeRemovePlayerDialog" :disabled="pendingPlayerRemove">Закрыть</button>
+        </div>
+        <p v-if="selectedPlayerToRemove" class="muted">
+          Игрок: {{ sessionPersonDisplayName(selectedPlayerToRemove) }}
+        </p>
+        <label class="field-label">
+          <span>Пароль администратора</span>
+          <input v-model="removePlayerPassword" class="input" type="password" placeholder="Пароль" autocomplete="off" :disabled="pendingPlayerRemove" />
+        </label>
+        <p v-if="removePlayerError" class="error-text">{{ removePlayerError }}</p>
+        <div class="button-row">
+          <button class="ghost-button" type="button" @click="closeRemovePlayerDialog" :disabled="pendingPlayerRemove">Отмена</button>
+          <button class="ghost-button is-danger" type="submit" :disabled="pendingPlayerRemove">Удалить</button>
         </div>
       </form>
     </div>
@@ -850,6 +939,8 @@ import type {
   PlayerPosition,
   PlayerProfile,
   SessionMatch,
+  SessionMvpCandidate,
+  SessionMvpVoting,
   SessionPlayer,
   SessionStandingsRow,
   SessionTeamPlayer,
@@ -871,6 +962,7 @@ const positions = selectablePlayerPositions;
 const reminderQuickHours = [10, 5, 2];
 
 const session = ref<GameSession | null>(null);
+const mvpVoting = ref<SessionMvpVoting | null>(null);
 const sessionVenuePhotoFailed = ref(false);
 const contributionReminders = ref<ContributionReminder[]>([]);
 const contributionStatuses = ref<ContributionStatus[]>([]);
@@ -893,6 +985,7 @@ const pendingRegistrationStart = ref(false);
 const pendingContributionStart = ref(false);
 const pendingReminderUpdate = ref(false);
 const pendingGuestPlayerCreate = ref(false);
+const pendingPlayerRemove = ref(false);
 const pendingStreamStart = ref(false);
 const pendingStreamShift = ref(false);
 const pendingTimelineGeneration = ref(false);
@@ -902,6 +995,7 @@ const streamShiftSeconds = ref<number | null>(null);
 const generatedTimelineText = ref('');
 const settingsOpen = ref(false);
 const guestPlayerDialogOpen = ref(false);
+const removePlayerDialogOpen = ref(false);
 const adminDialogOpen = ref(false);
 const overlayDialogOpen = ref(false);
 const streamDialogOpen = ref(false);
@@ -909,6 +1003,8 @@ const adminUnlocked = ref(false);
 const adminPassword = ref('');
 const playersViewLoading = ref(false);
 const guestPlayerError = ref('');
+const removePlayerPassword = ref('');
+const removePlayerError = ref('');
 const resumeSessionPassword = '212229';
 const resumePasswordDialogOpen = ref(false);
 const resumePassword = ref('');
@@ -991,6 +1087,15 @@ const sessionPlayerForm = reactive({
   playerId: undefined as number | undefined,
   position: null as PlayerPosition | null
 });
+const removePlayerForm = reactive({
+  playerId: undefined as number | undefined
+});
+const selectedPlayerToRemove = computed(() => {
+  if (!removePlayerForm.playerId) {
+    return undefined;
+  }
+  return sessionPlayers.value.find((player) => player.playerId === removePlayerForm.playerId);
+});
 const guestPlayerForm = reactive({
   name: '',
   position: 'MIDFIELDER' as PlayerPosition
@@ -1009,6 +1114,10 @@ const sessionSettings = reactive({
   broadcastUrl: '',
   telegramChatId: null as number | null,
   telegramChatTitle: '',
+  mvpVotingEnabled: false,
+  mvpVotingDurationHours: 24 as number | null,
+  mvpVotingParticipantScope: 'ALL' as 'ALL' | 'PLAYERS_ONLY',
+  mvpVotingTelegramEnabled: false,
   feeAmount: null as number | null,
   feeRecipient: '',
   plannedMatchDurationMinutes: 6 as number | null,
@@ -1135,14 +1244,20 @@ const topScorer = computed(() => {
         || left.name.localeCompare(right.name);
     })[0];
 });
-const mvpPlayer = computed(() => {
+const topAssistPlayer = computed(() => {
   return resultPlayerStats.value
-    .filter((player) => player.goals + player.assists > 0)
+    .filter((player) => player.assists > 0)
     .sort((left, right) => {
-      return (right.goals + right.assists) - (left.goals + left.assists)
+      return right.assists - left.assists
         || right.goals - left.goals
         || left.name.localeCompare(right.name);
     })[0];
+});
+const showMvpVotingButton = computed(() => {
+  return Boolean(mvpVoting.value?.enabled && mvpVoting.value.started && !mvpVoting.value.finished);
+});
+const showMvpWinners = computed(() => {
+  return Boolean(mvpVoting.value?.enabled && mvpVoting.value.finished && mvpVoting.value.winners.length);
 });
 const groupedSessionPlayers = computed(() => {
   if (!session.value) {
@@ -1350,6 +1465,23 @@ function resultPlayerInitials(name: string): string {
     .join('') || 'И';
 }
 
+function mvpCandidateName(candidate: SessionMvpCandidate): string {
+  return candidate.displayName?.trim()
+    || `${candidate.firstName} ${candidate.lastName ?? ''}`.trim()
+    || 'Игрок';
+}
+
+function mvpCandidateStats(candidate: SessionMvpCandidate): string {
+  const parts = [];
+  if (candidate.goals > 0) {
+    parts.push(`${candidate.goals} ⚽`);
+  }
+  if (candidate.assists > 0) {
+    parts.push(`${candidate.assists} 👟`);
+  }
+  return parts.length ? parts.join(' ') : 'без голов и передач';
+}
+
 function pointsLabel(points: number): string {
   const mod10 = points % 10;
   const mod100 = points % 100;
@@ -1522,9 +1654,18 @@ async function refreshAll() {
 
 async function loadSession() {
   session.value = await api.getSession(sessionIdNumber.value);
+  await loadMvpVoting();
   fillSessionSettings();
   session.value.teams.forEach((team) => ensureTeamSelection(team.id));
   ensureRoundRobinPairSelection();
+}
+
+async function loadMvpVoting() {
+  try {
+    mvpVoting.value = await api.getSessionMvpVoting(sessionIdNumber.value, authState.user?.id ?? null);
+  } catch {
+    mvpVoting.value = null;
+  }
 }
 
 function fillSessionSettings() {
@@ -1538,6 +1679,10 @@ function fillSessionSettings() {
   sessionSettings.broadcastUrl = session.value.broadcastUrl ?? '';
   sessionSettings.telegramChatId = session.value.telegramChatId ?? null;
   sessionSettings.telegramChatTitle = session.value.telegramChatTitle ?? '';
+  sessionSettings.mvpVotingEnabled = session.value.mvpVotingEnabled;
+  sessionSettings.mvpVotingDurationHours = session.value.mvpVotingDurationHours ?? 24;
+  sessionSettings.mvpVotingParticipantScope = session.value.mvpVotingParticipantScope ?? 'ALL';
+  sessionSettings.mvpVotingTelegramEnabled = session.value.mvpVotingTelegramEnabled;
   sessionSettings.feeAmount = session.value.feeAmount ?? null;
   sessionSettings.feeRecipient = session.value.feeRecipient ?? '';
   sessionSettings.plannedMatchDurationMinutes = session.value.plannedMatchDurationMinutes ?? null;
@@ -1799,15 +1944,20 @@ async function unlockAdminPanel() {
 }
 
 async function saveSessionSettings() {
-  if (sessionIsFinished.value) {
-    return false;
-  }
   if (!sessionSettings.title.trim()) {
     error.value = 'Заполните название сессии';
     return false;
   }
   if (!sessionSettings.sessionDate || !sessionSettings.sessionTime) {
     error.value = 'Укажите дату и время сессии';
+    return false;
+  }
+  if (sessionSettings.mvpVotingEnabled && (!sessionSettings.mvpVotingDurationHours || sessionSettings.mvpVotingDurationHours < 1)) {
+    error.value = 'Укажите, сколько часов длится голосование за MVP';
+    return false;
+  }
+  if (sessionSettings.mvpVotingEnabled && sessionSettings.mvpVotingTelegramEnabled && !sessionSettings.telegramChatId) {
+    error.value = 'Укажите Telegram chat ID для рассылки голосования за MVP';
     return false;
   }
 
@@ -1832,6 +1982,10 @@ async function saveSessionSettings() {
       broadcastUrl: sessionSettings.broadcastUrl.trim() || null,
       telegramChatId: sessionSettings.telegramChatId || null,
       telegramChatTitle,
+      mvpVotingEnabled: sessionSettings.mvpVotingEnabled,
+      mvpVotingDurationHours: sessionSettings.mvpVotingEnabled ? sessionSettings.mvpVotingDurationHours : null,
+      mvpVotingParticipantScope: sessionSettings.mvpVotingParticipantScope,
+      mvpVotingTelegramEnabled: sessionSettings.mvpVotingEnabled && sessionSettings.mvpVotingTelegramEnabled,
       feeAmount: sessionSettings.feeAmount || null,
       feeRecipient: sessionSettings.feeRecipient.trim() || null,
       status: session.value?.status ?? null,
@@ -1843,7 +1997,7 @@ async function saveSessionSettings() {
       recurrenceActive: session.value?.recurrenceRuleId ? sessionSettings.recurrenceActive : null
     });
     fillSessionSettings();
-    await Promise.all([loadSessionPlayers(), loadWaitlist()]);
+    await Promise.all([loadSessionPlayers(), loadWaitlist(), loadMvpVoting()]);
     settingsOpen.value = false;
     return true;
   } catch (err) {
@@ -1993,6 +2147,51 @@ async function addPlayerToSession() {
   sessionPlayerForm.playerId = undefined;
   sessionPlayerForm.position = null;
   await Promise.all([loadSessionPlayers(), loadWaitlist(), loadContributionStatuses()]);
+}
+
+function openRemovePlayerDialog() {
+  if (!removePlayerForm.playerId || pendingPlayerRemove.value) {
+    return;
+  }
+  removePlayerPassword.value = '';
+  removePlayerError.value = '';
+  removePlayerDialogOpen.value = true;
+}
+
+function closeRemovePlayerDialog() {
+  if (pendingPlayerRemove.value) {
+    return;
+  }
+  removePlayerDialogOpen.value = false;
+  removePlayerPassword.value = '';
+  removePlayerError.value = '';
+}
+
+async function confirmRemovePlayerFromSession() {
+  const playerId = removePlayerForm.playerId;
+  if (!playerId) {
+    removePlayerError.value = 'Выберите игрока';
+    return;
+  }
+  if (removePlayerPassword.value !== adminPasswordValue) {
+    removePlayerError.value = 'Неверный пароль администратора';
+    return;
+  }
+
+  pendingPlayerRemove.value = true;
+  removePlayerError.value = '';
+  error.value = '';
+  try {
+    await api.removePlayerFromSession(sessionIdNumber.value, playerId);
+    removePlayerDialogOpen.value = false;
+    removePlayerPassword.value = '';
+    removePlayerForm.playerId = undefined;
+    await Promise.all([loadSessionPlayers(), loadWaitlist(), loadTeamPlayers(), loadContributionStatuses()]);
+  } catch (err) {
+    removePlayerError.value = err instanceof Error ? err.message : 'Не удалось удалить игрока из сессии';
+  } finally {
+    pendingPlayerRemove.value = false;
+  }
 }
 
 function openGuestPlayerDialog() {
@@ -2305,6 +2504,10 @@ async function openMatch(matchId: number) {
   await router.push(`/sessions/${sessionIdNumber.value}/matches/${matchId}`);
 }
 
+async function openMvpVoting() {
+  await router.push(`/sessions/${sessionIdNumber.value}/mvp`);
+}
+
 async function openCurrentMatch() {
   if (!currentMatchTarget.value) {
     return;
@@ -2315,6 +2518,15 @@ async function openCurrentMatch() {
 async function openPlayerProfile(playerId: number) {
   await router.push(`/players/${playerId}`);
 }
+
+watch(
+  () => sessionSettings.telegramChatId,
+  (chatId) => {
+    if (!chatId) {
+      sessionSettings.mvpVotingTelegramEnabled = false;
+    }
+  }
+);
 
 watch(
   () => activeTab.value,

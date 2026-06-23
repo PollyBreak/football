@@ -9,6 +9,7 @@ import com.pollybreak.footballcore.domain.entity.AppUser;
 import com.pollybreak.footballcore.domain.entity.GameSession;
 import com.pollybreak.footballcore.domain.entity.SessionVenue;
 import com.pollybreak.footballcore.domain.entity.SessionTeam;
+import com.pollybreak.footballcore.domain.enums.MvpVotingParticipantScope;
 import com.pollybreak.footballcore.domain.enums.SessionRecurrenceType;
 import com.pollybreak.footballcore.domain.enums.SessionStatus;
 import com.pollybreak.footballcore.repository.AppUserRepository;
@@ -20,6 +21,7 @@ import java.time.LocalDate;
 import java.time.OffsetDateTime;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Objects;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -39,6 +41,7 @@ public class GameSessionService {
     private final SessionContributionReminderService sessionContributionReminderService;
     private final SessionRecurrenceService sessionRecurrenceService;
     private final SessionRegistrationScheduleService sessionRegistrationScheduleService;
+    private final SessionMvpVotingService sessionMvpVotingService;
 
     public List<GameSession> findAll() {
         return gameSessionRepository.findAllByOrderBySessionDateDescSessionTimeDescCreatedAtDesc();
@@ -74,6 +77,12 @@ public class GameSessionService {
         if (Boolean.TRUE.equals(request.autoStartContributionCollection()) && request.telegramChatId() == null) {
             throw new IllegalArgumentException("telegramChatId is required for autoStartContributionCollection");
         }
+        validateMvpVotingSettings(
+                Boolean.TRUE.equals(request.mvpVotingEnabled()),
+                request.mvpVotingDurationHours(),
+                request.mvpVotingTelegramEnabled(),
+                request.telegramChatId()
+        );
 
         GameSession session = new GameSession();
         session.setTitle(request.title());
@@ -87,6 +96,13 @@ public class GameSessionService {
         session.setRegistrationOpenHoursBefore(resolveRegistrationOpenHoursBefore(request));
         session.setFeeAmount(request.feeAmount());
         session.setFeeRecipient(request.feeRecipient());
+        applyMvpVotingSettings(
+                session,
+                request.mvpVotingEnabled(),
+                request.mvpVotingDurationHours(),
+                request.mvpVotingParticipantScope(),
+                request.mvpVotingTelegramEnabled()
+        );
         session.setFormatType(request.formatType());
         session.setStatus(request.status() != null ? request.status() : SessionStatus.PLANNED);
         session.setPlannedMatchDurationMinutes(request.plannedMatchDurationMinutes());
@@ -129,6 +145,7 @@ public class GameSessionService {
     @Transactional
     public GameSessionResponse update(Long sessionId, UpdateGameSessionRequest request) {
         GameSession session = getById(sessionId);
+        OffsetDateTime previousMvpVotingEndsAt = session.getMvpVotingEndsAt();
         if (request.title() != null && request.title().isBlank()) {
             throw new IllegalArgumentException("title must not be blank");
         }
@@ -144,6 +161,13 @@ public class GameSessionService {
         if (request.registrationOpenHoursBefore() != null && request.registrationOpenHoursBefore() < 0) {
             throw new IllegalArgumentException("registrationOpenHoursBefore must not be negative");
         }
+        Long targetTelegramChatId = request.telegramChatId() != null ? request.telegramChatId() : session.getTelegramChatId();
+        validateMvpVotingSettings(
+                Boolean.TRUE.equals(request.mvpVotingEnabled()),
+                request.mvpVotingDurationHours(),
+                request.mvpVotingTelegramEnabled(),
+                targetTelegramChatId
+        );
 
         if (request.title() != null) {
             session.setTitle(request.title());
@@ -172,6 +196,14 @@ public class GameSessionService {
         validateAutoStartRegistration(session);
         session.setFeeAmount(request.feeAmount());
         session.setFeeRecipient(request.feeRecipient());
+        applyMvpVotingSettings(
+                session,
+                request.mvpVotingEnabled(),
+                request.mvpVotingDurationHours(),
+                request.mvpVotingParticipantScope(),
+                request.mvpVotingTelegramEnabled()
+        );
+        recalculateMvpVotingEndsAtIfStarted(session, previousMvpVotingEndsAt);
         if (request.status() != null) {
             session.setStatus(request.status());
             if (request.status() == SessionStatus.FINISHED && session.getEndedAt() == null) {
@@ -189,6 +221,8 @@ public class GameSessionService {
         sessionPlayerService.fillAvailableSlots(sessionId);
         if (session.getStatus() == SessionStatus.FINISHED) {
             sessionRecurrenceService.createNextSessionIfDue(session);
+            sessionMvpVotingService.startVotingIfNeeded(session);
+            sessionMvpVotingService.refreshVotingMessageIfNeeded(session);
         }
         sessionRegistrationScheduleService.startRegistrationIfDue(session);
         return GameSessionResponse.fromEntity(session, sessionTeamRepository.findAllBySessionIdOrderByDisplayOrderAsc(sessionId));
@@ -216,6 +250,50 @@ public class GameSessionService {
 
     private int nextDisplayOrder(Long sessionId) {
         return sessionTeamRepository.findAllBySessionIdOrderByDisplayOrderAsc(sessionId).size() + 1;
+    }
+
+    private void applyMvpVotingSettings(
+            GameSession session,
+            Boolean enabled,
+            Integer durationHours,
+            MvpVotingParticipantScope participantScope,
+            Boolean telegramEnabled
+    ) {
+        if (enabled == null && durationHours == null && participantScope == null && telegramEnabled == null) {
+            return;
+        }
+        session.setMvpVotingEnabled(Boolean.TRUE.equals(enabled));
+        session.setMvpVotingDurationHours(Boolean.TRUE.equals(enabled) ? durationHours : null);
+        session.setMvpVotingParticipantScope(participantScope != null ? participantScope : MvpVotingParticipantScope.ALL);
+        session.setMvpVotingTelegramEnabled(Boolean.TRUE.equals(enabled) && Boolean.TRUE.equals(telegramEnabled));
+    }
+
+    private boolean recalculateMvpVotingEndsAtIfStarted(GameSession session, OffsetDateTime previousEndsAt) {
+        if (!session.isMvpVotingEnabled() || session.getMvpVotingStartedAt() == null) {
+            return false;
+        }
+        int durationHours = session.getMvpVotingDurationHours() == null ? 24 : session.getMvpVotingDurationHours();
+        OffsetDateTime updatedEndsAt = session.getMvpVotingStartedAt().plusHours(durationHours);
+        if (Objects.equals(previousEndsAt, updatedEndsAt)) {
+            return false;
+        }
+        session.setMvpVotingEndsAt(updatedEndsAt);
+        if (updatedEndsAt.isAfter(OffsetDateTime.now())) {
+            session.setTelegramMvpResultSentAt(null);
+        }
+        return true;
+    }
+
+    private void validateMvpVotingSettings(Boolean enabled, Integer durationHours, Boolean telegramEnabled, Long telegramChatId) {
+        if (!Boolean.TRUE.equals(enabled)) {
+            return;
+        }
+        if (durationHours == null || durationHours < 1) {
+            throw new IllegalArgumentException("mvpVotingDurationHours must be greater than zero");
+        }
+        if (Boolean.TRUE.equals(telegramEnabled) && telegramChatId == null) {
+            throw new IllegalArgumentException("telegramChatId is required for MVP voting announcements");
+        }
     }
 
     private void applyVenue(GameSession session, CreateGameSessionRequest request) {

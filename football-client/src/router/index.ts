@@ -5,6 +5,7 @@ import SessionsView from '../views/SessionsView.vue';
 import CreateSessionView from '../views/CreateSessionView.vue';
 import SessionDetailsView from '../views/SessionDetailsView.vue';
 import MatchDetailsView from '../views/MatchDetailsView.vue';
+import SessionMvpVotingView from '../views/SessionMvpVotingView.vue';
 import OnboardingView from '../views/OnboardingView.vue';
 import OverlayView from '../views/OverlayView.vue';
 import ProfileView from '../views/ProfileView.vue';
@@ -22,6 +23,7 @@ const router = createRouter({
     { path: '/sessions', component: SessionsView },
     { path: '/sessions/new', component: CreateSessionView },
     { path: '/overlay/sessions/:sessionId', component: OverlayView, props: true },
+    { path: '/sessions/:sessionId/mvp', component: SessionMvpVotingView, props: true },
     { path: '/sessions/:sessionId/matches/:matchId', component: MatchDetailsView, props: true },
     { path: '/sessions/:sessionId', component: SessionDetailsView, props: true }
   ]

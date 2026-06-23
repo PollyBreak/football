@@ -38,6 +38,11 @@ export function startParamTargetPath(): string | null {
     return `/sessions/${sessionMatch[1]}`;
   }
 
+  const mvpMatch = startParam?.match(/^mvp_(\d+)$/);
+  if (mvpMatch) {
+    return `/sessions/${mvpMatch[1]}/mvp`;
+  }
+
   const joinMatch = startParam?.match(/^join_(\d+)_(GOING|MAYBE|OUT)$/);
   if (joinMatch) {
     return `/sessions/${joinMatch[1]}`;

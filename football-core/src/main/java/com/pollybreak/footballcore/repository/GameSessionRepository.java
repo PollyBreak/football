@@ -26,4 +26,15 @@ public interface GameSessionRepository extends JpaRepository<GameSession, Long> 
               and session.createdBy is not null
             """)
     List<GameSession> findRegistrationAutoStartCandidates();
+
+    @Query("""
+            select session
+            from GameSession session
+            where session.mvpVotingEnabled = true
+              and session.mvpVotingStartedAt is not null
+              and session.mvpVotingEndsAt is not null
+              and session.mvpVotingEndsAt <= current_timestamp
+              and session.telegramMvpResultSentAt is null
+            """)
+    List<GameSession> findMvpVotingResultAnnouncementCandidates();
 }

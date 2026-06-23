@@ -9,6 +9,7 @@ export type SessionFormatType = 'ROUND_ROBIN' | 'KNOCKOUT' | 'KING_OF_THE_HILL' 
 export type SessionRecurrenceType = 'DAYS' | 'MONTHLY';
 export type SessionStatus = 'PLANNED' | 'IN_PROGRESS' | 'FINISHED' | 'CANCELLED';
 export type MatchStatus = 'PLANNED' | 'IN_PROGRESS' | 'PAUSED' | 'FINISHED' | 'CANCELLED';
+export type MvpVotingParticipantScope = 'ALL' | 'PLAYERS_ONLY';
 
 export interface PlayerProfile {
   playerId: number;
@@ -88,6 +89,14 @@ export interface GameSession {
   autoStartRegistration: boolean;
   registrationOpenHoursBefore: number | null;
   telegramContributionMessageId: number | null;
+  mvpVotingEnabled: boolean;
+  mvpVotingDurationHours: number | null;
+  mvpVotingParticipantScope: MvpVotingParticipantScope;
+  mvpVotingTelegramEnabled: boolean;
+  mvpVotingStartedAt: string | null;
+  mvpVotingEndsAt: string | null;
+  telegramMvpVotingMessageId: number | null;
+  telegramMvpResultSentAt: string | null;
   recurrenceRuleId: number | null;
   recurrenceType: SessionRecurrenceType | null;
   recurrenceIntervalDays: number | null;
@@ -133,6 +142,36 @@ export interface ContributionStatus {
   playerId: number;
   displayName: string;
   paid: boolean;
+}
+
+export interface SessionMvpCandidate {
+  playerId: number;
+  firstName: string;
+  lastName: string | null;
+  displayName: string | null;
+  photoUrl: string | null;
+  position: PlayerPosition | null;
+  teamId: number | null;
+  teamName: string | null;
+  teamColor: string | null;
+  goals: number;
+  assists: number;
+  votes: number;
+}
+
+export interface SessionMvpVoting {
+  sessionId: number;
+  enabled: boolean;
+  started: boolean;
+  finished: boolean;
+  startedAt: string | null;
+  endsAt: string | null;
+  participantScope: MvpVotingParticipantScope;
+  canVote: boolean;
+  cannotVoteReason: string | null;
+  selectedPlayerId: number | null;
+  candidates: SessionMvpCandidate[];
+  winners: SessionMvpCandidate[];
 }
 
 export interface SessionPlayer {
