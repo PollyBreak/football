@@ -1856,6 +1856,28 @@ textarea {
   background: color-mix(in srgb, white 88%, var(--mvp-team-color, var(--surface-bg)));
 }
 
+:root[data-theme="dark-blue"] .mvp-team-card,
+:root[data-theme="dark"] .mvp-team-card {
+  background: color-mix(in srgb, var(--mvp-team-color, var(--surface-bg)) 26%, var(--card-bg));
+  border-color: color-mix(in srgb, var(--mvp-team-color, var(--card-border)) 58%, var(--card-border));
+}
+
+:root[data-theme="dark-blue"] .mvp-team-card .mvp-candidate-item,
+:root[data-theme="dark"] .mvp-team-card .mvp-candidate-item {
+  background: color-mix(in srgb, var(--mvp-team-color, var(--surface-bg)) 18%, var(--surface-bg));
+  border-color: color-mix(in srgb, var(--mvp-team-color, var(--card-border)) 44%, var(--card-border));
+}
+
+:root[data-theme="dark-blue"] .mvp-candidate-name strong,
+:root[data-theme="dark"] .mvp-candidate-name strong {
+  color: #ffffff;
+}
+
+:root[data-theme="dark-blue"] .mvp-candidate-stats,
+:root[data-theme="dark"] .mvp-candidate-stats {
+  color: #dff2ff;
+}
+
 .mvp-candidate-item {
   display: grid;
   grid-template-columns: 24px minmax(0, 1fr) 32px;
