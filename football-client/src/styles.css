@@ -695,12 +695,116 @@ textarea {
 }
 
 .players-header {
-  align-items: center;
-  padding: 10px 0 12px;
+  align-items: flex-start;
+  padding: 0 0 12px;
 }
 
 .players-header .section-title {
   padding-left: 0;
+}
+
+.players-header .refresh-button {
+  min-height: 0;
+  margin: 0;
+  padding: 5px 12px;
+  border-radius: 10px;
+  font-size: 0.82rem;
+  line-height: 1.1;
+}
+
+.players-leaderboard {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.08fr) minmax(0, 1fr);
+  grid-template-areas: "silver gold bronze";
+  align-items: end;
+  gap: 8px;
+  padding: 6px 0 2px;
+}
+
+.leaderboard-card {
+  position: relative;
+  min-width: 0;
+  min-height: 138px;
+  display: grid;
+  justify-items: center;
+  align-content: center;
+  gap: 5px;
+  padding: 14px 8px 12px;
+  border: 1px solid var(--card-border);
+  border-radius: 14px;
+  color: inherit;
+  text-align: center;
+  text-decoration: none;
+  box-shadow: 0 8px 18px var(--shadow);
+}
+
+.leaderboard-card--1 {
+  grid-area: gold;
+  min-height: 154px;
+  background: linear-gradient(180deg, #fff2b8 0%, #f6c94f 100%);
+  color: #473508;
+}
+
+.leaderboard-card--2 {
+  grid-area: silver;
+  background: linear-gradient(180deg, #f3f6fa 0%, #c6d0dc 100%);
+  color: #2f3945;
+}
+
+.leaderboard-card--3 {
+  grid-area: bronze;
+  background: linear-gradient(180deg, #ffd8aa 0%, #c88946 100%);
+  color: #43240e;
+}
+
+.leaderboard-card__medal {
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  font-size: 1rem;
+}
+
+.leaderboard-card__avatar {
+  width: 48px;
+  height: 48px;
+  font-size: 0.9rem;
+}
+
+.leaderboard-card--1 .leaderboard-card__avatar {
+  width: 56px;
+  height: 56px;
+}
+
+.leaderboard-card strong {
+  max-width: 100%;
+  overflow-wrap: anywhere;
+  font-size: 0.88rem;
+  line-height: 1.1;
+}
+
+.leaderboard-card__name {
+  max-width: 100%;
+  overflow-wrap: anywhere;
+  font-size: 0.76rem;
+  line-height: 1.1;
+  opacity: 0.78;
+}
+
+.leaderboard-card p {
+  margin: 0;
+  font-size: 0.8rem;
+  font-weight: 700;
+}
+
+.leaderboard-sort {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.leaderboard-sort .ghost-button.is-active {
+  color: #fff;
+  background: linear-gradient(135deg, var(--accent), var(--accent-dark));
 }
 
 .section-title {
@@ -1361,7 +1465,51 @@ textarea {
 }
 
 .player-list-item {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: start;
+  padding-left: 8px;
   color: inherit;
+}
+
+.player-list-item strong {
+  font-size: 0.92rem;
+  line-height: 1.12;
+}
+
+.player-subline {
+  display: flex;
+  flex-direction: column;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: 2px;
+  font-size: 0.82rem;
+  line-height: 1.15;
+}
+
+.player-list-item .list-item__lead {
+  min-width: 0;
+  gap: 8px;
+}
+
+.player-list-item .list-item__lead > div:last-child {
+  min-width: 0;
+}
+
+.player-rank {
+  width: 14px;
+  flex: 0 0 14px;
+  color: var(--accent-text);
+  font-size: 0.78rem;
+  font-weight: 800;
+  line-height: 1;
+  text-align: center;
+}
+
+.player-stats-chip {
+  color: var(--accent-text);
+  font-size: 0.94rem;
+  font-weight: 700;
 }
 
 .session-card__main {
@@ -1475,8 +1623,18 @@ textarea {
 }
 
 .player-list-item .item-meta {
-  justify-content: flex-end;
+  flex-direction: column;
+  justify-content: flex-start;
+  align-items: flex-end;
+  font-size: 0.86rem;
+  gap: 2px;
+  line-height: 1.15;
   text-align: right;
+}
+
+.player-list-item .player-city {
+  color: var(--muted-text);
+  opacity: 0.72;
 }
 
 .pagination {
@@ -1845,6 +2003,11 @@ textarea {
   justify-items: center;
   padding-top: 6px;
   text-align: center;
+}
+
+.session-mvp-result .session-results-leader__person {
+  justify-self: center;
+  text-align: left;
 }
 
 .mvp-team-card {

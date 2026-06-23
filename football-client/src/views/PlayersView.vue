@@ -2,8 +2,46 @@
   <section class="stack">
     <div class="card stack-sm">
       <div class="section-header players-header">
-        <h2 class="section-title">Игроки</h2>
+        <h2 class="section-title">Leaderboard</h2>
         <button class="ghost-button refresh-button" @click="loadPlayers" :disabled="pending">Обновить</button>
+      </div>
+
+      <div v-if="leaderboardPlayers.length" class="players-leaderboard">
+        <RouterLink
+          v-for="entry in leaderboardPlayers"
+          :key="entry.player.playerId"
+          :to="`/players/${entry.player.playerId}`"
+          class="leaderboard-card"
+          :class="`leaderboard-card--${entry.rank}`"
+        >
+          <span class="leaderboard-card__medal">{{ leaderboardMedal(entry.rank) }}</span>
+          <div class="player-avatar leaderboard-card__avatar">
+            <img v-if="playerPhotoUrl(entry.player)" :src="playerPhotoUrl(entry.player)" alt="Фото игрока" />
+            <span v-else>{{ playerInitials(entry.player) }}</span>
+          </div>
+          <strong>{{ playerDisplayName(entry.player) }}</strong>
+          <span class="leaderboard-card__name">{{ playerFullName(entry.player) }}</span>
+          <p>{{ entry.player.stats.goals }} ⚽ {{ entry.player.stats.assists }} 👟</p>
+        </RouterLink>
+      </div>
+
+      <div class="leaderboard-sort">
+        <button
+          class="ghost-button"
+          type="button"
+          :class="{ 'is-active': sortMode === 'goals' }"
+          @click="sortMode = 'goals'"
+        >
+          Голы
+        </button>
+        <button
+          class="ghost-button"
+          type="button"
+          :class="{ 'is-active': sortMode === 'assists' }"
+          @click="sortMode = 'assists'"
+        >
+          Ассисты
+        </button>
       </div>
 
       <div class="search-row">
@@ -12,28 +50,33 @@
       </div>
 
       <p v-if="error" class="error-text">{{ error }}</p>
-      <p v-if="!paginatedPlayers.length && !error" class="muted">Игроки не найдены.</p>
+      <p v-else-if="isInitialLoading" class="muted">Загрузка игроков... Подождите</p>
+      <p v-else-if="!paginatedPlayers.length" class="muted">Игроки не найдены.</p>
 
       <div v-else class="list">
         <RouterLink
-          v-for="player in paginatedPlayers"
+          v-for="(player, index) in paginatedPlayers"
           :key="player.playerId"
           :to="`/players/${player.playerId}`"
           class="list-item player-list-item"
         >
           <div class="list-item__lead">
+            <span class="player-rank">{{ playerListRank(index) }}</span>
             <div class="player-avatar player-avatar--sm">
               <img v-if="playerPhotoUrl(player)" :src="playerPhotoUrl(player)" alt="Фото игрока" />
               <span v-else>{{ playerInitials(player) }}</span>
             </div>
             <div>
-              <strong>{{ player.firstName }} {{ player.lastName ?? '' }}</strong>
-              <p class="muted">{{ player.nickname || player.displayName || 'Без никнейма' }}</p>
+              <strong>{{ playerDisplayName(player) }}</strong>
+              <p class="muted player-subline">
+                <span>{{ playerFullName(player) }}</span>
+                <span class="player-stats-chip">{{ player.stats.goals }} ⚽ {{ player.stats.assists }} 👟</span>
+              </p>
             </div>
           </div>
           <div class="item-meta">
             <span>{{ playerPositionLabel(player.defaultPosition) }}</span>
-            <span>{{ player.homeCity || 'Город не указан' }}</span>
+            <span class="player-city">{{ player.homeCity || 'Город не указан' }}</span>
           </div>
         </RouterLink>
       </div>
@@ -58,18 +101,19 @@ import type { PlayerProfile } from '../types';
 const pageSize = 15;
 const players = ref<PlayerProfile[]>([]);
 const pending = ref(false);
+const isInitialLoading = ref(true);
 const error = ref('');
 const searchDraft = ref('');
 const searchQuery = ref('');
 const currentPage = ref(1);
+const sortMode = ref<'goals' | 'assists'>('goals');
 
 const filteredPlayers = computed(() => {
   const query = searchQuery.value.trim().toLowerCase();
-  if (!query) {
-    return players.value;
-  }
+  const source = [...players.value].sort(comparePlayers);
+  if (!query) return source;
 
-  return players.value.filter((player) => {
+  return source.filter((player) => {
     const fields = [
       player.firstName,
       player.lastName,
@@ -83,11 +127,38 @@ const filteredPlayers = computed(() => {
   });
 });
 
+const leaderboardPlayers = computed(() => {
+  return [...players.value]
+    .filter((player) => player.stats.goals > 0 || player.stats.assists > 0)
+    .sort(comparePlayers)
+    .slice(0, 3)
+    .map((player, index) => ({ player, rank: index + 1 }));
+});
+
 const totalPages = computed(() => Math.max(1, Math.ceil(filteredPlayers.value.length / pageSize)));
 const paginatedPlayers = computed(() => {
   const start = (currentPage.value - 1) * pageSize;
   return filteredPlayers.value.slice(start, start + pageSize);
 });
+
+function comparePlayers(left: PlayerProfile, right: PlayerProfile): number {
+  const primaryKey = sortMode.value;
+  const secondaryKey = primaryKey === 'goals' ? 'assists' : 'goals';
+  return right.stats[primaryKey] - left.stats[primaryKey]
+    || right.stats[secondaryKey] - left.stats[secondaryKey]
+    || playerDisplayName(left).localeCompare(playerDisplayName(right));
+}
+
+function playerDisplayName(player: PlayerProfile): string {
+  return player.displayName?.trim()
+    || player.nickname?.trim()
+    || `${player.firstName} ${player.lastName ?? ''}`.trim()
+    || 'Игрок';
+}
+
+function playerFullName(player: PlayerProfile): string {
+  return `${player.firstName} ${player.lastName ?? ''}`.trim() || 'Имя не указано';
+}
 
 function playerPhotoUrl(player: PlayerProfile): string {
   if (authState.player?.playerId === player.playerId) {
@@ -98,11 +169,18 @@ function playerPhotoUrl(player: PlayerProfile): string {
 }
 
 function playerInitials(player: PlayerProfile): string {
-  return [player.firstName, player.lastName]
+  return playerDisplayName(player)
+    .split(/\s+/)
     .filter(Boolean)
     .slice(0, 2)
-    .map((part) => part?.[0])
+    .map((part) => part[0])
     .join('') || 'И';
+}
+
+function leaderboardMedal(rank: number): string {
+  if (rank === 1) return '🥇';
+  if (rank === 2) return '🥈';
+  return '🥉';
 }
 
 function applySearch() {
@@ -114,6 +192,10 @@ function goToPage(page: number) {
   currentPage.value = Math.min(Math.max(page, 1), totalPages.value);
 }
 
+function playerListRank(index: number): number {
+  return (currentPage.value - 1) * pageSize + index + 1;
+}
+
 async function loadPlayers() {
   pending.value = true;
   error.value = '';
@@ -123,6 +205,7 @@ async function loadPlayers() {
     error.value = err instanceof Error ? err.message : 'Не удалось загрузить игроков';
   } finally {
     pending.value = false;
+    isInitialLoading.value = false;
   }
 }
 
@@ -130,6 +213,10 @@ watch(filteredPlayers, () => {
   if (currentPage.value > totalPages.value) {
     currentPage.value = totalPages.value;
   }
+});
+
+watch(sortMode, () => {
+  currentPage.value = 1;
 });
 
 onMounted(loadPlayers);
