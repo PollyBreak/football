@@ -3,23 +3,25 @@
     <RouterLink class="ghost-button back-button" :to="`/sessions/${sessionId}`">Назад к сессии</RouterLink>
 
     <div class="card stack-sm" :class="matchCardStatusClass(match.status)">
-      <div class="section-header">
-        <div>
-          <p class="eyebrow">Матч #{{ match.matchNumber }}</p>
+      <div class="section-header match-details-header">
+        <div class="match-details-heading">
+          <p class="eyebrow match-title-meta">
+            <span>Матч #{{ match.matchNumber }}</span>
+            <span class="status-pill" :class="matchStatusClass(match.status)">{{ matchStatusLabel(match.status) }}</span>
+          </p>
           <h2 class="section-title">{{ match.teamAName }} против {{ match.teamBName }}</h2>
         </div>
-        <span class="status-pill" :class="matchStatusClass(match.status)">{{ matchStatusLabel(match.status) }}</span>
       </div>
 
       <div class="match-scoreboard" :class="{ 'is-overtime': matchIsOvertime }">
-        <div class="scoreboard-team">
-          <strong>{{ match.teamAScore }}</strong>
+        <div class="scoreboard-team scoreboard-team--left">
+          <strong>{{ teamColorEmoji(match.teamAId) }} {{ match.teamAScore }}</strong>
         </div>
         <div class="scoreboard-center">
           <strong>:</strong>
         </div>
-        <div class="scoreboard-team">
-          <strong>{{ match.teamBScore }}</strong>
+        <div class="scoreboard-team scoreboard-team--right">
+          <strong>{{ match.teamBScore }} {{ teamColorEmoji(match.teamBId) }}</strong>
         </div>
         <span class="scoreboard-time">{{ elapsedLabel }}</span>
         <div v-if="teamAGoals.length || teamBGoals.length" class="scoreboard-goals-board">
@@ -56,12 +58,20 @@
         </div>
       </div>
 
-      <div class="button-row">
+      <div class="button-row match-details-actions match-actions-row">
         <button v-if="!sessionIsFinished" class="ghost-button" @click="startMatch" :disabled="match.status !== 'PLANNED'">Начать</button>
         <button v-if="!sessionIsFinished" class="ghost-button" :class="{ 'is-danger': matchIsOvertime }" @click="finishMatch" :disabled="match.status !== 'IN_PROGRESS'">Завершить</button>
-        <button v-if="!sessionIsFinished && match.status === 'FINISHED'" class="ghost-button" @click="resumeMatch">Возобновить</button>
+        <button v-if="!sessionIsFinished && (match.status === 'FINISHED' || match.status === 'PAUSED')" class="ghost-button" @click="resumeMatch">Возобновить</button>
         <button class="ghost-button" @click="loadMatch">Обновить</button>
       </div>
+      <button
+        v-if="nextScheduledMatch"
+        class="ghost-button current-match-button"
+        type="button"
+        @click="openNextScheduledMatch"
+      >
+        Перейти к следующему матчу
+      </button>
     </div>
 
     <div v-if="!sessionIsFinished" class="card stack-sm">
@@ -70,8 +80,8 @@
       </div>
       <div class="grid-form">
         <select v-model.number="goalForm.teamId" class="input" :disabled="sessionIsFinished">
-          <option :value="match.teamAId">{{ match.teamAName }}</option>
-          <option :value="match.teamBId">{{ match.teamBName }}</option>
+          <option :value="match.teamAId">{{ teamColorEmoji(match.teamAId) }} {{ match.teamAName }}</option>
+          <option :value="match.teamBId">{{ teamColorEmoji(match.teamBId) }} {{ match.teamBName }}</option>
         </select>
         <label class="field-label field-label--checkbox">
           <span>Автогол</span>
@@ -100,10 +110,13 @@
       </div>
       <p v-if="!events.length" class="muted">Пока нет событий.</p>
       <div v-else class="list">
-        <article v-for="event in events" :key="event.id" class="list-item">
+        <article v-for="event in displayedEvents" :key="event.id" class="list-item">
           <div>
-            <strong>{{ matchEventLabel(event.eventType) }}</strong>
-            <p class="muted">
+            <strong>
+              <span v-if="event.teamId" class="event-team-emoji">{{ teamColorEmoji(event.teamId) }}</span>
+              {{ matchEventLabel(event.eventType) }}
+            </strong>
+            <p v-if="eventMetaVisible(event)" class="muted">
               <span v-if="eventTimeLabel(event)" class="event-time-label">{{ eventTimeLabel(event) }}</span>
               <button
                 v-if="event.playerId"
@@ -113,24 +126,39 @@
               >
                 {{ ownGoalEventLabel(event) }}
               </button>
-              <span v-else>{{ ownGoalEventLabel(event) }}</span>
-              <span> • {{ event.teamName || 'Команда не указана' }}</span>
-              <span v-if="event.relatedPlayerName">
-                • передача:
+              <span v-else-if="event.playerDisplayName || event.playerName">{{ ownGoalEventLabel(event) }}</span>
+              <span v-if="event.relatedPlayerDisplayName || event.relatedPlayerName">
+                ->
                 <button
                   v-if="event.relatedPlayerId"
                   type="button"
                   class="player-link-button"
                   @click="openPlayerProfile(event.relatedPlayerId)"
                 >
-                  {{ event.relatedPlayerName }}
+                  {{ event.relatedPlayerDisplayName || event.relatedPlayerName }}
                 </button>
-                <span v-else>{{ event.relatedPlayerName }}</span>
+                <span v-else>{{ event.relatedPlayerDisplayName || event.relatedPlayerName }}</span>
               </span>
             </p>
           </div>
-          <button v-if="!sessionIsFinished" class="ghost-button" @click="deleteEvent(event.id)">Удалить</button>
+          <button v-if="!sessionIsFinished" class="danger-icon-button" type="button" aria-label="Удалить событие" @click="requestDeleteEvent(event)">
+            <span class="danger-icon-button__icon">×</span>
+          </button>
         </article>
+      </div>
+    </div>
+
+    <div v-if="deleteDialogEvent" class="settings-overlay" @click.self="closeDeleteEventDialog">
+      <div class="settings-window stack-sm delete-event-dialog">
+        <div>
+          <p class="eyebrow">Удаление</p>
+          <h3 class="section-title">Точно удалить событие?</h3>
+        </div>
+        <p class="muted">Это действие нельзя отменить.</p>
+        <div class="button-row">
+          <button class="ghost-button" type="button" @click="closeDeleteEventDialog">Отмена</button>
+          <button class="ghost-button is-danger" type="button" @click="confirmDeleteEvent">Удалить</button>
+        </div>
       </div>
     </div>
 
@@ -150,8 +178,10 @@ const router = useRouter();
 
 const session = ref<GameSession | null>(null);
 const match = ref<SessionMatch | null>(null);
+const sessionMatches = ref<SessionMatch[]>([]);
 const events = ref<MatchEvent[]>([]);
 const teamPlayers = ref<Record<number, SessionTeamPlayer[]>>({});
+const deleteDialogEvent = ref<MatchEvent | null>(null);
 const error = ref('');
 const now = ref(Date.now());
 const localStartedAt = ref<number | null>(null);
@@ -202,6 +232,14 @@ const matchDurationSeconds = computed(() => {
 const matchIsOvertime = computed(() => {
   return matchDurationSeconds.value > 0 && elapsedSeconds.value > matchDurationSeconds.value;
 });
+const nextScheduledMatch = computed(() => {
+  if (!match.value) {
+    return null;
+  }
+  return sessionMatches.value
+    .filter((item) => item.matchNumber > match.value!.matchNumber)
+    .sort((left, right) => left.matchNumber - right.matchNumber)[0] ?? null;
+});
 const goalSummaries = computed(() => {
   const assistsByGoalId = new Map<number, MatchEvent>();
   events.value
@@ -212,8 +250,8 @@ const goalSummaries = computed(() => {
     .filter((event) => (event.eventType === 'GOAL' || event.eventType === 'OWN_GOAL') && event.teamId)
     .map((goal) => {
       const assist = assistsByGoalId.get(goal.id);
-      const scorer = shortPlayerName(goal.playerName) ?? 'Игрок';
-      const assistName = shortPlayerName(assist?.playerName ?? null);
+      const scorer = shortPlayerName(goal.playerDisplayName ?? goal.playerName) ?? 'Игрок';
+      const assistName = shortPlayerName(assist?.playerDisplayName ?? assist?.playerName ?? null);
       const ownGoalMarker = goal.eventType === 'OWN_GOAL' ? ' (А)' : '';
       return {
         id: goal.id,
@@ -227,8 +265,25 @@ const goalSummaries = computed(() => {
       };
     });
 });
+const displayedEvents = computed(() => {
+  return [...events.value].sort(compareMatchEvents);
+});
 const teamAGoals = computed(() => match.value ? goalSummaries.value.filter((goal) => goal.teamId === match.value?.teamAId) : []);
 const teamBGoals = computed(() => match.value ? goalSummaries.value.filter((goal) => goal.teamId === match.value?.teamBId) : []);
+
+function teamColorEmoji(teamId: number): string {
+  const team = session.value?.teams.find((item) => item.id === teamId);
+  const normalized = [team?.color, team?.name].filter(Boolean).join(' ').trim().toLowerCase();
+  if (normalized.includes('blue') || normalized.includes('син')) return '🔵';
+  if (normalized.includes('red') || normalized.includes('крас')) return '🔴';
+  if (normalized.includes('green') || normalized.includes('зелен') || normalized.includes('зелён')) return '🟢';
+  if (normalized.includes('yellow') || normalized.includes('желт') || normalized.includes('жёлт')) return '🟡';
+  if (normalized.includes('orange') || normalized.includes('оранж')) return '🟠';
+  if (normalized.includes('purple') || normalized.includes('фиолет')) return '🟣';
+  if (normalized.includes('black') || normalized.includes('черн') || normalized.includes('чёрн')) return '⚫';
+  if (normalized.includes('white') || normalized.includes('бел')) return '⚪';
+  return '⚪';
+}
 
 function shortPlayerName(name: string | null): string | null {
   return name?.trim().split(/\s+/)[0] || null;
@@ -248,12 +303,52 @@ function goalTimeLabel(goal: MatchEvent): string | null {
 }
 
 function ownGoalEventLabel(event: MatchEvent): string {
-  const playerName = event.playerName || 'Игрок не указан';
+  const playerName = event.playerDisplayName || event.playerName || 'Игрок не указан';
   return event.eventType === 'OWN_GOAL' ? `${playerName} (А)` : playerName;
+}
+
+function eventMetaVisible(event: MatchEvent): boolean {
+  return Boolean(
+    eventTimeLabel(event)
+    || event.playerDisplayName
+    || event.playerName
+    || event.relatedPlayerDisplayName
+    || event.relatedPlayerName
+  );
+}
+
+function compareMatchEvents(left: MatchEvent, right: MatchEvent): number {
+  if (left.eventType === 'ASSIST' && String(left.linkedEventId) === String(right.id)) {
+    return -1;
+  }
+  if (right.eventType === 'ASSIST' && String(right.linkedEventId) === String(left.id)) {
+    return 1;
+  }
+
+  if (left.minuteInMatch != null && right.minuteInMatch != null) {
+    const leftTime = eventSortTime(left);
+    const rightTime = eventSortTime(right);
+    if (leftTime !== rightTime) {
+      return leftTime - rightTime;
+    }
+  }
+
+  return left.id - right.id;
+}
+
+function eventSortTime(event: MatchEvent): number {
+  return (event.minuteInMatch ?? 0) * 60 + (event.secondInMatch ?? 0);
 }
 
 async function openPlayerProfile(playerId: number) {
   await router.push(`/players/${playerId}`);
+}
+
+async function openNextScheduledMatch() {
+  if (!nextScheduledMatch.value) {
+    return;
+  }
+  await router.push(`/sessions/${sessionIdNumber.value}/matches/${nextScheduledMatch.value.id}`);
 }
 
 function eventTimeLabel(event: MatchEvent): string | null {
@@ -298,6 +393,7 @@ function persistMatchStart(timestamp: number | null) {
 
 async function loadSession() {
   session.value = await api.getSession(sessionIdNumber.value);
+  sessionMatches.value = await api.getMatches(sessionIdNumber.value);
   const entries = await Promise.all(
     session.value.teams.map(async (team) => [team.id, await api.getTeamPlayers(team.id)] as const)
   );
@@ -313,6 +409,10 @@ async function loadMatch() {
     localStartedAt.value = readStoredMatchStart();
   }
   goalForm.teamId = goalForm.teamId ?? match.value.teamAId;
+}
+
+async function loadSessionMatches() {
+  sessionMatches.value = await api.getMatches(sessionIdNumber.value);
 }
 
 async function loadEvents() {
@@ -334,6 +434,7 @@ async function finishMatch() {
   match.value = await api.finishMatch(sessionIdNumber.value, match.value.id);
   localStartedAt.value = null;
   persistMatchStart(null);
+  await loadSessionMatches();
 }
 
 async function resumeMatch() {
@@ -342,6 +443,7 @@ async function resumeMatch() {
   localStartedAt.value = null;
   persistMatchStart(null);
   now.value = Date.now();
+  await loadSessionMatches();
 }
 
 async function addGoal() {
@@ -361,6 +463,23 @@ async function addGoal() {
   goalForm.ownGoal = false;
   goalForm.assistPlayerId = undefined;
   await Promise.all([loadMatch(), loadEvents()]);
+}
+
+function requestDeleteEvent(event: MatchEvent) {
+  deleteDialogEvent.value = event;
+}
+
+function closeDeleteEventDialog() {
+  deleteDialogEvent.value = null;
+}
+
+async function confirmDeleteEvent() {
+  if (!deleteDialogEvent.value) {
+    return;
+  }
+  const eventId = deleteDialogEvent.value.id;
+  closeDeleteEventDialog();
+  await deleteEvent(eventId);
 }
 
 async function deleteEvent(eventId: number) {
@@ -425,6 +544,22 @@ watch(
   () => {
     goalForm.scorerPlayerId = undefined;
     goalForm.assistPlayerId = undefined;
+  }
+);
+
+watch(
+  () => props.matchId,
+  async () => {
+    try {
+      error.value = '';
+      goalForm.teamId = undefined;
+      goalForm.scorerPlayerId = undefined;
+      goalForm.ownGoal = false;
+      goalForm.assistPlayerId = undefined;
+      await Promise.all([loadMatch(), loadEvents(), loadSessionMatches()]);
+    } catch (err) {
+      error.value = err instanceof Error ? err.message : 'Не удалось загрузить матч';
+    }
   }
 );
 

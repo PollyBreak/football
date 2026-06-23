@@ -619,13 +619,20 @@
     <div v-if="activeTab === 'Matches'" class="card stack-sm">
       <div class="section-header">
         <h3 class="section-title">Матчи</h3>
-        <button v-if="!sessionIsFinished" class="primary-button" @click="createNextMatch">{{ createMatchButtonLabel }}</button>
+        <button v-if="!sessionIsFinished" class="primary-button create-match-button" @click="createNextMatch">{{ createMatchButtonLabel }}</button>
       </div>
-      <div v-if="session.formatType === 'ROUND_ROBIN'" class="grid-form">
+      <div v-if="session.formatType === 'ROUND_ROBIN'" class="grid-form round-robin-match-pickers">
         <label class="field-label">
           <span>Первый матч</span>
           <select v-model="roundRobinFirstPairKey" class="input" :disabled="sessionIsFinished || matches.length > 0">
             <option v-for="pair in roundRobinPairOptions" :key="pair.key" :value="pair.key">{{ pair.label }}</option>
+          </select>
+        </label>
+        <label class="field-label">
+          <span>Второй матч</span>
+          <select v-model="roundRobinSecondPairKey" class="input" :disabled="sessionIsFinished || matches.length > 1">
+            <option value="">Автоматически</option>
+            <option v-for="pair in roundRobinSecondPairOptions" :key="pair.key" :value="pair.key">{{ pair.label }}</option>
           </select>
         </label>
       </div>
@@ -645,6 +652,14 @@
           </select>
         </label>
       </div>
+      <button
+        v-if="currentMatchTarget"
+        class="ghost-button current-match-button"
+        type="button"
+        @click="openCurrentMatch"
+      >
+        Перейти к текущему матчу
+      </button>
       <div class="stack-sm">
         <section v-for="round in matchRounds" :key="round.roundNumber" class="match-round-group">
           <div class="match-round-group__header">
@@ -673,11 +688,11 @@
                   </p>
                 </div>
               </div>
-              <div class="button-row">
-                <button v-if="!sessionIsFinished" class="ghost-button" @click="startMatch(match.id)" :disabled="match.status !== 'PLANNED'">Начать</button>
+              <div class="button-row match-actions-row">
+                <button v-if="!sessionIsFinished && match.status === 'PLANNED'" class="ghost-button" @click="startMatch(match.id)">Начать</button>
                 <button class="ghost-button" @click="openMatch(match.id)">Открыть</button>
-                <button v-if="!sessionIsFinished" class="ghost-button" @click="finishMatch(match.id)" :disabled="match.status !== 'IN_PROGRESS'">Завершить</button>
-                <button v-if="!sessionIsFinished && match.status === 'FINISHED'" class="ghost-button" @click="resumeMatch(match.id)">Возобновить</button>
+                <button v-if="!sessionIsFinished && match.status === 'IN_PROGRESS'" class="ghost-button" @click="finishMatch(match.id)">Завершить</button>
+                <button v-if="!sessionIsFinished && (match.status === 'FINISHED' || match.status === 'PAUSED')" class="ghost-button" @click="resumeMatch(match.id)">Возобновить</button>
               </div>
             </article>
           </div>
@@ -869,6 +884,7 @@ const standings = ref<SessionStandingsRow[]>([]);
 const teamPlayers = ref<Record<number, SessionTeamPlayer[]>>({});
 const selectedPlayersByTeam = reactive<Record<number, number[]>>({});
 const roundRobinFirstPairKey = ref('');
+const roundRobinSecondPairKey = ref('');
 const activeTab = ref<(typeof tabs)[number]>('Players');
 const error = ref('');
 const pendingMembership = ref(false);
@@ -1007,6 +1023,14 @@ const reminderForm = reactive({
 });
 const createMatchButtonLabel = computed(() => {
   return session.value?.formatType === 'KNOCKOUT' ? 'Создать матч' : 'Создать следующий';
+});
+const currentMatchTarget = computed(() => {
+  const sortedMatches = matches.value
+    .slice()
+    .sort((left, right) => left.matchNumber - right.matchNumber);
+  return sortedMatches.find((match) => match.status === 'IN_PROGRESS' || match.status === 'PAUSED')
+    ?? sortedMatches.find((match) => match.status === 'PLANNED')
+    ?? null;
 });
 const sessionPlayerStats = computed<Record<number, { goals: number; assists: number }>>(() => {
   const stats: Record<number, { goals: number; assists: number }> = {};
@@ -1296,6 +1320,9 @@ const roundRobinPairOptions = computed(() => {
     key: pairKey(teamA.id, teamB.id),
     label: `${teamA.name} - ${teamB.name}`
   }));
+});
+const roundRobinSecondPairOptions = computed(() => {
+  return roundRobinPairOptions.value.filter((pair) => pair.key !== roundRobinFirstPairKey.value);
 });
 
 function playerInitials(player: SessionPlayer): string {
@@ -2102,8 +2129,23 @@ function orderedRoundRobinPairs() {
   if (!session.value) return [];
   const pairs = buildTeamPairs(session.value.teams);
   const selectedIndex = pairs.findIndex(([teamA, teamB]) => pairKey(teamA.id, teamB.id) === roundRobinFirstPairKey.value);
-  if (selectedIndex < 1) return pairs;
-  return [...pairs.slice(selectedIndex), ...pairs.slice(0, selectedIndex)];
+  const firstOrderedPairs = selectedIndex < 1 ? pairs : [...pairs.slice(selectedIndex), ...pairs.slice(0, selectedIndex)];
+  if (!roundRobinSecondPairKey.value) {
+    return firstOrderedPairs;
+  }
+
+  const firstPair = firstOrderedPairs[0];
+  const secondPairIndex = firstOrderedPairs.findIndex(([teamA, teamB]) => pairKey(teamA.id, teamB.id) === roundRobinSecondPairKey.value);
+  const secondPair = firstOrderedPairs[secondPairIndex];
+  if (secondPairIndex < 1 || !firstPair || !secondPair) {
+    return firstOrderedPairs;
+  }
+
+  return [
+    firstPair,
+    secondPair,
+    ...firstOrderedPairs.filter((_, index) => index !== 0 && index !== secondPairIndex)
+  ];
 }
 
 function buildTeamPairs(teams: GameSession['teams']) {
@@ -2123,11 +2165,21 @@ function ensureRoundRobinPairSelection() {
   const firstMatch = matches.value[0];
   if (firstMatch) {
     roundRobinFirstPairKey.value = pairKey(firstMatch.teamAId, firstMatch.teamBId);
+  } else {
+    const options = roundRobinPairOptions.value;
+    if (!options.some((option) => option.key === roundRobinFirstPairKey.value)) {
+      roundRobinFirstPairKey.value = options[0]?.key ?? '';
+    }
+  }
+
+  const secondMatch = matches.value[1];
+  if (secondMatch) {
+    roundRobinSecondPairKey.value = pairKey(secondMatch.teamAId, secondMatch.teamBId);
     return;
   }
-  const options = roundRobinPairOptions.value;
-  if (!options.some((option) => option.key === roundRobinFirstPairKey.value)) {
-    roundRobinFirstPairKey.value = options[0]?.key ?? '';
+
+  if (!roundRobinSecondPairOptions.value.some((option) => option.key === roundRobinSecondPairKey.value)) {
+    roundRobinSecondPairKey.value = '';
   }
 }
 
@@ -2253,6 +2305,13 @@ async function openMatch(matchId: number) {
   await router.push(`/sessions/${sessionIdNumber.value}/matches/${matchId}`);
 }
 
+async function openCurrentMatch() {
+  if (!currentMatchTarget.value) {
+    return;
+  }
+  await openMatch(currentMatchTarget.value.id);
+}
+
 async function openPlayerProfile(playerId: number) {
   await router.push(`/players/${playerId}`);
 }
@@ -2275,6 +2334,12 @@ watch(
 
 watch(sessionVenuePhotoUrl, () => {
   sessionVenuePhotoFailed.value = false;
+});
+
+watch(roundRobinFirstPairKey, () => {
+  if (roundRobinSecondPairKey.value === roundRobinFirstPairKey.value) {
+    roundRobinSecondPairKey.value = '';
+  }
 });
 
 onMounted(async () => {

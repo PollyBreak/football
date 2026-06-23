@@ -773,6 +773,37 @@ textarea {
   gap: 10px;
 }
 
+.round-robin-match-pickers {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.round-robin-match-pickers .field-label {
+  min-width: 0;
+  font-size: 0.78rem;
+}
+
+.round-robin-match-pickers .input {
+  min-width: 0;
+  padding: 10px 8px;
+  font-size: 0.82rem;
+}
+
+.create-match-button {
+  min-height: 40px;
+  padding: 9px 14px;
+  border-radius: 14px;
+  font-size: 0.9rem;
+}
+
+.current-match-button {
+  width: 100%;
+  min-height: 38px;
+  padding: 8px 12px;
+  border-radius: 12px;
+  font-size: 0.9rem;
+}
+
 .date-time-row {
   display: grid;
   grid-template-columns: minmax(0, 1.35fr) minmax(0, 0.65fr);
@@ -1417,6 +1448,23 @@ textarea {
   align-items: center;
 }
 
+.match-actions-row {
+  gap: 6px;
+}
+
+.match-actions-row .ghost-button {
+  min-width: 0;
+  min-height: 36px;
+  padding: 8px 10px;
+  border-radius: 12px;
+  font-size: 0.86rem;
+  white-space: nowrap;
+}
+
+.match-details-actions .ghost-button:disabled {
+  display: none;
+}
+
 .player-list-item .item-meta {
   justify-content: flex-end;
   text-align: right;
@@ -1514,13 +1562,31 @@ textarea {
 
 .match-scoreboard {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 56px 28px 56px minmax(0, 1fr);
+  grid-template-columns: minmax(0, 1fr) 76px 28px 76px minmax(0, 1fr);
   align-items: start;
   gap: 8px 12px;
   padding: 14px;
   border-radius: 16px;
   background: var(--surface-bg);
   border: 1px solid var(--card-border);
+}
+
+.match-title-meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  width: 100%;
+}
+
+.match-title-meta .status-pill {
+  text-transform: none;
+  letter-spacing: 0;
+}
+
+.match-details-header,
+.match-details-heading {
+  width: 100%;
 }
 
 .match-scoreboard.is-overtime .scoreboard-time {
@@ -1532,18 +1598,39 @@ textarea {
 .scoreboard-center {
   min-width: 0;
   display: flex;
-  flex-direction: column;
   align-items: center;
+  justify-content: center;
   text-align: center;
+}
+
+.scoreboard-team {
+  height: 2rem;
+}
+
+.scoreboard-team--left {
+  grid-column: 2;
+}
+
+.scoreboard-center {
+  grid-column: 3;
+}
+
+.scoreboard-team--right {
+  grid-column: 4;
 }
 
 .scoreboard-team strong,
 .scoreboard-center strong {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 2rem;
   line-height: 1;
   font-size: 2rem;
 }
 
 .scoreboard-center {
+  flex-direction: column;
   gap: 8px;
 }
 
@@ -1597,7 +1684,7 @@ textarea {
 .scoreboard-goals p {
   margin: 0;
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   gap: 4px;
   overflow-wrap: anywhere;
 }
@@ -1626,15 +1713,28 @@ textarea {
 
 .scoreboard-goal-time {
   margin: 0 4px;
+  flex: 0 0 auto;
+  white-space: nowrap;
+  overflow-wrap: normal;
+  word-break: keep-all;
 }
 
 .scoreboard-goal-name {
+  min-width: 0;
   color: inherit;
   font-weight: 600;
+  font-size: 0.82rem;
+  line-height: 1.12;
+  white-space: normal;
+  overflow-wrap: anywhere;
 }
 
 .event-time-label {
   color: var(--muted);
+}
+
+.event-team-emoji {
+  margin-right: 4px;
 }
 
 .match-goal-summary {
@@ -1684,6 +1784,37 @@ textarea {
   background: linear-gradient(135deg, #d95d5d, #9f3030);
 }
 
+.danger-icon-button {
+  flex: 0 0 auto;
+  width: 36px;
+  height: 36px;
+  border: 0;
+  border-radius: 999px;
+  background: rgba(217, 93, 93, 0.16);
+  color: #8f2f2f;
+  cursor: pointer;
+  position: relative;
+  box-shadow: inset 0 0 0 1px rgba(159, 48, 48, 0.2);
+}
+
+.danger-icon-button__icon {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  font-size: 1.3rem;
+  font-weight: 700;
+  line-height: 1;
+  transform: translate(-50%, -54%);
+}
+
+.danger-icon-button:active {
+  transform: scale(0.96);
+}
+
+.delete-event-dialog {
+  max-width: 360px;
+}
+
 .tabs {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
@@ -1714,6 +1845,15 @@ textarea {
   .tabs .tab-button {
     padding: 9px 4px;
     font-size: 0.82rem;
+  }
+
+  .scoreboard-goal-time {
+    margin: 0 2px;
+    font-size: 0.76rem;
+  }
+
+  .scoreboard-goal-name {
+    font-size: 0.78rem;
   }
 }
 
