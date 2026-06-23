@@ -37,7 +37,12 @@
     </div>
 
     <div v-if="voting" class="stack-sm">
-      <section v-for="group in groupedCandidates" :key="group.key" class="card stack-sm">
+      <section
+        v-for="group in groupedCandidates"
+        :key="group.key"
+        class="card stack-sm mvp-team-card"
+        :style="mvpTeamCardStyle(group.color)"
+      >
         <div class="team-block__header">
           <strong>{{ group.title }}</strong>
         </div>
@@ -135,13 +140,14 @@ const votingFinished = computed(() => {
   return Boolean(voting.value?.endsAt && new Date(voting.value.endsAt).getTime() <= now.value);
 });
 const groupedCandidates = computed(() => {
-  const groups = new Map<string, { key: string; title: string; players: SessionMvpCandidate[] }>();
+  const groups = new Map<string, { key: string; title: string; color: string | null; players: SessionMvpCandidate[] }>();
   for (const candidate of voting.value?.candidates ?? []) {
     const key = candidate.teamId ? `team-${candidate.teamId}` : 'unassigned';
     if (!groups.has(key)) {
       groups.set(key, {
         key,
         title: candidate.teamName ?? 'Без команды',
+        color: candidate.teamColor,
         players: []
       });
     }
@@ -172,6 +178,16 @@ function candidateStats(candidate: SessionMvpCandidate): string {
   if (candidate.goals > 0) parts.push(`${candidate.goals} ⚽`);
   if (candidate.assists > 0) parts.push(`${candidate.assists} 👟`);
   return parts.length ? parts.join(' ') : 'без голов и передач';
+}
+
+function mvpTeamCardStyle(color: string | null): Record<string, string> {
+  const value = color?.trim();
+  if (!value) {
+    return {};
+  }
+  return {
+    '--mvp-team-color': value
+  };
 }
 
 async function loadVoting() {

@@ -1847,6 +1847,15 @@ textarea {
   text-align: center;
 }
 
+.mvp-team-card {
+  background: color-mix(in srgb, var(--mvp-team-color, var(--surface-bg)) 8%, var(--surface-bg));
+  border-color: color-mix(in srgb, var(--mvp-team-color, var(--card-border)) 24%, var(--card-border));
+}
+
+.mvp-team-card .mvp-candidate-item {
+  background: color-mix(in srgb, white 88%, var(--mvp-team-color, var(--surface-bg)));
+}
+
 .mvp-candidate-item {
   display: grid;
   grid-template-columns: 24px minmax(0, 1fr) 32px;
