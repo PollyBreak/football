@@ -14,7 +14,7 @@
         До конца голосования осталось <strong class="countdown-accent">{{ remainingLabel }}</strong>
       </p>
       <p v-else-if="votingFinished" class="muted">Голосование завершено.</p>
-      <p class="muted">Выберите 1 самого полезного игрока за сегодня и нажмите на галочку рядом с его именем.</p>
+      <p class="muted">Выберите 1 самого полезного игрока за сегодня и нажмите на квадрат рядом с его именем.</p>
       <p v-if="voting && !voting.canVote && voting.cannotVoteReason" class="error-text">{{ voting.cannotVoteReason }}</p>
     </div>
 
@@ -51,7 +51,7 @@
             <div>
               <p class="mvp-candidate-name">
                 <strong>{{ candidateDisplayName(candidate) }}</strong>
-                <span>{{ candidateFirstName(candidate) }}</span>
+                <span>{{ candidateFullName(candidate) }}</span>
               </p>
               <p class="session-player-stats mvp-candidate-stats">{{ candidate.goals }} ⚽ {{ candidate.assists }} 👟</p>
             </div>
@@ -64,7 +64,7 @@
             :aria-label="`Проголосовать за ${candidateDisplayName(candidate)}`"
             @click="requestVote(candidate)"
           >
-            ✓
+            <span v-if="voting.selectedPlayerId === candidate.playerId">✓</span>
           </button>
         </article>
       </section>
@@ -156,10 +156,6 @@ function candidateDisplayName(candidate: SessionMvpCandidate): string {
 
 function candidateFullName(candidate: SessionMvpCandidate): string {
   return `${candidate.firstName} ${candidate.lastName ?? ''}`.trim() || 'Игрок';
-}
-
-function candidateFirstName(candidate: SessionMvpCandidate): string {
-  return candidate.firstName?.trim() || candidateFullName(candidate);
 }
 
 function candidateInitials(candidate: SessionMvpCandidate): string {

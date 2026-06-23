@@ -100,6 +100,7 @@ public class SessionMvpVotingService {
         String text = buildVotingMessage(session);
         List<List<Map<String, String>>> keyboard = votingKeyboard(session);
         JsonNode result = telegramBotApiClient.sendMessage(session.getTelegramChatId(), text, keyboard);
+        session.setMvpVotingTelegramEnabled(true);
         session.setTelegramMvpVotingMessageId(result.path("message_id").asLong());
         gameSessionRepository.save(session);
     }
@@ -306,10 +307,22 @@ public class SessionMvpVotingService {
         if (maxVotes <= 0) {
             return List.of();
         }
-        return candidates.stream()
+        List<SessionMvpCandidateResponse> voteLeaders = candidates.stream()
                 .filter(candidate -> candidate.votes() == maxVotes)
+                .toList();
+        int maxStatPoints = voteLeaders.stream().mapToInt(this::mvpStatPoints).max().orElse(0);
+        List<SessionMvpCandidateResponse> statLeaders = voteLeaders.stream()
+                .filter(candidate -> mvpStatPoints(candidate) == maxStatPoints)
+                .toList();
+        int maxGoals = statLeaders.stream().mapToInt(SessionMvpCandidateResponse::goals).max().orElse(0);
+        return statLeaders.stream()
+                .filter(candidate -> candidate.goals() == maxGoals)
                 .sorted(Comparator.comparing(SessionMvpCandidateResponse::displayName, Comparator.nullsLast(String::compareToIgnoreCase)))
                 .toList();
+    }
+
+    private int mvpStatPoints(SessionMvpCandidateResponse candidate) {
+        return candidate.goals() * 2 + candidate.assists();
     }
 
     private Map<String, Integer> voteResults(GameSession session) {

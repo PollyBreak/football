@@ -236,6 +236,20 @@
               После завершения текущей сессии новая повторяющаяся сессия больше не создастся.
             </p>
             <label class="field-label">
+              <span>Чат</span>
+              <select v-model="telegramChatSelection" class="input" :disabled="telegramChatsPending">
+                <option value="">Не указывать</option>
+                <option v-for="chat in telegramChats" :key="chat.chatId" :value="String(chat.chatId)">
+                  {{ formatTelegramChatOption(chat) }}
+                </option>
+                <option value="manual">Ввести chat ID вручную</option>
+              </select>
+              <p v-if="telegramChatsPending" class="muted telegram-chat-hint">Загружаем доступные Telegram-чаты...</p>
+              <p v-else-if="!telegramChats.length" class="muted telegram-chat-hint">
+                Пока бот не видит общих чатов. Можно ввести chat ID вручную или сначала добавить бота в нужную группу.
+              </p>
+            </label>
+            <label class="field-label">
               <span>Telegram chat ID</span>
               <input v-model.number="sessionSettings.telegramChatId" class="input" type="number" placeholder="-100..." />
             </label>
@@ -953,7 +967,8 @@ import type {
   SessionStandingsRow,
   SessionTeamPlayer,
   StreamBroadcast,
-  SessionWaitlistEntry
+  SessionWaitlistEntry,
+  TelegramKnownChat
 } from '../types';
 
 const props = defineProps<{ sessionId: string }>();
@@ -1002,6 +1017,9 @@ const streamBroadcasts = ref<StreamBroadcast[]>([]);
 const streamShiftForward = ref(true);
 const streamShiftSeconds = ref<number | null>(null);
 const generatedTimelineText = ref('');
+const telegramChats = ref<TelegramKnownChat[]>([]);
+const telegramChatsPending = ref(false);
+const telegramChatSelection = ref('');
 const settingsOpen = ref(false);
 const guestPlayerDialogOpen = ref(false);
 const removePlayerDialogOpen = ref(false);
@@ -1651,6 +1669,7 @@ async function refreshAll() {
       loadWaitlist(),
       loadContributionStatuses(),
       loadContributionReminders(),
+      loadTelegramChats(),
       loadPlayers(),
       loadMatches(),
       loadTeamPlayers(),
@@ -1677,6 +1696,22 @@ async function loadMvpVoting() {
   }
 }
 
+async function loadTelegramChats() {
+  if (!authState.user?.id) {
+    telegramChats.value = [];
+    return;
+  }
+  telegramChatsPending.value = true;
+  try {
+    telegramChats.value = await api.getAvailableTelegramChats(authState.user.id);
+    syncTelegramChatSelectionFromSettings();
+  } catch {
+    telegramChats.value = [];
+  } finally {
+    telegramChatsPending.value = false;
+  }
+}
+
 function fillSessionSettings() {
   if (!session.value) return;
   sessionSettings.title = session.value.title;
@@ -1688,6 +1723,7 @@ function fillSessionSettings() {
   sessionSettings.broadcastUrl = session.value.broadcastUrl ?? '';
   sessionSettings.telegramChatId = session.value.telegramChatId ?? null;
   sessionSettings.telegramChatTitle = session.value.telegramChatTitle ?? '';
+  syncTelegramChatSelectionFromSettings();
   sessionSettings.mvpVotingEnabled = session.value.mvpVotingEnabled;
   sessionSettings.mvpVotingDurationHours = session.value.mvpVotingDurationHours ?? 24;
   sessionSettings.mvpVotingParticipantScope = session.value.mvpVotingParticipantScope ?? 'ALL';
@@ -1941,6 +1977,31 @@ function formatStreamStartedAt(value: string): string {
   }).format(new Date(value));
 }
 
+function formatTelegramChatOption(chat: TelegramKnownChat): string {
+  const title = chat.title?.trim();
+  const username = chat.username?.trim();
+  if (title && username) {
+    return `${title} (@${username})`;
+  }
+  if (title) {
+    return title;
+  }
+  if (username) {
+    return `@${username}`;
+  }
+  return `Chat ${chat.chatId}`;
+}
+
+function syncTelegramChatSelectionFromSettings() {
+  const chatId = sessionSettings.telegramChatId;
+  if (!chatId) {
+    telegramChatSelection.value = '';
+    return;
+  }
+  const selectedChat = telegramChats.value.find((chat) => chat.chatId === chatId);
+  telegramChatSelection.value = selectedChat ? String(chatId) : 'manual';
+}
+
 async function unlockAdminPanel() {
   if (adminPassword.value !== adminPasswordValue) {
     error.value = 'Неверный пароль администратора';
@@ -2091,6 +2152,7 @@ async function sendMvpVotingMessageAgain() {
   pendingMvpMessageSend.value = true;
   error.value = '';
   try {
+    sessionSettings.mvpVotingTelegramEnabled = true;
     const saved = await saveSessionSettings();
     if (!saved) {
       return;
@@ -2554,11 +2616,36 @@ async function openPlayerProfile(playerId: number) {
   await router.push(`/players/${playerId}`);
 }
 
+watch(telegramChatSelection, (value) => {
+  if (value === 'manual') {
+    sessionSettings.telegramChatTitle = '';
+    return;
+  }
+
+  if (!value) {
+    sessionSettings.telegramChatId = null;
+    sessionSettings.telegramChatTitle = '';
+    return;
+  }
+
+  const chatId = Number(value);
+  const selectedChat = telegramChats.value.find((chat) => chat.chatId === chatId);
+  sessionSettings.telegramChatId = Number.isFinite(chatId) ? chatId : null;
+  sessionSettings.telegramChatTitle = selectedChat?.title ?? '';
+});
+
 watch(
   () => sessionSettings.telegramChatId,
   (chatId) => {
     if (!chatId) {
       sessionSettings.mvpVotingTelegramEnabled = false;
+      telegramChatSelection.value = '';
+      return;
+    }
+    const selectedChat = telegramChats.value.find((chat) => chat.chatId === chatId);
+    telegramChatSelection.value = selectedChat ? String(chatId) : 'manual';
+    if (selectedChat) {
+      sessionSettings.telegramChatTitle = selectedChat.title ?? '';
     }
   }
 );
