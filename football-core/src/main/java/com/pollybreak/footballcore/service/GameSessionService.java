@@ -145,6 +145,7 @@ public class GameSessionService {
     @Transactional
     public GameSessionResponse update(Long sessionId, UpdateGameSessionRequest request) {
         GameSession session = getById(sessionId);
+        Long previousTelegramChatId = session.getTelegramChatId();
         OffsetDateTime previousMvpVotingEndsAt = session.getMvpVotingEndsAt();
         if (request.title() != null && request.title().isBlank()) {
             throw new IllegalArgumentException("title must not be blank");
@@ -184,6 +185,7 @@ public class GameSessionService {
         session.setBroadcastUrl(request.broadcastUrl());
         session.setTelegramChatId(request.telegramChatId());
         session.setTelegramChatTitle(request.telegramChatTitle());
+        resetTelegramMessageBindingsIfChatChanged(session, previousTelegramChatId);
         if (request.autoStartRegistration() != null) {
             session.setAutoStartRegistration(request.autoStartRegistration());
         }
@@ -282,6 +284,16 @@ public class GameSessionService {
             session.setTelegramMvpResultSentAt(null);
         }
         return true;
+    }
+
+    private void resetTelegramMessageBindingsIfChatChanged(GameSession session, Long previousTelegramChatId) {
+        if (Objects.equals(previousTelegramChatId, session.getTelegramChatId())) {
+            return;
+        }
+        session.setTelegramRegistrationMessageId(null);
+        session.setTelegramContributionMessageId(null);
+        session.setTelegramMvpVotingMessageId(null);
+        session.setTelegramMvpResultSentAt(null);
     }
 
     private void validateMvpVotingSettings(Boolean enabled, Integer durationHours, Boolean telegramEnabled, Long telegramChatId) {

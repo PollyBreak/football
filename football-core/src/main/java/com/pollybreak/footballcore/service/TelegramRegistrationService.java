@@ -84,18 +84,8 @@ public class TelegramRegistrationService {
         validateChat(session.getTelegramChatId(), userId);
 
         String text = buildAnnouncement(session);
-        JsonNode result;
-        if (session.getTelegramRegistrationMessageId() == null) {
-            result = telegramBotApiClient.sendMessage(session.getTelegramChatId(), text, registrationKeyboard(session.getId()));
-            session.setTelegramRegistrationMessageId(result.path("message_id").asLong());
-        } else {
-            result = telegramBotApiClient.editMessageTextIgnoringNotModified(
-                    session.getTelegramChatId(),
-                    session.getTelegramRegistrationMessageId(),
-                    text,
-                    registrationKeyboard(session.getId())
-            );
-        }
+        JsonNode result = telegramBotApiClient.sendMessage(session.getTelegramChatId(), text, registrationKeyboard(session.getId()));
+        session.setTelegramRegistrationMessageId(result.path("message_id").asLong());
         return new StartRegistrationResponse(
                 session.getTelegramChatId(),
                 session.getTelegramRegistrationMessageId(),
