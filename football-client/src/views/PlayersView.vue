@@ -20,7 +20,7 @@
             <span v-else>{{ playerInitials(entry.player) }}</span>
           </div>
           <strong>{{ playerDisplayName(entry.player) }}</strong>
-          <span class="leaderboard-card__name">{{ playerFullName(entry.player) }}</span>
+          <span class="leaderboard-card__name">{{ playerShortFullName(entry.player) }}</span>
           <p>{{ entry.player.stats.goals }} ⚽ {{ entry.player.stats.assists }} 👟</p>
         </RouterLink>
       </div>
@@ -158,6 +158,13 @@ function playerDisplayName(player: PlayerProfile): string {
 
 function playerFullName(player: PlayerProfile): string {
   return `${player.firstName} ${player.lastName ?? ''}`.trim() || 'Имя не указано';
+}
+
+function playerShortFullName(player: PlayerProfile): string {
+  const firstName = player.firstName?.trim();
+  const lastName = player.lastName?.trim();
+  if (firstName && lastName) return `${firstName} ${lastName[0]}.`;
+  return firstName || lastName || 'Имя не указано';
 }
 
 function playerPhotoUrl(player: PlayerProfile): string {
