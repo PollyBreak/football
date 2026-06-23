@@ -777,8 +777,9 @@ textarea {
 
 .leaderboard-card strong {
   max-width: 100%;
-  overflow-wrap: anywhere;
-  font-size: 0.88rem;
+  overflow-wrap: normal;
+  word-break: keep-all;
+  font-size: clamp(0.76rem, 2.2vw, 0.88rem);
   line-height: 1.1;
 }
 
