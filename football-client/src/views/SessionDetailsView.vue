@@ -265,6 +265,14 @@
                 <input v-model="sessionSettings.mvpVotingTelegramEnabled" type="checkbox" :disabled="!sessionSettings.telegramChatId" />
                 <span>Делать рассылку в чате</span>
               </label>
+              <button
+                class="ghost-button"
+                type="button"
+                :disabled="pendingMvpMessageSend || pendingSessionUpdate || !sessionSettings.telegramChatId"
+                @click="sendMvpVotingMessageAgain"
+              >
+                {{ pendingMvpMessageSend ? 'Отправляем...' : 'Отправить сообщение о голосовании' }}
+              </button>
             </template>
             <label class="field-label">
               <span>Заметки</span>
@@ -986,6 +994,7 @@ const pendingContributionStart = ref(false);
 const pendingReminderUpdate = ref(false);
 const pendingGuestPlayerCreate = ref(false);
 const pendingPlayerRemove = ref(false);
+const pendingMvpMessageSend = ref(false);
 const pendingStreamStart = ref(false);
 const pendingStreamShift = ref(false);
 const pendingTimelineGeneration = ref(false);
@@ -2067,6 +2076,32 @@ async function startContributionCollection() {
     error.value = err instanceof Error ? err.message : 'Не удалось начать сбор взносов';
   } finally {
     pendingContributionStart.value = false;
+  }
+}
+
+async function sendMvpVotingMessageAgain() {
+  if (!sessionSettings.telegramChatId) {
+    error.value = 'Укажите Telegram chat ID в настройках сессии';
+    return;
+  }
+  if (pendingMvpMessageSend.value) {
+    return;
+  }
+
+  pendingMvpMessageSend.value = true;
+  error.value = '';
+  try {
+    const saved = await saveSessionSettings();
+    if (!saved) {
+      return;
+    }
+    await api.sendSessionMvpVotingMessage(sessionIdNumber.value);
+    await loadMvpVoting();
+    settingsOpen.value = true;
+  } catch (err) {
+    error.value = err instanceof Error ? err.message : 'Не удалось отправить сообщение о голосовании';
+  } finally {
+    pendingMvpMessageSend.value = false;
   }
 }
 

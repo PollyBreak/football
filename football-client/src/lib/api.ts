@@ -191,6 +191,9 @@ export const api = {
   voteForSessionMvp(sessionId: number, payload: Record<string, unknown>): Promise<SessionMvpVoting> {
     return request(`/api/sessions/${sessionId}/mvp/votes`, { method: 'POST', body: JSON.stringify(payload) });
   },
+  sendSessionMvpVotingMessage(sessionId: number): Promise<void> {
+    return request(`/api/sessions/${sessionId}/mvp/send-message`, { method: 'POST', body: JSON.stringify({}) });
+  },
   getSessionPlayers(sessionId: number): Promise<SessionPlayer[]> {
     return request(`/api/sessions/${sessionId}/players`);
   },

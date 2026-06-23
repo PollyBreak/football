@@ -35,4 +35,9 @@ public class SessionMvpVotingController {
     ) {
         return sessionMvpVotingService.vote(sessionId, request.userId(), request.playerId());
     }
+
+    @PostMapping("/send-message")
+    public void sendMessageAgain(@PathVariable Long sessionId) {
+        sessionMvpVotingService.sendVotingMessageAgain(sessionId);
+    }
 }

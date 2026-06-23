@@ -84,6 +84,26 @@ public class SessionMvpVotingService {
         }
     }
 
+    @Transactional
+    public void sendVotingMessageAgain(Long sessionId) {
+        GameSession session = getSession(sessionId);
+        if (!session.isMvpVotingEnabled()) {
+            throw new IllegalStateException("Голосование за MVP не включено");
+        }
+        if (session.getMvpVotingStartedAt() == null) {
+            throw new IllegalStateException("Голосование за MVP еще не началось");
+        }
+        if (session.getTelegramChatId() == null) {
+            throw new IllegalStateException("Укажите Telegram chat ID для отправки голосования");
+        }
+
+        String text = buildVotingMessage(session);
+        List<List<Map<String, String>>> keyboard = votingKeyboard(session);
+        JsonNode result = telegramBotApiClient.sendMessage(session.getTelegramChatId(), text, keyboard);
+        session.setTelegramMvpVotingMessageId(result.path("message_id").asLong());
+        gameSessionRepository.save(session);
+    }
+
     public SessionMvpVotingResponse getVoting(Long sessionId, Long userId) {
         GameSession session = getSession(sessionId);
         List<SessionMvpCandidateResponse> candidates = candidates(session);
@@ -171,10 +191,7 @@ public class SessionMvpVotingService {
 
     private void sendOrRefreshVotingMessage(GameSession session) {
         String text = buildVotingMessage(session);
-        List<List<Map<String, String>>> keyboard = List.of(List.of(Map.of(
-                "text", "Проголосовать",
-                "url", mvpPageUrl(session.getId())
-        )));
+        List<List<Map<String, String>>> keyboard = votingKeyboard(session);
         if (session.getTelegramMvpVotingMessageId() == null) {
             JsonNode result = telegramBotApiClient.sendMessage(session.getTelegramChatId(), text, keyboard);
             session.setTelegramMvpVotingMessageId(result.path("message_id").asLong());
@@ -187,6 +204,13 @@ public class SessionMvpVotingService {
                 text,
                 keyboard
         );
+    }
+
+    private List<List<Map<String, String>>> votingKeyboard(GameSession session) {
+        return List.of(List.of(Map.of(
+                "text", "Проголосовать",
+                "url", mvpPageUrl(session.getId())
+        )));
     }
 
     private String buildVotingMessage(GameSession session) {
