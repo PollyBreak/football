@@ -1126,11 +1126,14 @@ textarea {
   min-width: 0;
 }
 
+.session-results-leader__person > div:last-child {
+  min-width: 0;
+}
+
 .session-results-leader__person strong {
   display: block;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  overflow-wrap: anywhere;
+  line-height: 1.15;
 }
 
 .admin-panel {

@@ -199,7 +199,9 @@ public class SessionMvpVotingService {
         SessionMvpCandidateResponse secondHint = secondHintCandidate(candidates, topScorer);
         List<String> lines = new ArrayList<>();
         lines.add("Игра завершена, а теперь время выбрать <b>MVP</b> дня 🎯");
+        lines.add("");
         lines.add("Может это " + hintName(topScorer) + "? Или " + hintName(secondHint) + "? Делай свой выбор в приложении.");
+        lines.add("");
         lines.add("⏳ Голосование окончится в <b>" + escapeHtml(formatEndsAt(session)) + "</b>.");
         lines.add("Предварительные результаты:");
         voteResults(session).forEach((name, votes) -> lines.add("<code>" + escapeHtml(name) + "</code> (" + votes + ")"));
