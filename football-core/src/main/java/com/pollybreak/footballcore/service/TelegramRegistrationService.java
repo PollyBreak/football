@@ -315,9 +315,29 @@ public class TelegramRegistrationService {
     }
 
     private String playerFormatSuffix(GameSession session) {
-        return session.getPlayerFormat() == null || session.getPlayerFormat().isBlank()
+        if (session.getPlayerFormat() == null || session.getPlayerFormat().isBlank()) {
+            return "";
+        }
+
+        String teamCountSuffix = session.getTeamCount() == null
                 ? ""
-                : ", " + escape(session.getPlayerFormat());
+                : " (" + session.getTeamCount() + " " + teamsWord(session.getTeamCount()) + ")";
+        return ", " + escape(session.getPlayerFormat()) + teamCountSuffix;
+    }
+
+    private String teamsWord(int count) {
+        int mod100 = Math.abs(count) % 100;
+        int mod10 = Math.abs(count) % 10;
+        if (mod100 >= 11 && mod100 <= 14) {
+            return "команд";
+        }
+        if (mod10 == 1) {
+            return "команда";
+        }
+        if (mod10 >= 2 && mod10 <= 4) {
+            return "команды";
+        }
+        return "команд";
     }
 
     private String maxPlayersLabel(GameSession session) {
@@ -449,6 +469,7 @@ public class TelegramRegistrationService {
     private String formatLabel(SessionFormatType formatType) {
         return switch (formatType) {
             case ROUND_ROBIN -> "круговой, по турам";
+            case DUEL -> "дуэль";
             case KNOCKOUT -> "на вылет";
             case KING_OF_THE_HILL -> "царь горы";
             case CUSTOM -> "другой";

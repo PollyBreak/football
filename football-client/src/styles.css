@@ -874,6 +874,11 @@ textarea {
   cursor: default;
 }
 
+.input:disabled {
+  opacity: 0.72;
+  cursor: not-allowed;
+}
+
 .textarea {
   min-height: 96px;
   resize: vertical;
@@ -2368,6 +2373,22 @@ textarea {
   height: 34px;
   padding: 7px 9px;
   border-radius: 999px;
+}
+
+.team-count-field {
+  display: inline-grid;
+  grid-template-columns: 78px auto;
+  gap: 8px;
+  align-items: center;
+  color: var(--muted);
+  font-size: 0.84rem;
+}
+
+.team-count-field .input {
+  height: 34px;
+  padding: 7px 9px;
+  border-radius: 999px;
+  text-align: center;
 }
 
 .recurring-event-form {

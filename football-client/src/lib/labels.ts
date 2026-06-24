@@ -17,6 +17,7 @@ export function playerPositionLabel(position: PlayerPosition | null | undefined)
 export function sessionFormatLabel(format: SessionFormatType): string {
   const labels: Record<SessionFormatType, string> = {
     ROUND_ROBIN: 'Круговой турнир',
+    DUEL: 'Дуэль',
     KNOCKOUT: 'На вылет',
     KING_OF_THE_HILL: 'Царь горы',
     CUSTOM: 'Свободный формат'

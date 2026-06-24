@@ -96,9 +96,25 @@
             <span>Тип турнира *</span>
             <select v-model="form.formatType" class="input" required>
               <option value="ROUND_ROBIN">{{ sessionFormatLabel('ROUND_ROBIN') }}</option>
+              <option value="DUEL">{{ sessionFormatLabel('DUEL') }}</option>
               <option value="KNOCKOUT">{{ sessionFormatLabel('KNOCKOUT') }}</option>
             </select>
           </label>
+
+          <div v-if="form.formatType === 'DUEL'" class="grid-form duel-team-color-grid">
+            <label class="field-label">
+              <span>Цвет первой команды</span>
+              <select v-model="duelTeamAColor" class="input">
+                <option v-for="team in duelTeamColorOptions" :key="team.color" :value="team.color">{{ team.name }}</option>
+              </select>
+            </label>
+            <label class="field-label">
+              <span>Цвет второй команды</span>
+              <select v-model="duelTeamBColor" class="input">
+                <option v-for="team in duelTeamColorOptions" :key="team.color" :value="team.color">{{ team.name }}</option>
+              </select>
+            </label>
+          </div>
 
           <div class="format-metrics-row">
             <label class="field-label">
@@ -130,6 +146,10 @@
                 <button class="ghost-button reminder-add-button" type="button" @click="applyCustomPlayerFormat">+</button>
               </div>
             </div>
+            <label class="team-count-field">
+              <input class="input" type="number" :value="teamCount" disabled />
+              <span>команды</span>
+            </label>
           </div>
         </div>
 
@@ -335,6 +355,14 @@ const customReminderHours = ref<number[]>([]);
 const customReminderHoursBefore = ref<number | null>(null);
 const customPlayerFormatOptions = ref<string[]>([]);
 const customPlayerFormatSize = ref<number | null>(null);
+const duelTeamAColor = ref('red');
+const duelTeamBColor = ref('blue');
+
+const defaultSessionTeams = [
+  { name: 'Красные', color: 'red', displayOrder: 1 },
+  { name: 'Зеленые', color: 'green', displayOrder: 2 },
+  { name: 'Синие', color: 'blue', displayOrder: 3 }
+];
 
 const venues = ref<SessionVenue[]>([]);
 const venueSelection = ref('');
@@ -355,6 +383,7 @@ const visiblePlayerFormatOptions = computed(() => {
 });
 
 const photoUploadDisabled = computed(() => !isCreatingNewVenue.value || photoUploadPending.value);
+const teamCount = computed(() => form.formatType === 'DUEL' ? 2 : 3);
 
 const form = reactive({
   title: '',
@@ -407,6 +436,10 @@ function validateForm(): boolean {
   const firstError = requiredFields.map((field) => fieldError(field)).find(Boolean);
   if (firstError) {
     error.value = firstError;
+    return false;
+  }
+  if (form.formatType === 'DUEL' && duelTeamAColor.value === duelTeamBColor.value) {
+    error.value = 'Выберите разные цвета команд для дуэли';
     return false;
   }
 
@@ -614,6 +647,23 @@ function applyCustomPlayerFormat() {
   error.value = '';
 }
 
+const duelTeamColorOptions = computed(() => defaultSessionTeams);
+
+function selectedSessionTeams() {
+  if (form.formatType !== 'DUEL') {
+    return defaultSessionTeams;
+  }
+
+  return [duelTeamAColor.value, duelTeamBColor.value]
+    .map((color, index) => {
+      const team = defaultSessionTeams.find((item) => item.color === color) ?? defaultSessionTeams[index];
+      return {
+        ...team,
+        displayOrder: index + 1
+      };
+    });
+}
+
 async function uploadVenuePhoto(event: Event) {
   const input = event.target as HTMLInputElement;
   const file = input.files?.[0];
@@ -699,14 +749,11 @@ async function createSession() {
       plannedMatchDurationMinutes: form.plannedMatchDurationMinutes,
       sessionDurationMinutes: form.sessionDurationMinutes || null,
       maxPlayers: form.maxPlayers || null,
+      teamCount: teamCount.value,
       playerFormat: form.playerFormat || null,
       notes: form.notes || null,
       createdByUserId: authState.user?.id ?? null,
-      teams: [
-        { name: 'Красные', color: 'red', displayOrder: 1 },
-        { name: 'Зеленые', color: 'green', displayOrder: 2 },
-        { name: 'Синие', color: 'blue', displayOrder: 3 }
-      ]
+      teams: selectedSessionTeams()
     });
 
     await Promise.all(selectedReminderHours.value.map((hoursBefore) => api.createContributionReminder(session.id, { hoursBefore })));

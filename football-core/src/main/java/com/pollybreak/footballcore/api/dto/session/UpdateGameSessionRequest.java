@@ -1,9 +1,12 @@
 package com.pollybreak.footballcore.api.dto.session;
 
 import com.pollybreak.footballcore.domain.enums.MvpVotingParticipantScope;
+import com.pollybreak.footballcore.domain.enums.SessionFormatType;
 import com.pollybreak.footballcore.domain.enums.SessionStatus;
+import jakarta.validation.Valid;
 import java.time.LocalDate;
 import java.time.LocalTime;
+import java.util.List;
 
 public record UpdateGameSessionRequest(
         String title,
@@ -23,12 +26,15 @@ public record UpdateGameSessionRequest(
         Integer mvpVotingDurationHours,
         MvpVotingParticipantScope mvpVotingParticipantScope,
         Boolean mvpVotingTelegramEnabled,
+        SessionFormatType formatType,
         SessionStatus status,
         Integer plannedMatchDurationMinutes,
         Integer sessionDurationMinutes,
         String notes,
         Integer maxPlayers,
+        Integer teamCount,
         String playerFormat,
-        Boolean recurrenceActive
+        Boolean recurrenceActive,
+        @Valid List<CreateSessionTeamRequest> teams
 ) {
 }

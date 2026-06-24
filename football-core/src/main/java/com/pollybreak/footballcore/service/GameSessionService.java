@@ -9,6 +9,7 @@ import com.pollybreak.footballcore.domain.entity.AppUser;
 import com.pollybreak.footballcore.domain.entity.GameSession;
 import com.pollybreak.footballcore.domain.entity.SessionVenue;
 import com.pollybreak.footballcore.domain.entity.SessionTeam;
+import com.pollybreak.footballcore.domain.enums.SessionFormatType;
 import com.pollybreak.footballcore.domain.enums.MvpVotingParticipantScope;
 import com.pollybreak.footballcore.domain.enums.SessionRecurrenceType;
 import com.pollybreak.footballcore.domain.enums.SessionStatus;
@@ -19,6 +20,7 @@ import com.pollybreak.footballcore.repository.SessionMatchRepository;
 import com.pollybreak.footballcore.repository.SessionTeamRepository;
 import java.time.LocalDate;
 import java.time.OffsetDateTime;
+import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Objects;
@@ -108,6 +110,7 @@ public class GameSessionService {
         session.setPlannedMatchDurationMinutes(request.plannedMatchDurationMinutes());
         session.setSessionDurationMinutes(request.sessionDurationMinutes());
         session.setMaxPlayers(request.maxPlayers());
+        session.setTeamCount(resolveTeamCount(request.teamCount(), request.formatType()));
         session.setPlayerFormat(request.playerFormat());
         session.setNotes(request.notes());
 
@@ -124,6 +127,7 @@ public class GameSessionService {
                 .map(teamRequest -> toSessionTeam(savedSession, teamRequest))
                 .map(sessionTeamRepository::save)
                 .toList();
+        validateTeamCountForFormat(savedSession, teams);
 
         sessionRecurrenceService.attachRecurrenceRule(savedSession, request);
 
@@ -206,6 +210,9 @@ public class GameSessionService {
                 request.mvpVotingTelegramEnabled()
         );
         recalculateMvpVotingEndsAtIfStarted(session, previousMvpVotingEndsAt);
+        if (request.formatType() != null) {
+            session.setFormatType(request.formatType());
+        }
         if (request.status() != null) {
             session.setStatus(request.status());
             if (request.status() == SessionStatus.FINISHED && session.getEndedAt() == null) {
@@ -216,7 +223,10 @@ public class GameSessionService {
         session.setSessionDurationMinutes(request.sessionDurationMinutes());
         session.setNotes(request.notes());
         session.setMaxPlayers(request.maxPlayers());
+        session.setTeamCount(resolveTeamCount(request.teamCount(), session.getFormatType()));
         session.setPlayerFormat(request.playerFormat());
+        List<SessionTeam> teams = updateTeamsIfRequested(session, request.teams());
+        validateTeamCountForFormat(session, teams != null ? teams : sessionTeamRepository.findAllBySessionIdOrderByDisplayOrderAsc(sessionId));
         if (request.recurrenceActive() != null && session.getRecurrenceRule() != null) {
             session.getRecurrenceRule().setActive(request.recurrenceActive());
         }
@@ -227,7 +237,7 @@ public class GameSessionService {
             sessionMvpVotingService.refreshVotingMessageIfNeeded(session);
         }
         sessionRegistrationScheduleService.startRegistrationIfDue(session);
-        return GameSessionResponse.fromEntity(session, sessionTeamRepository.findAllBySessionIdOrderByDisplayOrderAsc(sessionId));
+        return GameSessionResponse.fromEntity(session, teams != null ? teams : sessionTeamRepository.findAllBySessionIdOrderByDisplayOrderAsc(sessionId));
     }
 
     @Transactional
@@ -252,6 +262,73 @@ public class GameSessionService {
 
     private int nextDisplayOrder(Long sessionId) {
         return sessionTeamRepository.findAllBySessionIdOrderByDisplayOrderAsc(sessionId).size() + 1;
+    }
+
+    private List<SessionTeam> updateTeamsIfRequested(GameSession session, List<CreateSessionTeamRequest> teamRequests) {
+        if (teamRequests == null) {
+            return null;
+        }
+        if (sessionMatchRepository.existsBySessionId(session.getId())) {
+            throw new IllegalArgumentException("Teams cannot be changed after matches have been created");
+        }
+        if (teamRequests.size() < 2) {
+            throw new IllegalArgumentException("At least two teams are required");
+        }
+
+        List<SessionTeam> existingTeams = new ArrayList<>(sessionTeamRepository.findAllBySessionIdOrderByDisplayOrderAsc(session.getId()));
+        List<SessionTeam> updatedTeams = teamRequests.stream()
+                .sorted(Comparator.comparingInt(team -> team.displayOrder() == null ? Integer.MAX_VALUE : team.displayOrder()))
+                .map(teamRequest -> updateOrCreateSessionTeam(session, existingTeams, teamRequest))
+                .map(sessionTeamRepository::save)
+                .toList();
+        existingTeams.forEach(sessionTeamRepository::delete);
+        return updatedTeams;
+    }
+
+    private SessionTeam updateOrCreateSessionTeam(GameSession session, List<SessionTeam> existingTeams, CreateSessionTeamRequest request) {
+        SessionTeam team = findReusableTeam(existingTeams, request);
+        if (team == null) {
+            team = new SessionTeam();
+            team.setSession(session);
+        } else {
+            existingTeams.remove(team);
+        }
+        team.setName(request.name());
+        team.setColor(request.color());
+        team.setDisplayOrder(request.displayOrder() != null ? request.displayOrder() : nextDisplayOrder(session.getId()));
+        return team;
+    }
+
+    private SessionTeam findReusableTeam(List<SessionTeam> existingTeams, CreateSessionTeamRequest request) {
+        return existingTeams.stream()
+                .filter(team -> Objects.equals(team.getColor(), request.color()))
+                .findFirst()
+                .or(() -> existingTeams.stream()
+                        .filter(team -> Objects.equals(team.getName(), request.name()))
+                        .findFirst())
+                .orElse(null);
+    }
+
+    private void validateTeamCountForFormat(GameSession session, List<SessionTeam> teams) {
+        if (session.getTeamCount() != null && session.getTeamCount() != teams.size()) {
+            throw new IllegalArgumentException("Session team count must match the number of teams");
+        }
+        if (session.getFormatType() == SessionFormatType.ROUND_ROBIN && teams.size() < 3) {
+            throw new IllegalArgumentException("Round-robin sessions require at least three teams");
+        }
+        if (session.getFormatType() == SessionFormatType.DUEL && teams.size() != 2) {
+            throw new IllegalArgumentException("Duel sessions require exactly two teams");
+        }
+    }
+
+    private Integer resolveTeamCount(Integer requestedTeamCount, SessionFormatType formatType) {
+        if (requestedTeamCount != null) {
+            if (requestedTeamCount < 2) {
+                throw new IllegalArgumentException("teamCount must be at least two");
+            }
+            return requestedTeamCount;
+        }
+        return formatType == SessionFormatType.DUEL ? 2 : 3;
     }
 
     private void applyMvpVotingSettings(

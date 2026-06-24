@@ -168,6 +168,31 @@
 
           <div class="settings-group">
             <p class="settings-group__title">Формат игры</p>
+            <label class="field-label">
+              <span>Тип турнира</span>
+              <select
+                v-model="sessionSettings.formatType"
+                class="input"
+                :disabled="sessionIsFinished"
+                @change="handleSessionFormatChange"
+              >
+                <option v-for="format in availableSessionFormatOptions" :key="format" :value="format">{{ sessionFormatLabel(format) }}</option>
+              </select>
+            </label>
+            <div v-if="sessionSettings.formatType === 'DUEL'" class="grid-form duel-team-color-grid">
+              <label class="field-label">
+                <span>Цвет первой команды</span>
+                <select v-model="duelTeamAColor" class="input" :disabled="sessionIsFinished || matches.length > 0">
+                  <option v-for="team in duelTeamColorOptions" :key="team.color" :value="team.color">{{ team.name }}</option>
+                </select>
+              </label>
+              <label class="field-label">
+                <span>Цвет второй команды</span>
+                <select v-model="duelTeamBColor" class="input" :disabled="sessionIsFinished || matches.length > 0">
+                  <option v-for="team in duelTeamColorOptions" :key="team.color" :value="team.color">{{ team.name }}</option>
+                </select>
+              </label>
+            </div>
             <div class="format-metrics-row">
               <label class="field-label">
                 <span>Длительность матча, минут</span>
@@ -185,6 +210,10 @@
             <label class="field-label">
               <span>Формат игроков</span>
               <input v-model="sessionSettings.playerFormat" class="input" placeholder="6x6" :disabled="sessionIsFinished" />
+            </label>
+            <label class="team-count-field">
+              <input class="input" type="number" :value="sessionSettingsTeamCount" disabled />
+              <span>команды</span>
             </label>
           </div>
 
@@ -351,6 +380,19 @@
           <button class="primary-button" type="submit" :disabled="pendingSessionUpdate">Возобновить</button>
         </div>
       </form>
+    </div>
+
+    <div v-if="formatChangeBlockedDialogOpen" class="settings-overlay" @click.self="formatChangeBlockedDialogOpen = false">
+      <div class="settings-window stack-sm">
+        <div>
+          <p class="eyebrow">Формат игры</p>
+          <h3 class="section-title">Нельзя изменить формат</h3>
+        </div>
+        <p class="muted">{{ SESSION_FORMAT_CHANGE_BLOCKED_MESSAGE }}</p>
+        <div class="button-row">
+          <button class="primary-button" type="button" @click="formatChangeBlockedDialogOpen = false">Понятно</button>
+        </div>
+      </div>
     </div>
 
     <div v-if="adminDialogOpen" class="settings-overlay" @click.self="closeAdminDialog">
@@ -960,6 +1002,7 @@ import type {
   MatchEvent,
   PlayerPosition,
   PlayerProfile,
+  SessionFormatType,
   SessionMatch,
   SessionMvpCandidate,
   SessionMvpVoting,
@@ -1002,6 +1045,7 @@ const roundRobinFirstPairKey = ref('');
 const roundRobinSecondPairKey = ref('');
 const activeTab = ref<(typeof tabs)[number]>('Players');
 const error = ref('');
+const SESSION_FORMAT_CHANGE_BLOCKED_MESSAGE = 'Нельзя менять формат сессии, у которой уже созданы матчи. Создайте новую сессию';
 const pendingMembership = ref(false);
 const pendingSessionUpdate = ref(false);
 const pendingRegistrationStart = ref(false);
@@ -1022,6 +1066,7 @@ const telegramChats = ref<TelegramKnownChat[]>([]);
 const telegramChatsPending = ref(false);
 const telegramChatSelection = ref('');
 const settingsOpen = ref(false);
+const formatChangeBlockedDialogOpen = ref(false);
 const guestPlayerDialogOpen = ref(false);
 const removePlayerDialogOpen = ref(false);
 const adminDialogOpen = ref(false);
@@ -1089,6 +1134,7 @@ const sessionLocationText = computed(() => {
 const sessionFormatShortLabel = computed(() => {
   if (!session.value) return '';
   if (session.value.formatType === 'ROUND_ROBIN') return 'Круговой';
+  if (session.value.formatType === 'DUEL') return 'Дуэль';
   return sessionFormatLabel(session.value.formatType);
 });
 const membershipButtonLabel = computed(() => {
@@ -1148,13 +1194,27 @@ const sessionSettings = reactive({
   mvpVotingTelegramEnabled: false,
   feeAmount: null as number | null,
   feeRecipient: '',
+  formatType: 'ROUND_ROBIN' as SessionFormatType,
   plannedMatchDurationMinutes: 6 as number | null,
   sessionDurationMinutes: 90 as number | null,
   notes: '',
   maxPlayers: 15 as number | null,
+  teamCount: 3 as number | null,
   playerFormat: '6x6',
   recurrenceActive: true
 });
+const duelTeamAColor = ref('red');
+const duelTeamBColor = ref('blue');
+const defaultSessionTeams = [
+  { name: 'Красные', color: 'red', displayOrder: 1 },
+  { name: 'Зеленые', color: 'green', displayOrder: 2 },
+  { name: 'Синие', color: 'blue', displayOrder: 3 }
+];
+const duelTeamColorOptions = computed(() => defaultSessionTeams);
+const availableSessionFormatOptions = computed<SessionFormatType[]>(() => {
+  return ['ROUND_ROBIN', 'DUEL', 'KNOCKOUT'];
+});
+const sessionSettingsTeamCount = computed(() => sessionSettings.formatType === 'DUEL' ? 2 : 3);
 const reminderForm = reactive({
   hoursBefore: 10 as number | null
 });
@@ -1731,12 +1791,75 @@ function fillSessionSettings() {
   sessionSettings.mvpVotingTelegramEnabled = session.value.mvpVotingTelegramEnabled;
   sessionSettings.feeAmount = session.value.feeAmount ?? null;
   sessionSettings.feeRecipient = session.value.feeRecipient ?? '';
+  sessionSettings.formatType = session.value.formatType;
   sessionSettings.plannedMatchDurationMinutes = session.value.plannedMatchDurationMinutes ?? null;
   sessionSettings.sessionDurationMinutes = session.value.sessionDurationMinutes ?? null;
   sessionSettings.notes = session.value.notes ?? '';
   sessionSettings.maxPlayers = session.value.maxPlayers ?? null;
+  sessionSettings.teamCount = session.value.teamCount ?? session.value.teams.length;
   sessionSettings.playerFormat = session.value.playerFormat ?? '';
   sessionSettings.recurrenceActive = session.value.recurrenceActive ?? true;
+  const firstTeam = session.value.teams[0];
+  const secondTeam = session.value.teams[1];
+  duelTeamAColor.value = resolveDuelTeamColor(firstTeam?.color);
+  duelTeamBColor.value = resolveDuelTeamColor(secondTeam?.color, duelTeamAColor.value);
+}
+
+function handleSessionFormatChange() {
+  if (!session.value || matches.value.length === 0) {
+    return;
+  }
+  if (sessionSettings.formatType === session.value.formatType) {
+    return;
+  }
+  if (canRepairDuelFormatSelection(sessionSettings.formatType)) {
+    return;
+  }
+
+  sessionSettings.formatType = session.value.formatType;
+  formatChangeBlockedDialogOpen.value = true;
+}
+
+function canRepairDuelFormatSelection(formatType: SessionFormatType): boolean {
+  return Boolean(
+    session.value
+      && session.value.teams.length === 2
+      && session.value.formatType !== 'DUEL'
+      && formatType === 'DUEL'
+  );
+}
+
+function resolveDuelTeamColor(color: string | null | undefined, excludedColor?: string): string {
+  const fallback = defaultSessionTeams.find((team) => team.color !== excludedColor)?.color ?? 'red';
+  return defaultSessionTeams.some((team) => team.color === color) ? color! : fallback;
+}
+
+function shouldUpdateSessionTeams(): boolean {
+  if (!session.value || matches.value.length > 0) {
+    return false;
+  }
+  if (sessionSettings.formatType === 'DUEL') {
+    return session.value.formatType !== 'DUEL'
+      || session.value.teams.length !== 2
+      || session.value.teams[0]?.color !== duelTeamAColor.value
+      || session.value.teams[1]?.color !== duelTeamBColor.value;
+  }
+  return session.value.formatType === 'DUEL';
+}
+
+function selectedSessionTeamsForSettings() {
+  if (sessionSettings.formatType !== 'DUEL') {
+    return defaultSessionTeams;
+  }
+
+  return [duelTeamAColor.value, duelTeamBColor.value]
+    .map((color, index) => {
+      const team = defaultSessionTeams.find((item) => item.color === color) ?? defaultSessionTeams[index];
+      return {
+        ...team,
+        displayOrder: index + 1
+      };
+    });
 }
 
 async function loadPlayers() {
@@ -2031,6 +2154,10 @@ async function saveSessionSettings() {
     error.value = 'Укажите Telegram chat ID для рассылки голосования за MVP';
     return false;
   }
+  if (sessionSettings.formatType === 'DUEL' && duelTeamAColor.value === duelTeamBColor.value) {
+    error.value = 'Выберите разные цвета команд для дуэли';
+    return false;
+  }
 
   pendingSessionUpdate.value = true;
   error.value = '';
@@ -2059,13 +2186,16 @@ async function saveSessionSettings() {
       mvpVotingTelegramEnabled: sessionSettings.mvpVotingEnabled && sessionSettings.mvpVotingTelegramEnabled,
       feeAmount: sessionSettings.feeAmount || null,
       feeRecipient: sessionSettings.feeRecipient.trim() || null,
+      formatType: sessionSettings.formatType,
       status: session.value?.status ?? null,
       plannedMatchDurationMinutes: sessionSettings.plannedMatchDurationMinutes || null,
       sessionDurationMinutes: sessionSettings.sessionDurationMinutes || null,
       notes: sessionSettings.notes.trim() || null,
       maxPlayers: sessionSettings.maxPlayers || null,
+      teamCount: sessionSettingsTeamCount.value,
       playerFormat: sessionSettings.playerFormat.trim() || null,
-      recurrenceActive: session.value?.recurrenceRuleId ? sessionSettings.recurrenceActive : null
+      recurrenceActive: session.value?.recurrenceRuleId ? sessionSettings.recurrenceActive : null,
+      teams: shouldUpdateSessionTeams() ? selectedSessionTeamsForSettings() : null
     });
     fillSessionSettings();
     await Promise.all([loadSessionPlayers(), loadWaitlist(), loadMvpVoting()]);
@@ -2386,7 +2516,7 @@ async function createNextMatch() {
 
   pendingCreateMatch.value = true;
   try {
-    if (session.value.formatType === 'ROUND_ROBIN') {
+    if (session.value.formatType === 'ROUND_ROBIN' || session.value.formatType === 'DUEL') {
       await api.createNextMatch(sessionIdNumber.value, {
         firstPairKey: roundRobinFirstPairKey.value || null,
         secondPairKey: roundRobinSecondPairKey.value || null

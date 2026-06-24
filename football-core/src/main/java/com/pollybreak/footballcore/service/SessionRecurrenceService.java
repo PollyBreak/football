@@ -146,6 +146,7 @@ public class SessionRecurrenceService {
         nextSession.setPlannedMatchDurationMinutes(source.getPlannedMatchDurationMinutes());
         nextSession.setSessionDurationMinutes(source.getSessionDurationMinutes());
         nextSession.setMaxPlayers(source.getMaxPlayers());
+        nextSession.setTeamCount(source.getTeamCount());
         nextSession.setPlayerFormat(source.getPlayerFormat());
         nextSession.setNotes(source.getNotes());
         nextSession.setCreatedBy(source.getCreatedBy());

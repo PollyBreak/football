@@ -14,6 +14,8 @@ public interface SessionMatchRepository extends JpaRepository<SessionMatch, Long
 
     Optional<SessionMatch> findTopBySessionIdOrderByMatchNumberDesc(Long sessionId);
 
+    boolean existsBySessionId(Long sessionId);
+
     @Modifying
     @Query("""
             delete from SessionMatch match

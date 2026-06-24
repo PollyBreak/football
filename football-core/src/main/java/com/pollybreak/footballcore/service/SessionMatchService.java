@@ -134,13 +134,15 @@ public class SessionMatchService {
     public SessionMatchResponse createNext(Long sessionId, CreateNextSessionMatchRequest request) {
         GameSession session = gameSessionRepository.findByIdForUpdate(sessionId)
                 .orElseThrow(() -> new IllegalArgumentException("Game session not found: " + sessionId));
-        if (session.getFormatType() != SessionFormatType.ROUND_ROBIN) {
-            throw new IllegalArgumentException("Automatic next match creation is only supported for round-robin sessions");
-        }
-
         List<SessionTeam> teams = sessionTeamRepository.findAllBySessionIdOrderByDisplayOrderAsc(sessionId);
         if (teams.size() < 2) {
             throw new IllegalArgumentException("At least two teams are required to create a match");
+        }
+        if (session.getFormatType() == SessionFormatType.DUEL) {
+            return createNextDuelMatch(session, teams);
+        }
+        if (session.getFormatType() != SessionFormatType.ROUND_ROBIN) {
+            throw new IllegalArgumentException("Automatic next match creation is only supported for round-robin and duel sessions");
         }
 
         List<TeamPair> pairs = buildTeamPairs(teams);
@@ -166,6 +168,28 @@ public class SessionMatchService {
         match.setTeamB(pair.teamB());
         match.setMatchNumber(nextMatchNumber);
         match.setRoundNumber(roundNumber);
+        match.setStatus(MatchStatus.PLANNED);
+        match.setPlannedDurationMinutes(session.getPlannedMatchDurationMinutes());
+
+        return SessionMatchResponse.fromEntity(sessionMatchRepository.save(match));
+    }
+
+    private SessionMatchResponse createNextDuelMatch(GameSession session, List<SessionTeam> teams) {
+        if (teams.size() != 2) {
+            throw new IllegalArgumentException("Duel sessions require exactly two teams");
+        }
+
+        int nextMatchNumber = getNextMatchNumber(session.getId());
+        boolean reverseTeams = nextMatchNumber % 2 == 0;
+        SessionTeam teamA = reverseTeams ? teams.get(1) : teams.get(0);
+        SessionTeam teamB = reverseTeams ? teams.get(0) : teams.get(1);
+
+        SessionMatch match = new SessionMatch();
+        match.setSession(session);
+        match.setTeamA(teamA);
+        match.setTeamB(teamB);
+        match.setMatchNumber(nextMatchNumber);
+        match.setRoundNumber(1);
         match.setStatus(MatchStatus.PLANNED);
         match.setPlannedDurationMinutes(session.getPlannedMatchDurationMinutes());
 

@@ -5,7 +5,7 @@ export type PlayerPosition =
   | 'FORWARD'
   | 'UNIVERSAL';
 
-export type SessionFormatType = 'ROUND_ROBIN' | 'KNOCKOUT' | 'KING_OF_THE_HILL' | 'CUSTOM';
+export type SessionFormatType = 'ROUND_ROBIN' | 'DUEL' | 'KNOCKOUT' | 'KING_OF_THE_HILL' | 'CUSTOM';
 export type SessionRecurrenceType = 'DAYS' | 'MONTHLY';
 export type SessionStatus = 'PLANNED' | 'IN_PROGRESS' | 'FINISHED' | 'CANCELLED';
 export type MatchStatus = 'PLANNED' | 'IN_PROGRESS' | 'PAUSED' | 'FINISHED' | 'CANCELLED';
@@ -109,6 +109,7 @@ export interface GameSession {
   plannedMatchDurationMinutes: number | null;
   sessionDurationMinutes: number | null;
   maxPlayers: number | null;
+  teamCount: number | null;
   playerFormat: string | null;
   notes: string | null;
   createdByUserId: number | null;

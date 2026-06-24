@@ -123,6 +123,9 @@ public class GameSession {
     @Column(name = "max_players")
     private Integer maxPlayers;
 
+    @Column(name = "team_count")
+    private Integer teamCount;
+
     @Column(name = "player_format", length = 50)
     private String playerFormat;
 

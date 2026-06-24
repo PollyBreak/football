@@ -41,6 +41,7 @@ public record CreateGameSessionRequest(
         Integer plannedMatchDurationMinutes,
         Integer sessionDurationMinutes,
         Integer maxPlayers,
+        Integer teamCount,
         String playerFormat,
         String notes,
         Long createdByUserId,
