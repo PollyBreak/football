@@ -1,5 +1,6 @@
 package com.pollybreak.footballcore.service;
 
+import com.pollybreak.footballcore.api.dto.match.CreateNextSessionMatchRequest;
 import com.pollybreak.footballcore.api.dto.match.CreateSessionMatchRequest;
 import com.pollybreak.footballcore.api.dto.match.FinishSessionMatchRequest;
 import com.pollybreak.footballcore.api.dto.match.StartSessionMatchRequest;
@@ -13,17 +14,23 @@ import com.pollybreak.footballcore.domain.entity.SessionMatch;
 import com.pollybreak.footballcore.domain.entity.SessionTeam;
 import com.pollybreak.footballcore.domain.enums.MatchEventType;
 import com.pollybreak.footballcore.domain.enums.MatchStatus;
+import com.pollybreak.footballcore.domain.enums.SessionFormatType;
 import com.pollybreak.footballcore.domain.enums.SessionStatus;
-import java.time.OffsetDateTime;
 import com.pollybreak.footballcore.repository.GameSessionRepository;
 import com.pollybreak.footballcore.repository.MatchEventRepository;
 import com.pollybreak.footballcore.repository.SessionMatchRepository;
 import com.pollybreak.footballcore.repository.SessionTeamRepository;
 import java.time.Duration;
+import java.time.OffsetDateTime;
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
+import java.util.Optional;
+import java.util.concurrent.ThreadLocalRandom;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -119,6 +126,48 @@ public class SessionMatchService {
         match.setPlannedDurationMinutes(request.plannedDurationMinutes() != null
                 ? request.plannedDurationMinutes()
                 : session.getPlannedMatchDurationMinutes());
+
+        return SessionMatchResponse.fromEntity(sessionMatchRepository.save(match));
+    }
+
+    @Transactional
+    public SessionMatchResponse createNext(Long sessionId, CreateNextSessionMatchRequest request) {
+        GameSession session = gameSessionRepository.findByIdForUpdate(sessionId)
+                .orElseThrow(() -> new IllegalArgumentException("Game session not found: " + sessionId));
+        if (session.getFormatType() != SessionFormatType.ROUND_ROBIN) {
+            throw new IllegalArgumentException("Automatic next match creation is only supported for round-robin sessions");
+        }
+
+        List<SessionTeam> teams = sessionTeamRepository.findAllBySessionIdOrderByDisplayOrderAsc(sessionId);
+        if (teams.size() < 2) {
+            throw new IllegalArgumentException("At least two teams are required to create a match");
+        }
+
+        List<TeamPair> pairs = buildTeamPairs(teams);
+        int nextMatchNumber = getNextMatchNumber(sessionId);
+        int roundNumber = resolveRoundNumber(sessionId, nextMatchNumber);
+        List<SessionMatch> currentRoundMatches = findBySessionId(sessionId).stream()
+                .filter(match -> Objects.equals(
+                        match.getRoundNumber() != null ? match.getRoundNumber() : resolveRoundNumber(sessionId, match.getMatchNumber()),
+                        roundNumber
+                ))
+                .toList();
+        List<TeamPair> availablePairs = pairs.stream()
+                .filter(pair -> currentRoundMatches.stream().noneMatch(pair::matches))
+                .toList();
+        List<TeamPair> selectablePairs = availablePairs.isEmpty() ? pairs : availablePairs;
+
+        TeamPair pair = resolvePreferredPair(request, nextMatchNumber, selectablePairs)
+                .orElseGet(() -> randomPair(selectablePairs));
+
+        SessionMatch match = new SessionMatch();
+        match.setSession(session);
+        match.setTeamA(pair.teamA());
+        match.setTeamB(pair.teamB());
+        match.setMatchNumber(nextMatchNumber);
+        match.setRoundNumber(roundNumber);
+        match.setStatus(MatchStatus.PLANNED);
+        match.setPlannedDurationMinutes(session.getPlannedMatchDurationMinutes());
 
         return SessionMatchResponse.fromEntity(sessionMatchRepository.save(match));
     }
@@ -244,6 +293,30 @@ public class SessionMatchService {
         return (int) (((Math.max(1, matchNumber) - 1) / matchesPerRound) + 1);
     }
 
+    private List<TeamPair> buildTeamPairs(List<SessionTeam> teams) {
+        List<TeamPair> pairs = new ArrayList<>();
+        for (int left = 0; left < teams.size(); left++) {
+            for (int right = left + 1; right < teams.size(); right++) {
+                pairs.add(new TeamPair(teams.get(left), teams.get(right)));
+            }
+        }
+        return pairs;
+    }
+
+    private Optional<TeamPair> resolvePreferredPair(CreateNextSessionMatchRequest request, int matchNumber, List<TeamPair> availablePairs) {
+        String pairKey = matchNumber == 1 ? request.firstPairKey() : matchNumber == 2 ? request.secondPairKey() : null;
+        if (pairKey == null || pairKey.isBlank()) {
+            return Optional.empty();
+        }
+        return availablePairs.stream()
+                .filter(pair -> pair.key().equals(pairKey))
+                .findFirst();
+    }
+
+    private TeamPair randomPair(List<TeamPair> pairs) {
+        return pairs.get(ThreadLocalRandom.current().nextInt(pairs.size()));
+    }
+
     private void syncWinningTeam(SessionMatch match) {
         if (match.getTeamAScore() > match.getTeamBScore()) {
             match.setWinningTeam(match.getTeamA());
@@ -343,5 +416,21 @@ public class SessionMatchService {
                     points
             );
         }
+    }
+
+    private record TeamPair(SessionTeam teamA, SessionTeam teamB) {
+        private boolean matches(SessionMatch match) {
+            return key().equals(pairKey(match.getTeamA().getId(), match.getTeamB().getId()));
+        }
+
+        private String key() {
+            return pairKey(teamA.getId(), teamB.getId());
+        }
+    }
+
+    private static String pairKey(Long teamAId, Long teamBId) {
+        List<Long> ids = new ArrayList<>(List.of(teamAId, teamBId));
+        Collections.sort(ids);
+        return ids.get(0) + ":" + ids.get(1);
     }
 }

@@ -1,12 +1,15 @@
 package com.pollybreak.footballcore.repository;
 
 import com.pollybreak.footballcore.domain.entity.GameSession;
+import jakarta.persistence.LockModeType;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
 import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 
 public interface GameSessionRepository extends JpaRepository<GameSession, Long> {
 
@@ -15,6 +18,14 @@ public interface GameSessionRepository extends JpaRepository<GameSession, Long> 
     List<GameSession> findAllBySessionDateOrderBySessionTimeDescCreatedAtDesc(LocalDate sessionDate);
 
     Optional<GameSession> findFirstByRecurrenceRuleIdOrderBySessionDateDescSessionTimeDescCreatedAtDesc(Long recurrenceRuleId);
+
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("""
+            select session
+            from GameSession session
+            where session.id = :id
+            """)
+    Optional<GameSession> findByIdForUpdate(@Param("id") Long id);
 
     @EntityGraph(attributePaths = "createdBy")
     @Query("""

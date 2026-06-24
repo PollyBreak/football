@@ -236,6 +236,9 @@ export const api = {
   createMatch(sessionId: number, payload: Record<string, unknown>): Promise<SessionMatch> {
     return request(`/api/sessions/${sessionId}/matches`, { method: 'POST', body: JSON.stringify(payload) });
   },
+  createNextMatch(sessionId: number, payload: Record<string, unknown>): Promise<SessionMatch> {
+    return request(`/api/sessions/${sessionId}/matches/next`, { method: 'POST', body: JSON.stringify(payload) });
+  },
   startMatch(sessionId: number, matchId: number): Promise<SessionMatch> {
     return request(`/api/sessions/${sessionId}/matches/${matchId}/start`, { method: 'POST', body: JSON.stringify({}) });
   },

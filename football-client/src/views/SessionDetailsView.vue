@@ -730,7 +730,7 @@
     <div v-if="activeTab === 'Matches'" class="card stack-sm">
       <div class="section-header">
         <h3 class="section-title">Матчи</h3>
-        <button v-if="!sessionIsFinished" class="primary-button create-match-button" @click="createNextMatch">{{ createMatchButtonLabel }}</button>
+        <button v-if="!sessionIsFinished" class="primary-button create-match-button" :disabled="pendingCreateMatch" @click="createNextMatch">{{ createMatchButtonLabel }}</button>
       </div>
       <div v-if="session.formatType === 'ROUND_ROBIN'" class="grid-form round-robin-match-pickers">
         <label class="field-label">
@@ -1013,6 +1013,7 @@ const pendingMvpMessageSend = ref(false);
 const pendingStreamStart = ref(false);
 const pendingStreamShift = ref(false);
 const pendingTimelineGeneration = ref(false);
+const pendingCreateMatch = ref(false);
 const streamBroadcasts = ref<StreamBroadcast[]>([]);
 const streamShiftForward = ref(true);
 const streamShiftSeconds = ref<number | null>(null);
@@ -2379,27 +2380,42 @@ async function assignSelectedPlayers(teamId: number) {
 }
 
 async function createNextMatch() {
+  if (pendingCreateMatch.value) return;
   if (sessionIsFinished.value) return;
   if (!session.value || session.value.teams.length < 2) return;
 
-  const [teamA, teamB] = nextMatchTeams();
-  if (!teamA || !teamB) {
-    error.value = 'Выберите две команды для матча';
-    return;
-  }
-  if (teamA.id === teamB.id) {
-    error.value = 'Выберите разные команды';
-    return;
-  }
+  pendingCreateMatch.value = true;
+  try {
+    if (session.value.formatType === 'ROUND_ROBIN') {
+      await api.createNextMatch(sessionIdNumber.value, {
+        firstPairKey: roundRobinFirstPairKey.value || null,
+        secondPairKey: roundRobinSecondPairKey.value || null
+      });
+      await loadMatches();
+      return;
+    }
 
-  await api.createMatch(sessionIdNumber.value, {
-    teamAId: teamA.id,
-    teamBId: teamB.id,
-    plannedDurationMinutes: session.value.plannedMatchDurationMinutes ?? 6
-  });
-  knockoutMatchForm.teamAId = undefined;
-  knockoutMatchForm.teamBId = undefined;
-  await loadMatches();
+    const [teamA, teamB] = nextMatchTeams();
+    if (!teamA || !teamB) {
+      error.value = 'Выберите две команды для матча';
+      return;
+    }
+    if (teamA.id === teamB.id) {
+      error.value = 'Выберите разные команды';
+      return;
+    }
+
+    await api.createMatch(sessionIdNumber.value, {
+      teamAId: teamA.id,
+      teamBId: teamB.id,
+      plannedDurationMinutes: session.value.plannedMatchDurationMinutes ?? 6
+    });
+    knockoutMatchForm.teamAId = undefined;
+    knockoutMatchForm.teamBId = undefined;
+    await loadMatches();
+  } finally {
+    pendingCreateMatch.value = false;
+  }
 }
 
 function nextMatchTeams() {

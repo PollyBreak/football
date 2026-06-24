@@ -1,5 +1,6 @@
 package com.pollybreak.footballcore.api.controller;
 
+import com.pollybreak.footballcore.api.dto.match.CreateNextSessionMatchRequest;
 import com.pollybreak.footballcore.api.dto.match.CreateSessionMatchRequest;
 import com.pollybreak.footballcore.api.dto.match.FinishSessionMatchRequest;
 import com.pollybreak.footballcore.api.dto.match.SessionMatchResponse;
@@ -29,6 +30,17 @@ public class SessionMatchController {
             @Valid @RequestBody CreateSessionMatchRequest request
     ) {
         return sessionMatchService.create(sessionId, request);
+    }
+
+    @PostMapping("/next")
+    public SessionMatchResponse createNextMatch(
+            @PathVariable Long sessionId,
+            @RequestBody(required = false) CreateNextSessionMatchRequest request
+    ) {
+        CreateNextSessionMatchRequest safeRequest = request == null
+                ? new CreateNextSessionMatchRequest(null, null)
+                : request;
+        return sessionMatchService.createNext(sessionId, safeRequest);
     }
 
     @GetMapping
