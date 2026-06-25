@@ -61,7 +61,7 @@
                 </div>
               </div>
               <div class="overlay-player-card__photo">
-                <img v-if="player.photoUrl" :src="player.photoUrl" :alt="displayPlayerName(player)" />
+                <img v-if="player.photoUrl" :src="resolveMediaUrl(player.photoUrl)" :alt="displayPlayerName(player)" />
                 <span v-else>{{ initials(displayPlayerName(player)) }}</span>
               </div>
               <strong class="overlay-player-card__name">{{ displayPlayerName(player) }}</strong>
@@ -91,7 +91,7 @@
                 </div>
               </div>
               <div class="overlay-player-card__photo">
-                <img v-if="player.photoUrl" :src="player.photoUrl" :alt="displayPlayerName(player)" />
+                <img v-if="player.photoUrl" :src="resolveMediaUrl(player.photoUrl)" :alt="displayPlayerName(player)" />
                 <span v-else>{{ initials(displayPlayerName(player)) }}</span>
               </div>
               <strong class="overlay-player-card__name">{{ displayPlayerName(player) }}</strong>
@@ -230,7 +230,7 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
 import { useRoute } from 'vue-router';
-import { api } from '../lib/api';
+import { api, resolveMediaUrl } from '../lib/api';
 import type { MatchEvent, OverlayEvent, OverlayState, OverlayTeam, PlayerPosition, SessionMatch, SessionTeamPlayer } from '../types';
 
 interface OverlayStandingRow {

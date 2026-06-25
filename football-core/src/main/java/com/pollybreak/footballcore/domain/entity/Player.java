@@ -48,6 +48,9 @@ public class Player {
     @Column(name = "birth_date")
     private LocalDate birthDate;
 
+    @Column(name = "manual_photo_url", length = 500)
+    private String manualPhotoUrl;
+
     @Enumerated(EnumType.STRING)
     @Column(name = "default_position", length = 50)
     private PlayerPosition defaultPosition;
@@ -60,4 +63,11 @@ public class Player {
 
     @Column(name = "created_at", nullable = false, insertable = false, updatable = false)
     private OffsetDateTime createdAt;
+
+    public String getEffectivePhotoUrl() {
+        if (manualPhotoUrl != null && !manualPhotoUrl.isBlank()) {
+            return manualPhotoUrl;
+        }
+        return user != null ? user.getPhotoUrl() : null;
+    }
 }

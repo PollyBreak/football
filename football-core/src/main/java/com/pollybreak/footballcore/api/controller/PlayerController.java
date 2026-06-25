@@ -4,6 +4,7 @@ import com.pollybreak.footballcore.api.dto.player.AttachUserToPlayerRequest;
 import com.pollybreak.footballcore.api.dto.player.PlayerProfileResponse;
 import com.pollybreak.footballcore.api.dto.player.RegisterPlayerRequest;
 import com.pollybreak.footballcore.api.dto.player.UpdatePlayerRequest;
+import com.pollybreak.footballcore.service.PlayerPhotoStorageService;
 import com.pollybreak.footballcore.service.PlayerService;
 import jakarta.validation.Valid;
 import java.util.List;
@@ -16,6 +17,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.multipart.MultipartFile;
 
 @RestController
 @RequestMapping("/api/players")
@@ -23,6 +25,7 @@ import org.springframework.web.bind.annotation.RestController;
 public class PlayerController {
 
     private final PlayerService playerService;
+    private final PlayerPhotoStorageService playerPhotoStorageService;
 
     @PostMapping
     public PlayerProfileResponse register(@Valid @RequestBody RegisterPlayerRequest request) {
@@ -35,6 +38,15 @@ public class PlayerController {
             @RequestBody UpdatePlayerRequest request
     ) {
         return playerService.update(playerId, request);
+    }
+
+    @PostMapping("/me/photo")
+    public PlayerProfileResponse uploadOwnPhoto(
+            @RequestParam("userId") Long userId,
+            @RequestParam("file") MultipartFile file
+    ) {
+        String publicPath = playerPhotoStorageService.save(file);
+        return playerService.updateOwnManualPhoto(userId, publicPath);
     }
 
     @PostMapping("/{playerId}/attach-user")

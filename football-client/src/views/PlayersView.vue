@@ -93,7 +93,7 @@
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from 'vue';
 import { RouterLink } from 'vue-router';
-import { api } from '../lib/api';
+import { api, resolveMediaUrl } from '../lib/api';
 import { authState } from '../lib/auth';
 import { playerPositionLabel } from '../lib/labels';
 import type { PlayerProfile } from '../types';
@@ -168,11 +168,14 @@ function playerShortFullName(player: PlayerProfile): string {
 }
 
 function playerPhotoUrl(player: PlayerProfile): string {
+  if (player.manualPhotoUrl) {
+    return resolveMediaUrl(player.manualPhotoUrl);
+  }
   if (authState.player?.playerId === player.playerId) {
-    return authState.user?.photoUrl ?? player.photoUrl ?? '';
+    return resolveMediaUrl(authState.user?.photoUrl ?? player.photoUrl);
   }
 
-  return player.photoUrl ?? '';
+  return resolveMediaUrl(player.photoUrl);
 }
 
 function playerInitials(player: PlayerProfile): string {

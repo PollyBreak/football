@@ -68,7 +68,7 @@
           <template v-if="topScorer">
             <div class="session-results-leader__person">
               <div class="player-avatar player-avatar--sm">
-                <img v-if="topScorer.photoUrl" :src="topScorer.photoUrl" alt="Фото игрока" />
+                <img v-if="topScorer.photoUrl" :src="resolveMediaUrl(topScorer.photoUrl)" alt="Фото игрока" />
                 <span v-else>{{ resultPlayerInitials(topScorer.name) }}</span>
               </div>
               <div>
@@ -85,7 +85,7 @@
           <template v-if="topAssistPlayer">
             <div class="session-results-leader__person">
               <div class="player-avatar player-avatar--sm">
-                <img v-if="topAssistPlayer.photoUrl" :src="topAssistPlayer.photoUrl" alt="Фото игрока" />
+                <img v-if="topAssistPlayer.photoUrl" :src="resolveMediaUrl(topAssistPlayer.photoUrl)" alt="Фото игрока" />
                 <span v-else>{{ resultPlayerInitials(topAssistPlayer.name) }}</span>
               </div>
               <div>
@@ -109,7 +109,7 @@
         <p class="eyebrow">MVP</p>
         <div v-for="winner in mvpVoting?.winners" :key="winner.playerId" class="session-results-leader__person">
           <div class="player-avatar player-avatar--sm">
-            <img v-if="winner.photoUrl" :src="winner.photoUrl" alt="Фото игрока" />
+            <img v-if="winner.photoUrl" :src="resolveMediaUrl(winner.photoUrl)" alt="Фото игрока" />
             <span v-else>{{ resultPlayerInitials(mvpCandidateName(winner)) }}</span>
           </div>
           <div>
@@ -580,7 +580,7 @@
               >
                 <div class="list-item__lead">
                   <div class="player-avatar player-avatar--sm">
-                    <img v-if="player.photoUrl" :src="player.photoUrl" alt="Фото игрока" />
+                    <img v-if="player.photoUrl" :src="resolveMediaUrl(player.photoUrl)" alt="Фото игрока" />
                     <span v-else>{{ playerInitials(player) }}</span>
                   </div>
                   <div>
@@ -613,7 +613,7 @@
           >
             <div class="list-item__lead">
               <div class="player-avatar player-avatar--sm">
-                <img v-if="entry.photoUrl" :src="entry.photoUrl" alt="Фото игрока" />
+                <img v-if="entry.photoUrl" :src="resolveMediaUrl(entry.photoUrl)" alt="Фото игрока" />
                 <span v-else>{{ waitlistInitials(entry) }}</span>
               </div>
               <div>
@@ -760,7 +760,7 @@
             @keydown.enter.prevent="openPlayerProfile(member.playerId)"
           >
             <div class="list-item__lead">
-              <img v-if="member.photoUrl" :src="member.photoUrl" alt="Фото игрока" class="avatar avatar--sm" />
+              <img v-if="member.photoUrl" :src="resolveMediaUrl(member.photoUrl)" alt="Фото игрока" class="avatar avatar--sm" />
               <strong>{{ member.playerName }}</strong>
             </div>
             <span class="item-tag" :aria-label="playerPositionLabel(member.position)">{{ compactPlayerPositionLabel(member.position) }}</span>
@@ -828,14 +828,14 @@
               <div v-if="matchGoalSummaries(match).length" class="match-goal-summary">
                 <div class="match-goal-summary__column match-goal-summary__column--left">
                   <p v-for="goal in teamMatchGoals(match, match.teamAId)" :key="goal.id" class="match-goal-summary__row">
-                    <img v-if="goal.playerPhotoUrl" :src="goal.playerPhotoUrl" alt="Р¤РѕС‚Рѕ РёРіСЂРѕРєР°" class="scoreboard-goal-avatar" />
+                    <img v-if="goal.playerPhotoUrl" :src="resolveMediaUrl(goal.playerPhotoUrl)" alt="Р¤РѕС‚Рѕ РёРіСЂРѕРєР°" class="scoreboard-goal-avatar" />
                     <span v-if="goal.timeLabel" class="scoreboard-goal-time">{{ goal.timeLabel }}</span>
                     <span class="scoreboard-goal-name">{{ goal.label }}</span>
                   </p>
                 </div>
                 <div class="match-goal-summary__column match-goal-summary__column--right">
                   <p v-for="goal in teamMatchGoals(match, match.teamBId)" :key="goal.id" class="match-goal-summary__row">
-                    <img v-if="goal.playerPhotoUrl" :src="goal.playerPhotoUrl" alt="Р¤РѕС‚Рѕ РёРіСЂРѕРєР°" class="scoreboard-goal-avatar" />
+                    <img v-if="goal.playerPhotoUrl" :src="resolveMediaUrl(goal.playerPhotoUrl)" alt="Р¤РѕС‚Рѕ РёРіСЂРѕРєР°" class="scoreboard-goal-avatar" />
                     <span v-if="goal.timeLabel" class="scoreboard-goal-time">{{ goal.timeLabel }}</span>
                     <span class="scoreboard-goal-name">{{ goal.label }}</span>
                   </p>

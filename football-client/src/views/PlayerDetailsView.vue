@@ -14,7 +14,6 @@
           <span v-else>{{ playerInitials }}</span>
         </div>
       </div>
-
       <div class="profile-details">
         <div>
           <span class="muted">Позиция</span>
@@ -83,7 +82,7 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue';
 import { RouterLink } from 'vue-router';
-import { api } from '../lib/api';
+import { api, resolveMediaUrl } from '../lib/api';
 import { authState } from '../lib/auth';
 import { playerPositionLabel, sessionStatusClass, sessionStatusLabel } from '../lib/labels';
 import type { PlayerProfile } from '../types';
@@ -95,10 +94,13 @@ const error = ref('');
 
 const playerPhotoUrl = computed(() => {
   if (!player.value) return '';
-  if (authState.player?.playerId === player.value.playerId) {
-    return authState.user?.photoUrl ?? player.value.photoUrl ?? '';
+  if (player.value.manualPhotoUrl) {
+    return resolveMediaUrl(player.value.manualPhotoUrl);
   }
-  return player.value.photoUrl ?? '';
+  if (authState.player?.playerId === player.value.playerId) {
+    return resolveMediaUrl(authState.user?.photoUrl ?? player.value.photoUrl);
+  }
+  return resolveMediaUrl(player.value.photoUrl);
 });
 
 const playerInitials = computed(() => {
@@ -117,4 +119,5 @@ onMounted(async () => {
     error.value = err instanceof Error ? err.message : 'Не удалось загрузить игрока';
   }
 });
+
 </script>

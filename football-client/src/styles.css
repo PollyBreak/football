@@ -1125,6 +1125,45 @@ textarea {
   border: 1px solid var(--border);
 }
 
+.player-photo-upload-row {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.player-photo-upload-row .venue-photo-button {
+  min-height: 38px;
+  padding: 8px 12px;
+  font-size: 0.84rem;
+}
+
+.profile-photo-column {
+  display: grid;
+  justify-items: center;
+  gap: 8px;
+}
+
+.profile-photo-upload-button {
+  min-height: 28px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin-top: 8px;
+  padding: 5px 12px;
+  border: 1px solid var(--input-border);
+  border-radius: 999px;
+  background: var(--input-bg);
+  color: var(--accent-text);
+  cursor: pointer;
+  font-size: 0.78rem;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.profile-photo-upload-button.is-disabled {
+  cursor: default;
+  opacity: 0.55;
+}
+
 .search-row {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;

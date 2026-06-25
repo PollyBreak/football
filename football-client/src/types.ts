@@ -21,6 +21,7 @@ export interface PlayerProfile {
   lastName: string | null;
   nickname: string | null;
   photoUrl?: string | null;
+  manualPhotoUrl?: string | null;
   homeCity: string | null;
   birthDate: string | null;
   defaultPosition: PlayerPosition | null;

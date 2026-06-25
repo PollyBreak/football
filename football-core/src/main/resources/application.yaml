@@ -38,8 +38,8 @@ app:
     allowed-origin-patterns: ${CORS_ALLOWED_ORIGIN_PATTERNS:http://localhost:*,http://127.0.0.1:*,https://localhost:*,https://127.0.0.1:*}
   uploads:
     venue-photos-dir: ${VENUE_PHOTOS_DIR:uploads/session-venues}
+    player-photos-dir: ${PLAYER_PHOTOS_DIR:uploads/player-photos}
 
 server:
   port: ${PORT:8080}
   forward-headers-strategy: framework
-

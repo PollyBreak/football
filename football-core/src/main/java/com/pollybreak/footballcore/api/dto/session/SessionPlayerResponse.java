@@ -29,7 +29,7 @@ public record SessionPlayerResponse(
                 sessionPlayer.getPlayer().getNickname(),
                 sessionPlayer.getPlayer().getUser() != null ? sessionPlayer.getPlayer().getUser().getDisplayName() : null,
                 sessionPlayer.getPlayer().getHomeCity(),
-                sessionPlayer.getPlayer().getUser() != null ? sessionPlayer.getPlayer().getUser().getPhotoUrl() : null,
+                sessionPlayer.getPlayer().getEffectivePhotoUrl(),
                 sessionPlayer.getPosition(),
                 sessionPlayer.isActive(),
                 sessionPlayer.getJoinedAt(),

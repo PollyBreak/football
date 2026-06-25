@@ -25,7 +25,7 @@
       <article v-for="winner in voting.winners" :key="winner.playerId" class="list-item">
         <div class="list-item__lead">
           <div class="player-avatar player-avatar--sm">
-            <img v-if="winner.photoUrl" :src="winner.photoUrl" alt="Фото игрока" />
+            <img v-if="winner.photoUrl" :src="resolveMediaUrl(winner.photoUrl)" alt="Фото игрока" />
             <span v-else>{{ candidateInitials(winner) }}</span>
           </div>
           <div>
@@ -50,7 +50,7 @@
           <span class="mvp-vote-count">{{ candidate.votes }}</span>
           <div class="list-item__lead">
             <div class="player-avatar player-avatar--xs">
-              <img v-if="candidate.photoUrl" :src="candidate.photoUrl" alt="Фото игрока" />
+              <img v-if="candidate.photoUrl" :src="resolveMediaUrl(candidate.photoUrl)" alt="Фото игрока" />
               <span v-else>{{ candidateInitials(candidate) }}</span>
             </div>
             <div>
@@ -99,7 +99,7 @@
 
 <script setup lang="ts">
 import { computed, onMounted, onUnmounted, ref } from 'vue';
-import { api } from '../lib/api';
+import { api, resolveMediaUrl } from '../lib/api';
 import { authState } from '../lib/auth';
 import type { SessionMvpCandidate, SessionMvpVoting } from '../types';
 

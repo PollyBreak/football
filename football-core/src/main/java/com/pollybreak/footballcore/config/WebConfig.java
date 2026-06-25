@@ -1,6 +1,7 @@
 package com.pollybreak.footballcore.config;
 
 import com.pollybreak.footballcore.service.SessionVenuePhotoStorageService;
+import com.pollybreak.footballcore.service.PlayerPhotoStorageService;
 import java.util.Arrays;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Configuration;
@@ -13,17 +14,20 @@ public class WebConfig implements WebMvcConfigurer {
 
     private final String[] allowedOriginPatterns;
     private final SessionVenuePhotoStorageService sessionVenuePhotoStorageService;
+    private final PlayerPhotoStorageService playerPhotoStorageService;
 
     public WebConfig(
             @Value("${app.cors.allowed-origin-patterns:http://localhost:*,http://127.0.0.1:*,https://localhost:*,https://127.0.0.1:*}")
             String allowedOriginPatterns,
-            SessionVenuePhotoStorageService sessionVenuePhotoStorageService
+            SessionVenuePhotoStorageService sessionVenuePhotoStorageService,
+            PlayerPhotoStorageService playerPhotoStorageService
     ) {
         this.allowedOriginPatterns = Arrays.stream(allowedOriginPatterns.split(","))
                 .map(String::trim)
                 .filter(pattern -> !pattern.isBlank())
                 .toArray(String[]::new);
         this.sessionVenuePhotoStorageService = sessionVenuePhotoStorageService;
+        this.playerPhotoStorageService = playerPhotoStorageService;
     }
 
     @Override
@@ -44,5 +48,12 @@ public class WebConfig implements WebMvcConfigurer {
         }
         registry.addResourceHandler("/uploads/session-venues/**")
                 .addResourceLocations(resourceLocation);
+
+        String playerPhotoResourceLocation = playerPhotoStorageService.storageDirectory().toUri().toString();
+        if (!playerPhotoResourceLocation.endsWith("/")) {
+            playerPhotoResourceLocation += "/";
+        }
+        registry.addResourceHandler("/uploads/player-photos/**")
+                .addResourceLocations(playerPhotoResourceLocation);
     }
 }

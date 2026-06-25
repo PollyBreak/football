@@ -139,6 +139,9 @@ export const api = {
   updatePlayer(playerId: number, payload: Record<string, unknown>): Promise<PlayerProfile> {
     return request(`/api/players/${playerId}`, { method: 'PUT', body: JSON.stringify(payload) });
   },
+  uploadOwnPlayerPhoto(userId: number, file: File): Promise<PlayerProfile> {
+    return uploadFile(`/api/players/me/photo?userId=${userId}`, 'file', file);
+  },
   getSessions(): Promise<GameSession[]> {
     return request('/api/sessions');
   },

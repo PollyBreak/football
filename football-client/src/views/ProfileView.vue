@@ -1,13 +1,27 @@
 <template>
   <section class="stack">
-    <div class="card profile-summary">
-      <div>
-        <p class="eyebrow">Мой аккаунт</p>
-        <h2 class="section-title">{{ profileTitle }}</h2>
-      </div>
-      <div class="profile-photo" aria-label="Фото профиля">
-        <img v-if="telegramPhotoUrl" :src="telegramPhotoUrl" alt="Фото из Telegram" />
-        <span v-else>{{ profileInitials }}</span>
+    <div class="card stack-sm">
+      <div class="profile-summary">
+        <div>
+          <p class="eyebrow">Мой аккаунт</p>
+          <h2 class="section-title">{{ profileTitle }}</h2>
+          <label v-if="authState.player" class="profile-photo-upload-button" :class="{ 'is-disabled': photoUploadPending }">
+            <input
+              class="venue-photo-input"
+              type="file"
+              accept="image/png,image/jpeg,image/webp"
+              :disabled="photoUploadPending"
+              @change="uploadOwnPlayerPhoto"
+            />
+            {{ photoUploadPending ? 'Загружаем...' : 'Загрузить фото' }}
+          </label>
+        </div>
+        <div class="profile-photo-column">
+          <div class="profile-photo" aria-label="Фото профиля">
+            <img v-if="telegramPhotoUrl" :src="telegramPhotoUrl" alt="Фото из Telegram" />
+            <span v-else>{{ profileInitials }}</span>
+          </div>
+        </div>
       </div>
     </div>
 
@@ -157,12 +171,13 @@
 <script setup lang="ts">
 import { computed, onMounted, reactive, ref, watch } from 'vue';
 import { RouterLink } from 'vue-router';
-import { api } from '../lib/api';
+import { api, resolveMediaUrl } from '../lib/api';
 import { authState, setRegisteredPlayer } from '../lib/auth';
 import { playerPositionLabel, selectablePlayerPositions, sessionStatusClass, sessionStatusLabel } from '../lib/labels';
 import type { PlayerProfile, PlayerPosition } from '../types';
 
 const pending = ref(false);
+const photoUploadPending = ref(false);
 const error = ref('');
 const positions = selectablePlayerPositions;
 
@@ -184,7 +199,7 @@ const profileForm = reactive({
   defaultPosition: 'MIDFIELDER' as PlayerPosition
 });
 
-const telegramPhotoUrl = computed(() => authState.user?.photoUrl ?? '');
+const telegramPhotoUrl = computed(() => resolveMediaUrl(authState.player?.manualPhotoUrl ?? authState.user?.photoUrl));
 const telegramUsername = computed(() => {
   const username = authState.user?.username ?? authState.player?.username ?? '';
   return username ? `@${username}` : '';
@@ -336,6 +351,27 @@ async function saveProfile() {
     error.value = err instanceof Error ? err.message : 'Не удалось сохранить профиль';
   } finally {
     pending.value = false;
+  }
+}
+
+async function uploadOwnPlayerPhoto(event: Event) {
+  const input = event.target as HTMLInputElement;
+  const file = input.files?.[0];
+  if (!file || !authState.player || !authState.user) {
+    return;
+  }
+
+  photoUploadPending.value = true;
+  error.value = '';
+  try {
+    const player = await api.uploadOwnPlayerPhoto(authState.user.id, file);
+    setRegisteredPlayer(player);
+    fillProfileForm(player);
+  } catch (err) {
+    error.value = err instanceof Error ? err.message : 'Не удалось загрузить фото';
+  } finally {
+    photoUploadPending.value = false;
+    input.value = '';
   }
 }
 

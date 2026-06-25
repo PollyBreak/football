@@ -28,7 +28,7 @@ public record SessionTeamPlayerResponse(
                 playerName,
                 teamPlayer.getPlayer().getUser() != null ? teamPlayer.getPlayer().getUser().getDisplayName() : null,
                 teamPlayer.getPlayer().getUser() != null ? teamPlayer.getPlayer().getUser().getUsername() : null,
-                teamPlayer.getPlayer().getUser() != null ? teamPlayer.getPlayer().getUser().getPhotoUrl() : null,
+                teamPlayer.getPlayer().getEffectivePhotoUrl(),
                 teamPlayer.getPosition(),
                 teamPlayer.isActive(),
                 teamPlayer.getJoinedAt(),

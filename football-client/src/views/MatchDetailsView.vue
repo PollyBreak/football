@@ -28,7 +28,7 @@
           <div class="scoreboard-goals scoreboard-goals--left">
             <p v-for="goal in teamAGoals" :key="goal.id">
               <span v-if="goal.timeLabel" class="scoreboard-goal-time">{{ goal.timeLabel }}</span>
-              <img v-if="goal.playerPhotoUrl" :src="goal.playerPhotoUrl" alt="Фото игрока" class="scoreboard-goal-avatar" />
+              <img v-if="goal.playerPhotoUrl" :src="resolveMediaUrl(goal.playerPhotoUrl)" alt="Фото игрока" class="scoreboard-goal-avatar" />
               <button
                 v-if="goal.playerId"
                 type="button"
@@ -43,7 +43,7 @@
           <div class="scoreboard-goals scoreboard-goals--right">
             <p v-for="goal in teamBGoals" :key="goal.id">
               <span v-if="goal.timeLabel" class="scoreboard-goal-time">{{ goal.timeLabel }}</span>
-              <img v-if="goal.playerPhotoUrl" :src="goal.playerPhotoUrl" alt="Фото игрока" class="scoreboard-goal-avatar" />
+              <img v-if="goal.playerPhotoUrl" :src="resolveMediaUrl(goal.playerPhotoUrl)" alt="Фото игрока" class="scoreboard-goal-avatar" />
               <button
                 v-if="goal.playerId"
                 type="button"
@@ -169,7 +169,7 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue';
 import { RouterLink, useRouter } from 'vue-router';
-import { api } from '../lib/api';
+import { api, resolveMediaUrl } from '../lib/api';
 import { matchEventLabel, matchStatusLabel } from '../lib/labels';
 import type { GameSession, MatchEvent, SessionMatch, SessionTeamPlayer } from '../types';
 

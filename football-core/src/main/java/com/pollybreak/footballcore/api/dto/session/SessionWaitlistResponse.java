@@ -29,7 +29,7 @@ public record SessionWaitlistResponse(
                 entry.getPlayer().getNickname(),
                 entry.getPlayer().getUser() != null ? entry.getPlayer().getUser().getDisplayName() : null,
                 entry.getPlayer().getHomeCity(),
-                entry.getPlayer().getUser() != null ? entry.getPlayer().getUser().getPhotoUrl() : null,
+                entry.getPlayer().getEffectivePhotoUrl(),
                 entry.getPosition(),
                 entry.isActive(),
                 entry.getQueuedAt(),

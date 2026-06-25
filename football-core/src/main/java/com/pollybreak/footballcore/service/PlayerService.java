@@ -108,6 +108,14 @@ public class PlayerService {
     }
 
     @Transactional
+    public PlayerProfileResponse updateOwnManualPhoto(Long userId, String photoUrl) {
+        Player player = playerRepository.findByUserId(userId)
+                .orElseThrow(() -> new IllegalArgumentException("Player profile not found for user: " + userId));
+        player.setManualPhotoUrl(photoUrl);
+        return buildProfileResponse(player);
+    }
+
+    @Transactional
     public PlayerProfileResponse attachUser(Long playerId, AttachUserToPlayerRequest request) {
         Player player = getById(playerId);
 
