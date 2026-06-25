@@ -10,7 +10,7 @@
           <h1>Pozitiv</h1>
         </div>
         <p class="header-subtitle" v-if="authState.user">
-          <img v-if="authState.user.photoUrl" :src="authState.user.photoUrl" alt="Аватар Telegram" class="avatar" />
+          <PlayerAvatar class="avatar" :sources="headerPhotoSources" :initials="headerInitials" alt="Аватар игрока" />
           <span>{{ authState.user.displayName }}</span>
         </p>
         <p class="header-subtitle" v-else-if="authState.error">{{ authState.error }}</p>
@@ -70,6 +70,7 @@
 import { RouterLink, RouterView, useRoute } from 'vue-router';
 import { computed, onMounted, ref } from 'vue';
 import { authState } from './lib/auth';
+import PlayerAvatar from './components/PlayerAvatar.vue';
 
 type ThemeValue = 'sky' | 'dark-blue' | 'green' | 'light' | 'dark';
 
@@ -87,6 +88,23 @@ const route = useRoute();
 const canUseApp = computed(() => authState.ready && authState.authenticated && Boolean(authState.player));
 const authBlocked = computed(() => authState.ready && (!authState.authenticated || !authState.user));
 const isOverlayRoute = computed(() => route.path.startsWith('/overlay/'));
+const headerPhotoSources = computed(() => [
+  authState.player?.photoUrl,
+  authState.player?.telegramPhotoUrl,
+  authState.user?.photoUrl
+]);
+const headerInitials = computed(() => {
+  const source = authState.player
+    ? `${authState.player.firstName} ${authState.player.lastName ?? ''}`
+    : authState.user?.displayName ?? 'Игрок';
+
+  return source
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((part) => part[0])
+    .join('') || 'И';
+});
 
 function applyTheme(theme: ThemeValue) {
   document.documentElement.dataset.theme = theme;
