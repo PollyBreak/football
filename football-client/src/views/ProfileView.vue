@@ -17,11 +17,22 @@
           </label>
         </div>
         <div class="profile-photo-column">
-          <div class="profile-photo" aria-label="Фото профиля">
-            <PlayerAvatar :sources="profilePhotoSources" :initials="profileInitials" alt="Фото профиля" />
-          </div>
+          <button
+            class="profile-photo profile-photo--clickable"
+            type="button"
+            aria-label="Открыть фото профиля"
+            :disabled="!profilePhotoPreviewUrl"
+            @click="openPhotoPreview"
+          >
+            <PlayerAvatar :sources="profilePhotoSources" :initials="profileInitials" alt="Фото профиля" @loaded="profilePhotoPreviewUrl = $event" />
+          </button>
         </div>
       </div>
+    </div>
+
+    <div v-if="photoPreviewOpen" class="photo-preview-overlay" @click.self="closePhotoPreview">
+      <button class="photo-preview-close" type="button" aria-label="Закрыть фото" @click="closePhotoPreview">×</button>
+      <img v-if="profilePhotoPreviewUrl" class="photo-preview-image" :src="profilePhotoPreviewUrl" alt="Фото профиля" />
     </div>
 
     <div v-if="authState.player" class="card stack-sm">
@@ -179,6 +190,8 @@ import PlayerAvatar from '../components/PlayerAvatar.vue';
 const pending = ref(false);
 const photoUploadPending = ref(false);
 const error = ref('');
+const photoPreviewOpen = ref(false);
+const profilePhotoPreviewUrl = ref('');
 const positions = selectablePlayerPositions;
 
 const registrationForm = reactive({
@@ -271,6 +284,16 @@ function birthDateToApi(value: string): string | null {
   }
 
   return `${match[3]}-${match[2]}-${match[1]}`;
+}
+
+function openPhotoPreview() {
+  if (profilePhotoPreviewUrl.value) {
+    photoPreviewOpen.value = true;
+  }
+}
+
+function closePhotoPreview() {
+  photoPreviewOpen.value = false;
 }
 
 async function createPlayer() {

@@ -32,12 +32,20 @@ const normalizedSources = computed(() => {
 
 const currentSrc = computed(() => normalizedSources.value[sourceIndex.value] ?? '');
 
+const emit = defineEmits<{
+  loaded: [src: string];
+}>();
+
 watch(
   () => normalizedSources.value.join('|'),
   () => {
     sourceIndex.value = 0;
   }
 );
+
+watch(currentSrc, (src) => {
+  emit('loaded', src);
+}, { immediate: true });
 
 function tryNextSource() {
   sourceIndex.value += 1;

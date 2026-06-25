@@ -9,9 +9,15 @@
           <h2 class="section-title">{{ player.firstName }} {{ player.lastName ?? '' }}</h2>
           <p class="muted">{{ player.nickname || player.displayName || 'Без никнейма' }}</p>
         </div>
-        <div class="profile-photo" aria-label="Фото игрока">
-          <PlayerAvatar :sources="playerPhotoSources" :initials="playerInitials" alt="Фото игрока" />
-        </div>
+        <button
+          class="profile-photo profile-photo--clickable"
+          type="button"
+          aria-label="Открыть фото игрока"
+          :disabled="!playerPhotoPreviewUrl"
+          @click="openPhotoPreview"
+        >
+          <PlayerAvatar :sources="playerPhotoSources" :initials="playerInitials" alt="Фото игрока" @loaded="playerPhotoPreviewUrl = $event" />
+        </button>
       </div>
       <div class="profile-details">
         <div>
@@ -74,6 +80,11 @@
       </div>
     </div>
 
+    <div v-if="photoPreviewOpen" class="photo-preview-overlay" @click.self="closePhotoPreview">
+      <button class="photo-preview-close" type="button" aria-label="Закрыть фото" @click="closePhotoPreview">×</button>
+      <img v-if="playerPhotoPreviewUrl" class="photo-preview-image" :src="playerPhotoPreviewUrl" alt="Фото игрока" />
+    </div>
+
     <p v-if="error" class="error-text">{{ error }}</p>
   </section>
 </template>
@@ -91,6 +102,8 @@ const props = defineProps<{ playerId: string }>();
 
 const player = ref<PlayerProfile | null>(null);
 const error = ref('');
+const photoPreviewOpen = ref(false);
+const playerPhotoPreviewUrl = ref('');
 
 const playerPhotoSources = computed(() => {
   if (!player.value) return [];
@@ -116,5 +129,15 @@ onMounted(async () => {
     error.value = err instanceof Error ? err.message : 'Не удалось загрузить игрока';
   }
 });
+
+function openPhotoPreview() {
+  if (playerPhotoPreviewUrl.value) {
+    photoPreviewOpen.value = true;
+  }
+}
+
+function closePhotoPreview() {
+  photoPreviewOpen.value = false;
+}
 
 </script>

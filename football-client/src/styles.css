@@ -215,10 +215,55 @@ textarea {
   font-weight: 700;
 }
 
+.profile-photo--clickable {
+  padding: 0;
+  border: 0;
+  cursor: pointer;
+}
+
+.profile-photo--clickable:disabled {
+  cursor: default;
+}
+
 .profile-photo img {
   width: 100%;
   height: 100%;
   object-fit: cover;
+}
+
+.photo-preview-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 80;
+  display: grid;
+  place-items: center;
+  padding: 52px 18px 24px;
+  background: rgba(2, 11, 18, 0.88);
+}
+
+.photo-preview-image {
+  max-width: min(100%, 520px);
+  max-height: 82vh;
+  border-radius: 16px;
+  object-fit: contain;
+  box-shadow: 0 24px 48px rgba(0, 0, 0, 0.42);
+}
+
+.photo-preview-close {
+  position: fixed;
+  top: 18px;
+  right: 18px;
+  width: 38px;
+  height: 38px;
+  display: grid;
+  place-items: center;
+  border: 1px solid rgba(255, 255, 255, 0.42);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.14);
+  color: white;
+  cursor: pointer;
+  font-size: 1.35rem;
+  line-height: 1;
 }
 
 .player-avatar {
