@@ -274,6 +274,7 @@ public class SessionMvpVotingService {
                             player.getLastName(),
                             player.getUser() != null ? player.getUser().getDisplayName() : player.getNickname(),
                             player.getEffectivePhotoUrl(),
+                            player.getTelegramPhotoUrl(),
                             positionName(sessionPlayer.getPosition()),
                             teamMember != null ? teamMember.getSessionTeam().getId() : null,
                             teamMember != null ? teamMember.getSessionTeam().getName() : null,

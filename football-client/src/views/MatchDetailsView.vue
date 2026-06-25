@@ -28,7 +28,7 @@
           <div class="scoreboard-goals scoreboard-goals--left">
             <p v-for="goal in teamAGoals" :key="goal.id">
               <span v-if="goal.timeLabel" class="scoreboard-goal-time">{{ goal.timeLabel }}</span>
-              <img v-if="goal.playerPhotoUrl" :src="resolveMediaUrl(goal.playerPhotoUrl)" alt="Фото игрока" class="scoreboard-goal-avatar" />
+              <PlayerAvatar class="scoreboard-goal-avatar" :sources="[goal.playerPhotoUrl, goal.playerTelegramPhotoUrl]" :initials="playerInitials(goal.label)" alt="Фото игрока" />
               <button
                 v-if="goal.playerId"
                 type="button"
@@ -43,7 +43,7 @@
           <div class="scoreboard-goals scoreboard-goals--right">
             <p v-for="goal in teamBGoals" :key="goal.id">
               <span v-if="goal.timeLabel" class="scoreboard-goal-time">{{ goal.timeLabel }}</span>
-              <img v-if="goal.playerPhotoUrl" :src="resolveMediaUrl(goal.playerPhotoUrl)" alt="Фото игрока" class="scoreboard-goal-avatar" />
+              <PlayerAvatar class="scoreboard-goal-avatar" :sources="[goal.playerPhotoUrl, goal.playerTelegramPhotoUrl]" :initials="playerInitials(goal.label)" alt="Фото игрока" />
               <button
                 v-if="goal.playerId"
                 type="button"
@@ -169,9 +169,10 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue';
 import { RouterLink, useRouter } from 'vue-router';
-import { api, resolveMediaUrl } from '../lib/api';
+import { api } from '../lib/api';
 import { matchEventLabel, matchStatusLabel } from '../lib/labels';
 import type { GameSession, MatchEvent, SessionMatch, SessionTeamPlayer } from '../types';
+import PlayerAvatar from '../components/PlayerAvatar.vue';
 
 const props = defineProps<{ sessionId: string; matchId: string }>();
 const router = useRouter();
@@ -259,6 +260,7 @@ const goalSummaries = computed(() => {
         playerId: goal.playerId,
         timeLabel: goalTimeLabel(goal),
         playerPhotoUrl: goal.playerPhotoUrl,
+        playerTelegramPhotoUrl: goal.playerTelegramPhotoUrl,
         label: goal.eventType === 'OWN_GOAL'
           ? `${scorer}${ownGoalMarker}`
           : assistName ? `${scorer} (${assistName})` : scorer
@@ -287,6 +289,15 @@ function teamColorEmoji(teamId: number): string {
 
 function shortPlayerName(name: string | null): string | null {
   return name?.trim().split(/\s+/)[0] || null;
+}
+
+function playerInitials(name: string): string {
+  return name
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((part) => part[0])
+    .join('') || 'И';
 }
 
 function goalTimeLabel(goal: MatchEvent): string | null {

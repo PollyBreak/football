@@ -22,6 +22,7 @@ export interface PlayerProfile {
   nickname: string | null;
   photoUrl?: string | null;
   manualPhotoUrl?: string | null;
+  telegramPhotoUrl?: string | null;
   homeCity: string | null;
   birthDate: string | null;
   defaultPosition: PlayerPosition | null;
@@ -152,6 +153,7 @@ export interface SessionMvpCandidate {
   lastName: string | null;
   displayName: string | null;
   photoUrl: string | null;
+  telegramPhotoUrl: string | null;
   position: PlayerPosition | null;
   teamId: number | null;
   teamName: string | null;
@@ -186,6 +188,7 @@ export interface SessionPlayer {
   displayName: string | null;
   homeCity: string | null;
   photoUrl: string | null;
+  telegramPhotoUrl: string | null;
   position: PlayerPosition | null;
   active: boolean;
   joinedAt: string;
@@ -202,6 +205,7 @@ export interface SessionWaitlistEntry {
   displayName: string | null;
   homeCity: string | null;
   photoUrl: string | null;
+  telegramPhotoUrl: string | null;
   position: PlayerPosition | null;
   active: boolean;
   queuedAt: string;
@@ -222,6 +226,7 @@ export interface SessionTeamPlayer {
   playerDisplayName: string | null;
   playerUsername: string | null;
   photoUrl: string | null;
+  telegramPhotoUrl: string | null;
   position: PlayerPosition | null;
   active: boolean;
   joinedAt: string;
@@ -258,11 +263,13 @@ export interface MatchEvent {
   playerDisplayName: string | null;
   playerUsername: string | null;
   playerPhotoUrl: string | null;
+  playerTelegramPhotoUrl: string | null;
   relatedPlayerId: number | null;
   relatedPlayerName: string | null;
   relatedPlayerDisplayName: string | null;
   relatedPlayerUsername: string | null;
   relatedPlayerPhotoUrl: string | null;
+  relatedPlayerTelegramPhotoUrl: string | null;
   linkedEventId: number | null;
   minuteInMatch: number | null;
   secondInMatch: number | null;

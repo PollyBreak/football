@@ -68,6 +68,10 @@ public class Player {
         if (manualPhotoUrl != null && !manualPhotoUrl.isBlank()) {
             return manualPhotoUrl;
         }
+        return getTelegramPhotoUrl();
+    }
+
+    public String getTelegramPhotoUrl() {
         return user != null ? user.getPhotoUrl() : null;
     }
 }

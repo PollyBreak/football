@@ -68,8 +68,7 @@
           <template v-if="topScorer">
             <div class="session-results-leader__person">
               <div class="player-avatar player-avatar--sm">
-                <img v-if="topScorer.photoUrl" :src="resolveMediaUrl(topScorer.photoUrl)" alt="Фото игрока" />
-                <span v-else>{{ resultPlayerInitials(topScorer.name) }}</span>
+                <PlayerAvatar :sources="playerPhotoSources(topScorer)" :initials="resultPlayerInitials(topScorer.name)" alt="Фото игрока" />
               </div>
               <div>
                 <strong>{{ topScorer.name }}</strong>
@@ -85,8 +84,7 @@
           <template v-if="topAssistPlayer">
             <div class="session-results-leader__person">
               <div class="player-avatar player-avatar--sm">
-                <img v-if="topAssistPlayer.photoUrl" :src="resolveMediaUrl(topAssistPlayer.photoUrl)" alt="Фото игрока" />
-                <span v-else>{{ resultPlayerInitials(topAssistPlayer.name) }}</span>
+                <PlayerAvatar :sources="playerPhotoSources(topAssistPlayer)" :initials="resultPlayerInitials(topAssistPlayer.name)" alt="Фото игрока" />
               </div>
               <div>
                 <strong>{{ topAssistPlayer.name }}</strong>
@@ -109,8 +107,7 @@
         <p class="eyebrow">MVP</p>
         <div v-for="winner in mvpVoting?.winners" :key="winner.playerId" class="session-results-leader__person">
           <div class="player-avatar player-avatar--sm">
-            <img v-if="winner.photoUrl" :src="resolveMediaUrl(winner.photoUrl)" alt="Фото игрока" />
-            <span v-else>{{ resultPlayerInitials(mvpCandidateName(winner)) }}</span>
+            <PlayerAvatar :sources="playerPhotoSources(winner)" :initials="resultPlayerInitials(mvpCandidateName(winner))" alt="Фото игрока" />
           </div>
           <div>
             <strong>{{ mvpCandidateName(winner) }}</strong>
@@ -580,8 +577,7 @@
               >
                 <div class="list-item__lead">
                   <div class="player-avatar player-avatar--sm">
-                    <img v-if="player.photoUrl" :src="resolveMediaUrl(player.photoUrl)" alt="Фото игрока" />
-                    <span v-else>{{ playerInitials(player) }}</span>
+                    <PlayerAvatar :sources="playerPhotoSources(player)" :initials="playerInitials(player)" alt="Фото игрока" />
                   </div>
                   <div>
                     <strong>{{ sessionPersonDisplayName(player) }}</strong>
@@ -613,8 +609,7 @@
           >
             <div class="list-item__lead">
               <div class="player-avatar player-avatar--sm">
-                <img v-if="entry.photoUrl" :src="resolveMediaUrl(entry.photoUrl)" alt="Фото игрока" />
-                <span v-else>{{ waitlistInitials(entry) }}</span>
+                <PlayerAvatar :sources="playerPhotoSources(entry)" :initials="waitlistInitials(entry)" alt="Фото игрока" />
               </div>
               <div>
                 <strong>{{ index + 1 }}. {{ sessionPersonDisplayName(entry) }}</strong>
@@ -760,7 +755,7 @@
             @keydown.enter.prevent="openPlayerProfile(member.playerId)"
           >
             <div class="list-item__lead">
-              <img v-if="member.photoUrl" :src="resolveMediaUrl(member.photoUrl)" alt="Фото игрока" class="avatar avatar--sm" />
+              <PlayerAvatar class="avatar avatar--sm" :sources="playerPhotoSources(member)" :initials="memberInitials(member)" alt="Фото игрока" />
               <strong>{{ member.playerName }}</strong>
             </div>
             <span class="item-tag" :aria-label="playerPositionLabel(member.position)">{{ compactPlayerPositionLabel(member.position) }}</span>
@@ -828,14 +823,14 @@
               <div v-if="matchGoalSummaries(match).length" class="match-goal-summary">
                 <div class="match-goal-summary__column match-goal-summary__column--left">
                   <p v-for="goal in teamMatchGoals(match, match.teamAId)" :key="goal.id" class="match-goal-summary__row">
-                    <img v-if="goal.playerPhotoUrl" :src="resolveMediaUrl(goal.playerPhotoUrl)" alt="Р¤РѕС‚Рѕ РёРіСЂРѕРєР°" class="scoreboard-goal-avatar" />
+                    <PlayerAvatar class="scoreboard-goal-avatar" :sources="[goal.playerPhotoUrl, goal.playerTelegramPhotoUrl]" :initials="resultPlayerInitials(goal.label)" alt="Фото игрока" />
                     <span v-if="goal.timeLabel" class="scoreboard-goal-time">{{ goal.timeLabel }}</span>
                     <span class="scoreboard-goal-name">{{ goal.label }}</span>
                   </p>
                 </div>
                 <div class="match-goal-summary__column match-goal-summary__column--right">
                   <p v-for="goal in teamMatchGoals(match, match.teamBId)" :key="goal.id" class="match-goal-summary__row">
-                    <img v-if="goal.playerPhotoUrl" :src="resolveMediaUrl(goal.playerPhotoUrl)" alt="Р¤РѕС‚Рѕ РёРіСЂРѕРєР°" class="scoreboard-goal-avatar" />
+                    <PlayerAvatar class="scoreboard-goal-avatar" :sources="[goal.playerPhotoUrl, goal.playerTelegramPhotoUrl]" :initials="resultPlayerInitials(goal.label)" alt="Фото игрока" />
                     <span v-if="goal.timeLabel" class="scoreboard-goal-time">{{ goal.timeLabel }}</span>
                     <span class="scoreboard-goal-name">{{ goal.label }}</span>
                   </p>
@@ -995,6 +990,7 @@ import { api, resolveMediaUrl } from '../lib/api';
 import { authState } from '../lib/auth';
 import { matchStatusLabel, playerPositionLabel, selectablePlayerPositions, sessionFormatLabel, sessionStatusClass, sessionStatusLabel } from '../lib/labels';
 import { getStartParam } from '../lib/telegram';
+import PlayerAvatar from '../components/PlayerAvatar.vue';
 import type {
   ContributionReminder,
   ContributionStatus,
@@ -1277,15 +1273,19 @@ const resultPlayerStats = computed(() => {
     playerId: number;
     name: string;
     photoUrl: string | null;
+    telegramPhotoUrl: string | null;
     goals: number;
     assists: number;
   }>();
 
-  const ensurePlayer = (playerId: number, name: string | null, photoUrl: string | null) => {
+  const ensurePlayer = (playerId: number, name: string | null, photoUrl: string | null, telegramPhotoUrl: string | null) => {
     const existing = stats.get(playerId);
     if (existing) {
       if (!existing.photoUrl && photoUrl) {
         existing.photoUrl = photoUrl;
+      }
+      if (!existing.telegramPhotoUrl && telegramPhotoUrl) {
+        existing.telegramPhotoUrl = telegramPhotoUrl;
       }
       if (name?.trim() && existing.name === 'Игрок') {
         existing.name = name.trim();
@@ -1298,6 +1298,7 @@ const resultPlayerStats = computed(() => {
       playerId,
       name: player ? sessionPersonDisplayName(player) : name?.trim() || 'Игрок',
       photoUrl: player?.photoUrl ?? photoUrl,
+      telegramPhotoUrl: player?.telegramPhotoUrl ?? telegramPhotoUrl,
       goals: 0,
       assists: 0
     };
@@ -1312,7 +1313,7 @@ const resultPlayerStats = computed(() => {
         return;
       }
 
-      const player = ensurePlayer(event.playerId, event.playerName, event.playerPhotoUrl);
+      const player = ensurePlayer(event.playerId, event.playerName, event.playerPhotoUrl, event.playerTelegramPhotoUrl);
       if (event.eventType === 'GOAL') {
         player.goals += 1;
       }
@@ -1542,6 +1543,19 @@ function waitlistInitials(entry: SessionWaitlistEntry): string {
     .slice(0, 2)
     .map((part) => part?.[0])
     .join('') || 'И';
+}
+
+function memberInitials(member: SessionTeamPlayer): string {
+  return member.playerName
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((part) => part[0])
+    .join('') || 'И';
+}
+
+function playerPhotoSources(player: { photoUrl?: string | null; telegramPhotoUrl?: string | null }): Array<string | null | undefined> {
+  return [player.photoUrl, player.telegramPhotoUrl];
 }
 
 function resultPlayerInitials(name: string): string {
@@ -1909,6 +1923,7 @@ function matchGoalSummaries(match: SessionMatch) {
         id: goal.id,
         teamId: goal.teamId,
         playerPhotoUrl: goal.playerPhotoUrl,
+        playerTelegramPhotoUrl: goal.playerTelegramPhotoUrl,
         timeLabel: matchGoalTimeLabel(goal),
         label: goal.eventType === 'OWN_GOAL'
           ? `${scorer} (А)`

@@ -16,8 +16,7 @@
         >
           <span class="leaderboard-card__medal">{{ leaderboardMedal(entry.rank) }}</span>
           <div class="player-avatar leaderboard-card__avatar">
-            <img v-if="playerPhotoUrl(entry.player)" :src="playerPhotoUrl(entry.player)" alt="Фото игрока" />
-            <span v-else>{{ playerInitials(entry.player) }}</span>
+            <PlayerAvatar :sources="playerPhotoSources(entry.player)" :initials="playerInitials(entry.player)" alt="Фото игрока" />
           </div>
           <strong>{{ playerDisplayName(entry.player) }}</strong>
           <span class="leaderboard-card__name">{{ playerShortFullName(entry.player) }}</span>
@@ -63,8 +62,7 @@
           <div class="list-item__lead">
             <span class="player-rank">{{ playerListRank(index) }}</span>
             <div class="player-avatar player-avatar--sm">
-              <img v-if="playerPhotoUrl(player)" :src="playerPhotoUrl(player)" alt="Фото игрока" />
-              <span v-else>{{ playerInitials(player) }}</span>
+              <PlayerAvatar :sources="playerPhotoSources(player)" :initials="playerInitials(player)" alt="Фото игрока" />
             </div>
             <div>
               <strong>{{ playerDisplayName(player) }}</strong>
@@ -93,10 +91,11 @@
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from 'vue';
 import { RouterLink } from 'vue-router';
-import { api, resolveMediaUrl } from '../lib/api';
+import { api } from '../lib/api';
 import { authState } from '../lib/auth';
 import { playerPositionLabel } from '../lib/labels';
 import type { PlayerProfile } from '../types';
+import PlayerAvatar from '../components/PlayerAvatar.vue';
 
 const pageSize = 15;
 const players = ref<PlayerProfile[]>([]);
@@ -167,15 +166,12 @@ function playerShortFullName(player: PlayerProfile): string {
   return firstName || lastName || 'Имя не указано';
 }
 
-function playerPhotoUrl(player: PlayerProfile): string {
-  if (player.manualPhotoUrl) {
-    return resolveMediaUrl(player.manualPhotoUrl);
-  }
+function playerPhotoSources(player: PlayerProfile): Array<string | null | undefined> {
   if (authState.player?.playerId === player.playerId) {
-    return resolveMediaUrl(authState.user?.photoUrl ?? player.photoUrl);
+    return [player.photoUrl, player.telegramPhotoUrl, authState.user?.photoUrl];
   }
 
-  return resolveMediaUrl(player.photoUrl);
+  return [player.photoUrl, player.telegramPhotoUrl];
 }
 
 function playerInitials(player: PlayerProfile): string {

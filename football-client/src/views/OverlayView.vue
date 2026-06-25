@@ -61,8 +61,7 @@
                 </div>
               </div>
               <div class="overlay-player-card__photo">
-                <img v-if="player.photoUrl" :src="resolveMediaUrl(player.photoUrl)" :alt="displayPlayerName(player)" />
-                <span v-else>{{ initials(displayPlayerName(player)) }}</span>
+                <PlayerAvatar :sources="[player.photoUrl, player.telegramPhotoUrl]" :initials="initials(displayPlayerName(player))" :alt="displayPlayerName(player)" />
               </div>
               <strong class="overlay-player-card__name">{{ displayPlayerName(player) }}</strong>
               <div v-if="playerStatsLabel(player.playerId)" class="overlay-player-card__stats">
@@ -91,8 +90,7 @@
                 </div>
               </div>
               <div class="overlay-player-card__photo">
-                <img v-if="player.photoUrl" :src="resolveMediaUrl(player.photoUrl)" :alt="displayPlayerName(player)" />
-                <span v-else>{{ initials(displayPlayerName(player)) }}</span>
+                <PlayerAvatar :sources="[player.photoUrl, player.telegramPhotoUrl]" :initials="initials(displayPlayerName(player))" :alt="displayPlayerName(player)" />
               </div>
               <strong class="overlay-player-card__name">{{ displayPlayerName(player) }}</strong>
               <div v-if="playerStatsLabel(player.playerId)" class="overlay-player-card__stats">
@@ -194,8 +192,7 @@
           <div class="overlay-goal-person overlay-goal-person--assist">
             <span>АССИСТ</span>
             <div class="overlay-goal-photo">
-              <img v-if="goalToast.assistPhotoUrl" :src="goalToast.assistPhotoUrl" :alt="goalToast.assist" />
-              <strong v-else>{{ initials(goalToast.assist) }}</strong>
+              <PlayerAvatar :sources="[goalToast.assistPhotoUrl, goalToast.assistTelegramPhotoUrl]" :initials="initials(goalToast.assist)" :alt="goalToast.assist" />
             </div>
             <strong>{{ goalToast.assist }}</strong>
           </div>
@@ -205,8 +202,7 @@
           <div class="overlay-goal-person">
             <span>{{ goalToast.ownGoal ? 'АВТОГОЛ' : 'ГОЛ' }}</span>
             <div class="overlay-goal-photo">
-              <img v-if="goalToast.scorerPhotoUrl" :src="goalToast.scorerPhotoUrl" :alt="goalToast.scorer" />
-              <strong v-else>{{ initials(goalToast.scorer) }}</strong>
+              <PlayerAvatar :sources="[goalToast.scorerPhotoUrl, goalToast.scorerTelegramPhotoUrl]" :initials="initials(goalToast.scorer)" :alt="goalToast.scorer" />
             </div>
             <strong>{{ goalToast.scorer }}</strong>
           </div>
@@ -215,8 +211,7 @@
         <template v-else>
           <p>{{ goalToast.cancelled ? 'Гол отменен' : goalToast.ownGoal ? 'АВТОГОЛ' : 'ГОЛ' }}</p>
           <div class="overlay-goal-photo overlay-goal-photo--solo">
-            <img v-if="goalToast.scorerPhotoUrl" :src="goalToast.scorerPhotoUrl" :alt="goalToast.scorer" />
-            <strong v-else>{{ initials(goalToast.scorer) }}</strong>
+            <PlayerAvatar :sources="[goalToast.scorerPhotoUrl, goalToast.scorerTelegramPhotoUrl]" :initials="initials(goalToast.scorer)" :alt="goalToast.scorer" />
           </div>
           <strong>{{ goalToast.scorer }}</strong>
         </template>
@@ -230,8 +225,9 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
 import { useRoute } from 'vue-router';
-import { api, resolveMediaUrl } from '../lib/api';
+import { api } from '../lib/api';
 import type { MatchEvent, OverlayEvent, OverlayState, OverlayTeam, PlayerPosition, SessionMatch, SessionTeamPlayer } from '../types';
+import PlayerAvatar from '../components/PlayerAvatar.vue';
 
 interface OverlayStandingRow {
   place: number;
@@ -258,8 +254,10 @@ const error = ref('');
 const goalToast = ref<{
   scorer: string;
   scorerPhotoUrl: string | null;
+  scorerTelegramPhotoUrl: string | null;
   assist: string | null;
   assistPhotoUrl: string | null;
+  assistTelegramPhotoUrl: string | null;
   ownGoal: boolean;
   cancelled: boolean;
 } | null>(null);
@@ -522,8 +520,10 @@ function showGoalToast(event: MatchEvent, assist: MatchEvent | null, cancelled: 
   goalToast.value = {
     scorer: eventDisplayName(event),
     scorerPhotoUrl: event.playerPhotoUrl,
+    scorerTelegramPhotoUrl: event.playerTelegramPhotoUrl,
     assist: assist ? eventDisplayName(assist) : null,
     assistPhotoUrl: assist?.playerPhotoUrl ?? null,
+    assistTelegramPhotoUrl: assist?.playerTelegramPhotoUrl ?? null,
     ownGoal: event.eventType === 'OWN_GOAL',
     cancelled
   };

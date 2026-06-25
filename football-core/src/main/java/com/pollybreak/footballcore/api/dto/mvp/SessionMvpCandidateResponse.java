@@ -6,6 +6,7 @@ public record SessionMvpCandidateResponse(
         String lastName,
         String displayName,
         String photoUrl,
+        String telegramPhotoUrl,
         String position,
         Long teamId,
         String teamName,

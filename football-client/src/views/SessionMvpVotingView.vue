@@ -25,8 +25,7 @@
       <article v-for="winner in voting.winners" :key="winner.playerId" class="list-item">
         <div class="list-item__lead">
           <div class="player-avatar player-avatar--sm">
-            <img v-if="winner.photoUrl" :src="resolveMediaUrl(winner.photoUrl)" alt="Фото игрока" />
-            <span v-else>{{ candidateInitials(winner) }}</span>
+            <PlayerAvatar :sources="candidatePhotoSources(winner)" :initials="candidateInitials(winner)" alt="Фото игрока" />
           </div>
           <div>
             <strong>{{ candidateDisplayName(winner) }}</strong>
@@ -50,8 +49,7 @@
           <span class="mvp-vote-count">{{ candidate.votes }}</span>
           <div class="list-item__lead">
             <div class="player-avatar player-avatar--xs">
-              <img v-if="candidate.photoUrl" :src="resolveMediaUrl(candidate.photoUrl)" alt="Фото игрока" />
-              <span v-else>{{ candidateInitials(candidate) }}</span>
+              <PlayerAvatar :sources="candidatePhotoSources(candidate)" :initials="candidateInitials(candidate)" alt="Фото игрока" />
             </div>
             <div>
               <p class="mvp-candidate-name">
@@ -99,9 +97,10 @@
 
 <script setup lang="ts">
 import { computed, onMounted, onUnmounted, ref } from 'vue';
-import { api, resolveMediaUrl } from '../lib/api';
+import { api } from '../lib/api';
 import { authState } from '../lib/auth';
 import type { SessionMvpCandidate, SessionMvpVoting } from '../types';
+import PlayerAvatar from '../components/PlayerAvatar.vue';
 
 const props = defineProps<{ sessionId: string }>();
 const sessionIdNumber = computed(() => Number(props.sessionId));
@@ -171,6 +170,10 @@ function candidateInitials(candidate: SessionMvpCandidate): string {
     .slice(0, 2)
     .map((part) => part[0])
     .join('') || 'M';
+}
+
+function candidatePhotoSources(candidate: SessionMvpCandidate): Array<string | null | undefined> {
+  return [candidate.photoUrl, candidate.telegramPhotoUrl];
 }
 
 function candidateStats(candidate: SessionMvpCandidate): string {

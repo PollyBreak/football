@@ -18,8 +18,7 @@
         </div>
         <div class="profile-photo-column">
           <div class="profile-photo" aria-label="Фото профиля">
-            <img v-if="telegramPhotoUrl" :src="telegramPhotoUrl" alt="Фото из Telegram" />
-            <span v-else>{{ profileInitials }}</span>
+            <PlayerAvatar :sources="profilePhotoSources" :initials="profileInitials" alt="Фото профиля" />
           </div>
         </div>
       </div>
@@ -171,10 +170,11 @@
 <script setup lang="ts">
 import { computed, onMounted, reactive, ref, watch } from 'vue';
 import { RouterLink } from 'vue-router';
-import { api, resolveMediaUrl } from '../lib/api';
+import { api } from '../lib/api';
 import { authState, setRegisteredPlayer } from '../lib/auth';
 import { playerPositionLabel, selectablePlayerPositions, sessionStatusClass, sessionStatusLabel } from '../lib/labels';
 import type { PlayerProfile, PlayerPosition } from '../types';
+import PlayerAvatar from '../components/PlayerAvatar.vue';
 
 const pending = ref(false);
 const photoUploadPending = ref(false);
@@ -199,7 +199,11 @@ const profileForm = reactive({
   defaultPosition: 'MIDFIELDER' as PlayerPosition
 });
 
-const telegramPhotoUrl = computed(() => resolveMediaUrl(authState.player?.manualPhotoUrl ?? authState.user?.photoUrl));
+const profilePhotoSources = computed(() => [
+  authState.player?.photoUrl,
+  authState.player?.telegramPhotoUrl,
+  authState.user?.photoUrl
+]);
 const telegramUsername = computed(() => {
   const username = authState.user?.username ?? authState.player?.username ?? '';
   return username ? `@${username}` : '';

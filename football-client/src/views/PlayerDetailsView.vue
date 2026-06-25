@@ -10,8 +10,7 @@
           <p class="muted">{{ player.nickname || player.displayName || 'Без никнейма' }}</p>
         </div>
         <div class="profile-photo" aria-label="Фото игрока">
-          <img v-if="playerPhotoUrl" :src="playerPhotoUrl" alt="Фото игрока" />
-          <span v-else>{{ playerInitials }}</span>
+          <PlayerAvatar :sources="playerPhotoSources" :initials="playerInitials" alt="Фото игрока" />
         </div>
       </div>
       <div class="profile-details">
@@ -82,25 +81,23 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue';
 import { RouterLink } from 'vue-router';
-import { api, resolveMediaUrl } from '../lib/api';
+import { api } from '../lib/api';
 import { authState } from '../lib/auth';
 import { playerPositionLabel, sessionStatusClass, sessionStatusLabel } from '../lib/labels';
 import type { PlayerProfile } from '../types';
+import PlayerAvatar from '../components/PlayerAvatar.vue';
 
 const props = defineProps<{ playerId: string }>();
 
 const player = ref<PlayerProfile | null>(null);
 const error = ref('');
 
-const playerPhotoUrl = computed(() => {
-  if (!player.value) return '';
-  if (player.value.manualPhotoUrl) {
-    return resolveMediaUrl(player.value.manualPhotoUrl);
-  }
+const playerPhotoSources = computed(() => {
+  if (!player.value) return [];
   if (authState.player?.playerId === player.value.playerId) {
-    return resolveMediaUrl(authState.user?.photoUrl ?? player.value.photoUrl);
+    return [player.value.photoUrl, player.value.telegramPhotoUrl, authState.user?.photoUrl];
   }
-  return resolveMediaUrl(player.value.photoUrl);
+  return [player.value.photoUrl, player.value.telegramPhotoUrl];
 });
 
 const playerInitials = computed(() => {
