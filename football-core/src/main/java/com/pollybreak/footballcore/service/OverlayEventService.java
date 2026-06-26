@@ -51,6 +51,10 @@ public class OverlayEventService {
         return emitter;
     }
 
+    public void pushCurrentState(Long sessionId) {
+        publish("STATE_REFRESH", sessionId, null, null, null);
+    }
+
     public void publishAfterCommit(String type, Long sessionId, Long matchId) {
         publishAfterCommit(type, sessionId, matchId, null, null);
     }

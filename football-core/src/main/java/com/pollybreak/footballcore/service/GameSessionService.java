@@ -7,6 +7,7 @@ import com.pollybreak.footballcore.api.dto.session.GameSessionResponse;
 import com.pollybreak.footballcore.api.dto.session.UpdateGameSessionRequest;
 import com.pollybreak.footballcore.domain.entity.AppUser;
 import com.pollybreak.footballcore.domain.entity.GameSession;
+import com.pollybreak.footballcore.domain.entity.SessionRecurrenceRule;
 import com.pollybreak.footballcore.domain.entity.SessionVenue;
 import com.pollybreak.footballcore.domain.entity.SessionTeam;
 import com.pollybreak.footballcore.domain.enums.SessionFormatType;
@@ -167,6 +168,9 @@ public class GameSessionService {
             throw new IllegalArgumentException("registrationOpenHoursBefore must not be negative");
         }
         Long targetTelegramChatId = request.telegramChatId() != null ? request.telegramChatId() : session.getTelegramChatId();
+        if (Boolean.TRUE.equals(request.autoStartContributionCollection()) && targetTelegramChatId == null) {
+            throw new IllegalArgumentException("telegramChatId is required for autoStartContributionCollection");
+        }
         validateMvpVotingSettings(
                 Boolean.TRUE.equals(request.mvpVotingEnabled()),
                 request.mvpVotingDurationHours(),
@@ -200,6 +204,8 @@ public class GameSessionService {
             session.setRegistrationOpenHoursBefore(SessionRegistrationScheduleService.DEFAULT_REGISTRATION_OPEN_HOURS_BEFORE);
         }
         validateAutoStartRegistration(session);
+        applyRecurrenceAutomationSettings(session, request);
+        applyAutoStartContributionCollection(session, request.autoStartContributionCollection());
         session.setFeeAmount(request.feeAmount());
         session.setFeeRecipient(request.feeRecipient());
         applyMvpVotingSettings(
@@ -463,6 +469,36 @@ public class GameSessionService {
         }
         if (session.getTelegramChatId() == null) {
             throw new IllegalArgumentException("telegramChatId is required for autoStartRegistration");
+        }
+    }
+
+    private void applyRecurrenceAutomationSettings(GameSession session, UpdateGameSessionRequest request) {
+        SessionRecurrenceRule rule = session.getRecurrenceRule();
+        if (rule == null) {
+            return;
+        }
+        if (request.autoStartRegistration() != null) {
+            rule.setAutoStartRegistration(session.isAutoStartRegistration());
+        }
+        if (request.autoStartRegistration() != null || request.registrationOpenHoursBefore() != null) {
+            rule.setRegistrationOpenHoursBefore(session.getRegistrationOpenHoursBefore());
+        }
+        if (request.autoStartContributionCollection() != null) {
+            rule.setAutoStartContributionCollection(Boolean.TRUE.equals(request.autoStartContributionCollection()));
+        }
+    }
+
+    private void applyAutoStartContributionCollection(GameSession session, Boolean autoStartContributionCollection) {
+        if (autoStartContributionCollection == null) {
+            return;
+        }
+        if (Boolean.TRUE.equals(autoStartContributionCollection)) {
+            if (session.getTelegramChatId() == null) {
+                throw new IllegalArgumentException("telegramChatId is required for autoStartContributionCollection");
+            }
+            sessionContributionReminderService.createReminder(session.getId(), 48);
+        } else {
+            sessionContributionReminderService.deleteReminder(session.getId(), 48);
         }
     }
 

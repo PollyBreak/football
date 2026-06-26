@@ -254,13 +254,6 @@
 
           <div class="settings-group">
             <p class="settings-group__title">Дополнительно</p>
-            <label v-if="session.recurrenceRuleId" class="reminder-checkbox recurrence-toggle">
-              <input v-model="sessionSettings.recurrenceActive" type="checkbox" :disabled="sessionIsFinished" />
-              <span>Повторять следующие события</span>
-            </label>
-            <p v-if="session.recurrenceRuleId && !sessionSettings.recurrenceActive" class="muted">
-              После завершения текущей сессии новая повторяющаяся сессия больше не создастся.
-            </p>
             <label class="field-label">
               <span>Чат</span>
               <select v-model="telegramChatSelection" class="input" :disabled="telegramChatsPending">
@@ -278,6 +271,32 @@
             <label class="field-label">
               <span>Telegram chat ID</span>
               <input v-model.number="sessionSettings.telegramChatId" class="input" type="number" placeholder="-100..." />
+            </label>
+            <label class="reminder-checkbox">
+              <input v-model="sessionSettings.autoStartRegistration" type="checkbox" :disabled="sessionIsFinished" />
+              <span>Автоматически начать регистрацию на игру</span>
+            </label>
+            <label v-if="sessionSettings.autoStartRegistration" class="field-label registration-delay-field">
+              <span>Регистрация начнется за</span>
+              <div class="reminder-form registration-delay-form">
+                <input
+                  v-model.number="sessionSettings.registrationOpenDaysBefore"
+                  class="input"
+                  type="number"
+                  min="1"
+                  step="1"
+                  :disabled="sessionIsFinished"
+                />
+                <span class="muted registration-delay-form__suffix">дня/дней до игры</span>
+              </div>
+            </label>
+            <label class="reminder-checkbox">
+              <input
+                v-model="sessionSettings.autoStartContributionCollection"
+                type="checkbox"
+                :disabled="pendingReminderUpdate || sessionIsFinished"
+              />
+              <span>Автоматически начать сбор оплаты за 2 дня до игры</span>
             </label>
             <label class="reminder-checkbox recurrence-toggle">
               <input v-model="sessionSettings.mvpVotingEnabled" type="checkbox" />
@@ -346,6 +365,19 @@
               <textarea class="input textarea" readonly :value="generatedTimelineText"></textarea>
               <button class="ghost-button" type="button" @click="copyGeneratedTimeline">Скопировать</button>
             </div>
+          </div>
+
+          <div v-if="session.recurrenceRuleId" class="settings-group">
+            <label class="reminder-checkbox recurring-event-toggle">
+              <input v-model="sessionSettings.recurrenceActive" type="checkbox" />
+              <span>Повторяющееся</span>
+            </label>
+
+            <p class="muted recurring-event-hint">
+              {{ sessionSettings.recurrenceActive
+                ? 'После завершения этой сессии будет создана следующая сессия с такими же настройками.'
+                : 'После завершения текущей сессии новая сессия с такими же настройками больше не создастся.' }}
+            </p>
           </div>
 
           <button class="primary-button settings-bottom-save" type="button" @click="saveSessionSettings" :disabled="pendingSessionUpdate">Сохранить</button>
@@ -436,6 +468,9 @@
         <input class="input" :value="overlayPageUrl" readonly />
         <div class="button-row">
           <a class="ghost-button overlay-link-button" :href="overlayPageUrl" target="_blank" rel="noreferrer">Открыть</a>
+          <button class="ghost-button" type="button" :disabled="pendingOverlayPush" @click="pushOverlayState">
+            {{ pendingOverlayPush ? 'Отправляем...' : 'Отправить состояние' }}
+          </button>
           <button class="primary-button" type="button" @click="copyOverlayUrl">Скопировать</button>
         </div>
       </div>
@@ -1051,6 +1086,7 @@ const pendingGuestPlayerCreate = ref(false);
 const pendingPlayerRemove = ref(false);
 const pendingMvpMessageSend = ref(false);
 const pendingStreamStart = ref(false);
+const pendingOverlayPush = ref(false);
 const pendingStreamShift = ref(false);
 const pendingTimelineGeneration = ref(false);
 const pendingCreateMatch = ref(false);
@@ -1141,6 +1177,7 @@ const membershipButtonLabel = computed(() => {
 const hasContributionReminder = (hoursBefore: number) => {
   return contributionReminders.value.some((reminder) => reminder.hoursBefore === hoursBefore);
 };
+const autoContributionCollectionHoursBefore = 48;
 const contributionReminderOptionHours = computed(() => {
   return Array.from(new Set([
     ...reminderQuickHours,
@@ -1184,6 +1221,9 @@ const sessionSettings = reactive({
   broadcastUrl: '',
   telegramChatId: null as number | null,
   telegramChatTitle: '',
+  autoStartRegistration: false,
+  registrationOpenDaysBefore: 5,
+  autoStartContributionCollection: false,
   mvpVotingEnabled: false,
   mvpVotingDurationHours: 24 as number | null,
   mvpVotingParticipantScope: 'ALL' as 'ALL' | 'PLAYERS_ONLY',
@@ -1799,6 +1839,9 @@ function fillSessionSettings() {
   sessionSettings.telegramChatId = session.value.telegramChatId ?? null;
   sessionSettings.telegramChatTitle = session.value.telegramChatTitle ?? '';
   syncTelegramChatSelectionFromSettings();
+  sessionSettings.autoStartRegistration = session.value.autoStartRegistration;
+  sessionSettings.registrationOpenDaysBefore = Math.max(1, Math.ceil((session.value.registrationOpenHoursBefore ?? 120) / 24));
+  syncAutoStartContributionCollectionFromReminders();
   sessionSettings.mvpVotingEnabled = session.value.mvpVotingEnabled;
   sessionSettings.mvpVotingDurationHours = session.value.mvpVotingDurationHours ?? 24;
   sessionSettings.mvpVotingParticipantScope = session.value.mvpVotingParticipantScope ?? 'ALL';
@@ -1890,6 +1933,11 @@ async function loadWaitlist() {
 
 async function loadContributionReminders() {
   contributionReminders.value = await api.getContributionReminders(sessionIdNumber.value);
+  syncAutoStartContributionCollectionFromReminders();
+}
+
+function syncAutoStartContributionCollectionFromReminders() {
+  sessionSettings.autoStartContributionCollection = hasContributionReminder(autoContributionCollectionHoursBefore);
 }
 
 async function loadContributionStatuses() {
@@ -1984,6 +2032,22 @@ async function copyOverlayUrl() {
     error.value = '';
   } catch {
     error.value = 'Не удалось скопировать ссылку';
+  }
+}
+
+async function pushOverlayState() {
+  if (pendingOverlayPush.value) {
+    return;
+  }
+
+  pendingOverlayPush.value = true;
+  error.value = '';
+  try {
+    await api.pushOverlayState(sessionIdNumber.value);
+  } catch (err) {
+    error.value = err instanceof Error ? err.message : 'Не удалось отправить состояние overlay';
+  } finally {
+    pendingOverlayPush.value = false;
   }
 }
 
@@ -2169,6 +2233,17 @@ async function saveSessionSettings() {
     error.value = 'Укажите Telegram chat ID для рассылки голосования за MVP';
     return false;
   }
+  if ((sessionSettings.autoStartRegistration || sessionSettings.autoStartContributionCollection) && !sessionSettings.telegramChatId) {
+    error.value = 'Укажите Telegram chat ID для автоматической регистрации или сбора оплаты';
+    return false;
+  }
+  if (
+    sessionSettings.autoStartRegistration &&
+    (!Number.isFinite(sessionSettings.registrationOpenDaysBefore) || sessionSettings.registrationOpenDaysBefore < 1)
+  ) {
+    error.value = 'Укажите, за сколько дней до игры начинать регистрацию';
+    return false;
+  }
   if (sessionSettings.formatType === 'DUEL' && duelTeamAColor.value === duelTeamBColor.value) {
     error.value = 'Выберите разные цвета команд для дуэли';
     return false;
@@ -2195,6 +2270,9 @@ async function saveSessionSettings() {
       broadcastUrl: sessionSettings.broadcastUrl.trim() || null,
       telegramChatId: sessionSettings.telegramChatId || null,
       telegramChatTitle,
+      autoStartRegistration: sessionSettings.autoStartRegistration,
+      registrationOpenHoursBefore: sessionSettings.autoStartRegistration ? sessionSettings.registrationOpenDaysBefore * 24 : null,
+      autoStartContributionCollection: sessionSettings.autoStartContributionCollection,
       mvpVotingEnabled: sessionSettings.mvpVotingEnabled,
       mvpVotingDurationHours: sessionSettings.mvpVotingEnabled ? sessionSettings.mvpVotingDurationHours : null,
       mvpVotingParticipantScope: sessionSettings.mvpVotingParticipantScope,
@@ -2213,7 +2291,7 @@ async function saveSessionSettings() {
       teams: shouldUpdateSessionTeams() ? selectedSessionTeamsForSettings() : null
     });
     fillSessionSettings();
-    await Promise.all([loadSessionPlayers(), loadWaitlist(), loadMvpVoting()]);
+    await Promise.all([loadSessionPlayers(), loadWaitlist(), loadMvpVoting(), loadContributionReminders()]);
     settingsOpen.value = false;
     return true;
   } catch (err) {

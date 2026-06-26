@@ -20,6 +20,7 @@ public record UpdateGameSessionRequest(
         String telegramChatTitle,
         Boolean autoStartRegistration,
         Integer registrationOpenHoursBefore,
+        Boolean autoStartContributionCollection,
         Integer feeAmount,
         String feeRecipient,
         Boolean mvpVotingEnabled,

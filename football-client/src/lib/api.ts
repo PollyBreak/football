@@ -288,6 +288,9 @@ export const api = {
     const search = matchId ? `?matchId=${matchId}` : '';
     return request(`/api/overlay/sessions/${sessionId}/state${search}`);
   },
+  pushOverlayState(sessionId: number): Promise<void> {
+    return request(`/api/overlay/sessions/${sessionId}/push`, { method: 'POST' });
+  },
   getOverlayStreamUrl(sessionId: number): string {
     return `${BASE_URL}/api/overlay/sessions/${sessionId}/stream`;
   }

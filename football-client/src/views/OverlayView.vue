@@ -29,13 +29,13 @@
       <div v-else class="overlay-scoreboard__empty">Матч не выбран</div>
 
       <div v-if="goalRows.length" class="overlay-goal-list">
-        <div class="overlay-goal-list__column">
+        <div class="overlay-goal-list__column" :class="{ 'is-two-columns': leftGoalRows.length > 3 }">
           <p v-for="goal in leftGoalRows" :key="goal.id">
             <span>{{ goal.minute }}</span>
             <strong>{{ goal.name }}</strong>
           </p>
         </div>
-        <div class="overlay-goal-list__column overlay-goal-list__column--right">
+        <div class="overlay-goal-list__column overlay-goal-list__column--right" :class="{ 'is-two-columns': rightGoalRows.length > 3 }">
           <p v-for="goal in rightGoalRows" :key="goal.id">
             <span>{{ goal.minute }}</span>
             <strong>{{ goal.name }}</strong>
@@ -54,18 +54,17 @@
               class="overlay-player-card"
               :style="playerCardStyle(leftTeam)"
             >
-              <div class="overlay-card-top">
-                <div class="overlay-card-position">
-                  <span>{{ positionLabel(player.position) }}</span>
-                  <img :src="teamLogo(leftTeam)" alt="" />
-                </div>
-              </div>
+              <strong class="overlay-player-card__name">{{ displayPlayerName(player) }}</strong>
               <div class="overlay-player-card__photo">
                 <PlayerAvatar :sources="[player.photoUrl, player.telegramPhotoUrl]" :initials="initials(displayPlayerName(player))" :alt="displayPlayerName(player)" />
               </div>
-              <strong class="overlay-player-card__name">{{ displayPlayerName(player) }}</strong>
-              <div v-if="playerStatsLabel(player.playerId)" class="overlay-player-card__stats">
-                {{ playerStatsLabel(player.playerId) }}
+              <div v-if="playerStats(player.playerId).goals > 0" class="overlay-player-card__stat-badge overlay-player-card__stat-badge--goals">
+                <span>{{ playerStats(player.playerId).goals }}</span>
+                <span>⚽</span>
+              </div>
+              <div v-if="playerStats(player.playerId).assists > 0" class="overlay-player-card__stat-badge overlay-player-card__stat-badge--assists">
+                <span>{{ playerStats(player.playerId).assists }}</span>
+                <span>👟</span>
               </div>
             </article>
           </div>
@@ -83,18 +82,17 @@
               class="overlay-player-card"
               :style="playerCardStyle(rightTeam)"
             >
-              <div class="overlay-card-top">
-                <div class="overlay-card-position">
-                  <span>{{ positionLabel(player.position) }}</span>
-                  <img :src="teamLogo(rightTeam)" alt="" />
-                </div>
-              </div>
+              <strong class="overlay-player-card__name">{{ displayPlayerName(player) }}</strong>
               <div class="overlay-player-card__photo">
                 <PlayerAvatar :sources="[player.photoUrl, player.telegramPhotoUrl]" :initials="initials(displayPlayerName(player))" :alt="displayPlayerName(player)" />
               </div>
-              <strong class="overlay-player-card__name">{{ displayPlayerName(player) }}</strong>
-              <div v-if="playerStatsLabel(player.playerId)" class="overlay-player-card__stats">
-                {{ playerStatsLabel(player.playerId) }}
+              <div v-if="playerStats(player.playerId).goals > 0" class="overlay-player-card__stat-badge overlay-player-card__stat-badge--goals">
+                <span>{{ playerStats(player.playerId).goals }}</span>
+                <span>⚽</span>
+              </div>
+              <div v-if="playerStats(player.playerId).assists > 0" class="overlay-player-card__stat-badge overlay-player-card__stat-badge--assists">
+                <span>{{ playerStats(player.playerId).assists }}</span>
+                <span>👟</span>
               </div>
             </article>
           </div>
@@ -226,7 +224,7 @@
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
 import { useRoute } from 'vue-router';
 import { api } from '../lib/api';
-import type { MatchEvent, OverlayEvent, OverlayState, OverlayTeam, PlayerPosition, SessionMatch, SessionTeamPlayer } from '../types';
+import type { MatchEvent, OverlayEvent, OverlayState, OverlayTeam, SessionMatch, SessionTeamPlayer } from '../types';
 import PlayerAvatar from '../components/PlayerAvatar.vue';
 
 interface OverlayStandingRow {
@@ -264,7 +262,11 @@ const goalToast = ref<{
 
 let events: EventSource | null = null;
 let clockTimer: number | null = null;
+let statePollTimer: number | null = null;
 let toastTimer: number | null = null;
+let stateLoading = false;
+let lastSseEventAt = 0;
+const statePollIntervalMs = 20_000;
 
 const sessionIdNumber = computed(() => Number(props.sessionId));
 const preferredMatchId = computed(() => {
@@ -451,6 +453,9 @@ onMounted(async () => {
   clockTimer = window.setInterval(() => {
     now.value = new Date();
   }, 1000);
+  statePollTimer = window.setInterval(() => {
+    void pollStateIfSseIsStale();
+  }, statePollIntervalMs);
 });
 
 onBeforeUnmount(() => {
@@ -459,18 +464,36 @@ onBeforeUnmount(() => {
   if (clockTimer) {
     window.clearInterval(clockTimer);
   }
+  if (statePollTimer) {
+    window.clearInterval(statePollTimer);
+  }
   if (toastTimer) {
     window.clearTimeout(toastTimer);
   }
 });
 
 async function loadState() {
+  if (stateLoading) {
+    return;
+  }
+
+  stateLoading = true;
   try {
     error.value = '';
     state.value = await api.getOverlayState(sessionIdNumber.value, preferredMatchId.value);
   } catch (loadError) {
     error.value = loadError instanceof Error ? loadError.message : 'Не удалось загрузить overlay';
+  } finally {
+    stateLoading = false;
   }
+}
+
+async function pollStateIfSseIsStale() {
+  if (Date.now() - lastSseEventAt < statePollIntervalMs) {
+    return;
+  }
+
+  await loadState();
 }
 
 function connectStream() {
@@ -479,6 +502,7 @@ function connectStream() {
   events = new EventSource(api.getOverlayStreamUrl(sessionIdNumber.value));
 
   events.addEventListener('CONNECTED', handleOverlayEvent);
+  events.addEventListener('STATE_REFRESH', handleOverlayEvent);
   events.addEventListener('MATCH_STARTED', handleOverlayEvent);
   events.addEventListener('MATCH_FINISHED', handleOverlayEvent);
   events.addEventListener('MATCH_PAUSED', handleOverlayEvent);
@@ -496,6 +520,7 @@ function connectStream() {
 
 function handleOverlayEvent(message: MessageEvent<string>) {
   const payload = JSON.parse(message.data) as OverlayEvent;
+  lastSseEventAt = Date.now();
   connectionStatus.value = 'live';
   error.value = '';
   if (!preferredMatchId.value || payload.matchId === preferredMatchId.value || payload.type === 'CONNECTED') {
@@ -605,8 +630,7 @@ function teamNameStyle(team: OverlayTeam | null): Record<string, string> {
 function standingTeamNameStyle(team: OverlayTeam | null): Record<string, string> {
   return {
     color: standingTeamColor(team),
-    '-webkit-text-stroke': '0.8px rgba(0, 0, 0, 0.9)',
-    textShadow: '0 2px 0 rgba(0, 0, 0, 0.36), 0 0 10px rgba(255, 255, 255, 0.16)'
+    fontWeight: '950'
   };
 }
 
@@ -624,6 +648,20 @@ function standingTeamColor(team: OverlayTeam | null): string {
   return lightenTeamColor(team?.color || '#2ef27a');
 }
 
+function playerBorderColor(team: OverlayTeam | null): string {
+  const marker = `${team?.name ?? ''} ${team?.color ?? ''}`.toLowerCase();
+  if (marker.includes('blue') || marker.includes('син')) {
+    return '#1557ff';
+  }
+  if (marker.includes('red') || marker.includes('крас')) {
+    return '#e31b35';
+  }
+  if (marker.includes('green') || marker.includes('зелен') || marker.includes('зелён')) {
+    return '#087a2f';
+  }
+  return team?.color || '#087a2f';
+}
+
 function lightenTeamColor(color: string): string {
   const match = color.trim().match(/^#?([0-9a-f]{6})$/i);
   if (!match) {
@@ -636,10 +674,10 @@ function lightenTeamColor(color: string): string {
 }
 
 function playerCardStyle(team: OverlayTeam | null): Record<string, string> {
-  const color = team?.color || '#2ef27a';
+  const color = playerBorderColor(team);
   return {
-    borderColor: color,
-    boxShadow: `inset 0 0 0 1px rgba(255, 255, 255, 0.38), 0 0 0 2px ${color}55, 0 13px 26px rgba(0, 0, 0, 0.32)`
+    '--team-color': color,
+    '--team-color-soft': `${color}55`
   };
 }
 
@@ -660,14 +698,6 @@ function playerStats(playerId: number): { goals: number; assists: number } {
     goals: events.filter((event) => (event.eventType === 'GOAL' || event.eventType === 'OWN_GOAL') && event.playerId === playerId).length,
     assists: events.filter((event) => event.eventType === 'ASSIST' && event.playerId === playerId).length
   };
-}
-
-function playerStatsLabel(playerId: number): string {
-  const stats = playerStats(playerId);
-  return [
-    stats.goals > 0 ? `${stats.goals} ⚽` : '',
-    stats.assists > 0 ? `${stats.assists} 👟` : ''
-  ].filter(Boolean).join(' ');
 }
 
 function formatEventMinute(event: MatchEvent): string {
@@ -698,16 +728,6 @@ function initials(name: string): string {
     .join('') || 'P';
 }
 
-function positionLabel(position: PlayerPosition | null): string {
-  const labels: Record<PlayerPosition, string> = {
-    GOALKEEPER: 'ВР',
-    DEFENDER: 'ЗЩ',
-    MIDFIELDER: 'ПЗ',
-    FORWARD: 'НП',
-    UNIVERSAL: 'УН'
-  };
-  return position ? labels[position] : 'ИГР';
-}
 </script>
 
 <style scoped>
@@ -737,10 +757,13 @@ function positionLabel(position: PlayerPosition | null): string {
 .overlay-scoreboard {
   position: absolute;
   top: 22px;
-  left: 22px;
+  left: 50%;
   width: min(450px, calc(100vw - 44px));
   padding: 8px 14px 13px;
   border-radius: 8px;
+  opacity: 0.9;
+  transform: translateX(-50%) scale(1.6);
+  transform-origin: top center;
 }
 
 .overlay-scoreboard__match {
@@ -863,23 +886,28 @@ function positionLabel(position: PlayerPosition | null): string {
 .overlay-goal-list {
   display: grid;
   grid-template-columns: minmax(0, 1fr) 88px minmax(0, 1fr);
-  gap: 5px 8px;
-  margin-top: -18px;
+  gap: 3px 8px;
+  margin-top: -20px;
   color: rgba(247, 255, 249, 0.8);
-  font-size: 13px;
+  font-size: 12px;
 }
 
 .overlay-goal-list__column {
   grid-column: 1;
   min-width: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 2px 8px;
+}
+
+.overlay-goal-list__column.is-two-columns {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
 .overlay-goal-list__column--right {
   grid-column: 3;
   align-items: flex-end;
+  justify-items: end;
   text-align: right;
 }
 
@@ -887,7 +915,8 @@ function positionLabel(position: PlayerPosition | null): string {
   min-width: 0;
   margin: 0;
   display: flex;
-  gap: 6px;
+  gap: 4px;
+  line-height: 1.08;
 }
 
 .overlay-goal-list__column--right p {
@@ -905,19 +934,20 @@ function positionLabel(position: PlayerPosition | null): string {
   position: absolute;
   left: 50%;
   bottom: 24px;
-  width: min(1800px, calc(100vw - 48px));
+  width: min(1920px, calc(100vw - 16px));
   transform: translateX(-50%);
 }
 
 .overlay-lineups {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) clamp(110px, 8vw, 150px) minmax(0, 1fr);
+  grid-template-columns: minmax(0, 1fr) clamp(82px, 6vw, 118px) minmax(0, 1fr);
   align-items: end;
   justify-content: center;
-  column-gap: clamp(18px, 1.6vw, 30px);
+  column-gap: clamp(8px, 0.8vw, 18px);
 }
 
 .overlay-team-panel {
+  container-type: inline-size;
   width: 100%;
   min-width: 0;
   min-height: 112px;
@@ -925,28 +955,28 @@ function positionLabel(position: PlayerPosition | null): string {
   flex-direction: column;
   justify-content: flex-end;
   border-radius: 8px;
-  padding: 0 12px 8px;
-  background: linear-gradient(135deg, rgba(3, 10, 12, 0.94), rgba(12, 23, 26, 0.9));
+  padding: 0 6px 8px;
 }
 
 .overlay-lineups__players {
   width: 100%;
-  display: flex;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(clamp(78px, 10cqw, 124px), 1fr));
   align-items: flex-end;
-  justify-content: flex-end;
-  gap: clamp(5px, 0.7vw, 10px);
+  justify-items: center;
+  gap: clamp(2px, 0.45cqw, 7px);
   min-width: 0;
   margin-top: -88px;
   overflow: visible;
 }
 
 .overlay-lineups__players--right {
-  justify-content: flex-start;
+  justify-content: stretch;
 }
 
 .overlay-lineups__divider {
-  width: 129px;
-  height: 129px;
+  width: clamp(82px, 6vw, 118px);
+  height: clamp(82px, 6vw, 118px);
   display: grid;
   place-items: center;
   align-self: center;
@@ -962,58 +992,33 @@ function positionLabel(position: PlayerPosition | null): string {
 
 .overlay-player-card {
   container-type: inline-size;
-  width: clamp(72px, 8vw, 124px);
-  min-width: 0;
-  max-width: 124px;
-  height: clamp(140px, 14.5vw, 194px);
-  flex: 1 1 92px;
-  display: grid;
-  grid-template-rows: minmax(20px, 26px) minmax(42px, 64px) minmax(20px, auto) minmax(20px, 24px);
-  justify-items: center;
-  gap: clamp(4px, 0.55vw, 7px);
-  padding: clamp(6px, 0.7vw, 9px);
-  border: 1px solid rgba(255, 255, 255, 0.82);
-  border-radius: 9px;
-  color: #101820;
-  background:
-    linear-gradient(145deg, rgba(255, 255, 255, 0.95), rgba(172, 183, 190, 0.96) 42%, rgba(244, 247, 248, 0.94)),
-    radial-gradient(circle at 20% 15%, rgba(255, 255, 255, 0.95), transparent 34%);
-  overflow: hidden;
-}
-
-.overlay-card-top {
   width: 100%;
+  min-width: 0;
+  max-width: clamp(142px, 26cqw, 270px);
+  height: clamp(126px, 136cqw, 260px);
+  position: relative;
   display: flex;
-  justify-content: flex-start;
-}
-
-.overlay-card-position {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 3px;
-  font-size: 11px;
-  font-size: clamp(9px, 11cqw, 12px);
-  font-weight: 950;
-}
-
-.overlay-card-position img {
-  width: clamp(14px, 1.6vw, 20px);
-  height: clamp(14px, 1.6vw, 20px);
-  object-fit: contain;
+  align-items: flex-end;
+  justify-content: center;
+  overflow: visible;
 }
 
 .overlay-player-card__photo {
-  width: clamp(42px, 5vw, 64px);
-  height: clamp(42px, 5vw, 64px);
+  width: clamp(86px, 98cqw, 218px);
+  height: clamp(86px, 98cqw, 218px);
+  position: relative;
   display: grid;
   place-items: center;
   overflow: hidden;
-  border: 2px solid rgba(255, 255, 255, 0.78);
+  border: clamp(3px, 5.5cqw, 8px) solid var(--team-color, #2ef27a);
   border-radius: 50%;
-  color: #061012;
-  background: linear-gradient(135deg, #f5fff7, #aeb8be);
-  font-size: clamp(13px, 1.4vw, 18px);
+  opacity: 0.95;
+  color: #102025;
+  background: radial-gradient(circle at 30% 20%, #ffffff, #b7c4c9);
+  box-shadow:
+    0 0 20px var(--team-color-soft, rgba(46, 242, 122, 0.34)),
+    0 14px 28px rgba(0, 0, 0, 0.38);
+  font-size: clamp(20px, 24cqw, 36px);
   font-weight: 950;
 }
 
@@ -1024,33 +1029,65 @@ function positionLabel(position: PlayerPosition | null): string {
 }
 
 .overlay-player-card__name {
-  width: 100%;
-  min-width: 0;
+  width: min(118%, 240px);
+  position: absolute;
+  left: 50%;
+  bottom: clamp(83px, 104cqw, 232px);
+  z-index: 2;
+  display: -webkit-box;
   overflow: hidden;
-  font-size: 13px;
-  font-size: clamp(10px, 13cqw, 15px);
-  line-height: 1.12;
+  color: #ffffff;
+  font-size: clamp(12px, 14cqw, 22px);
+  font-weight: 950;
+  line-height: 1.04;
   text-align: center;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  text-wrap: balance;
+  overflow-wrap: anywhere;
+  letter-spacing: 0;
+  text-shadow:
+    -1px -1px 0 #000,
+    1px -1px 0 #000,
+    -1px 1px 0 #000,
+    1px 1px 0 #000,
+    0 3px 8px rgba(0, 0, 0, 0.55);
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  -webkit-text-stroke: 1px rgba(0, 0, 0, 0.82);
+  transform: translateX(-50%);
 }
 
-.overlay-player-card__stats {
-  width: 100%;
-  min-width: 0;
-  min-height: 24px;
+.overlay-player-card__stat-badge {
+  min-width: clamp(40px, 42cqw, 76px);
+  min-height: clamp(28px, 33cqw, 54px);
+  position: absolute;
+  bottom: clamp(0px, 3cqw, 5px);
+  z-index: 4;
   display: flex;
   align-items: center;
   justify-content: center;
-  border-top: 1px solid rgba(16, 24, 32, 0.22);
-  padding-top: 3px;
-  overflow: hidden;
-  font-size: 13px;
-  font-size: clamp(10px, 12cqw, 15px);
+  gap: clamp(2px, 4cqw, 7px);
+  border-radius: 999px;
+  padding: clamp(2px, 3cqw, 5px) clamp(5px, 7cqw, 11px);
+  color: #ffffff;
+  background: rgba(5, 12, 16, 0.82);
+  box-shadow:
+    0 0 0 1px rgba(255, 255, 255, 0.22),
+    0 0 12px var(--team-color-soft, rgba(46, 242, 122, 0.34)),
+    0 6px 14px rgba(0, 0, 0, 0.36);
+  font-size: clamp(17px, 21cqw, 34px);
   font-weight: 950;
-  text-align: center;
-  text-overflow: ellipsis;
+  line-height: 1;
   white-space: nowrap;
+}
+
+.overlay-player-card__stat-badge--goals {
+  left: clamp(0px, 4cqw, 8px);
+  transform: translateX(-24%);
+}
+
+.overlay-player-card__stat-badge--assists {
+  right: clamp(0px, 4cqw, 8px);
+  transform: translateX(24%);
 }
 
 .overlay-intermission {
@@ -1063,6 +1100,7 @@ function positionLabel(position: PlayerPosition | null): string {
   gap: 22px;
   padding: 24px;
   border-radius: 10px;
+  opacity: 0.8;
   transform: translate(-50%, -50%);
 }
 
@@ -1415,6 +1453,10 @@ function positionLabel(position: PlayerPosition | null): string {
     position: static;
     width: auto;
     margin: 12px;
+  }
+
+  .overlay-scoreboard {
+    transform: none;
   }
 
   .overlay-page {
