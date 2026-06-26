@@ -133,6 +133,37 @@
           </div>
         </div>
         <p v-else class="overlay-empty-note">Команды пока не добавлены</p>
+        <div v-if="standingsRows.length && (topScorers.length || topAssistants.length)" class="overlay-leaders">
+          <section class="overlay-leader-board">
+            <h3>Топ бомбардиров</h3>
+            <div class="overlay-leader-list">
+              <article v-for="leader in topScorers" :key="`goal-${leader.playerId}`" class="overlay-leader">
+                <strong class="overlay-leader__name">{{ leader.displayName }}</strong>
+                <div class="overlay-leader__row">
+                  <div class="overlay-leader__photo" :style="leaderPhotoStyle(leader.team)">
+                    <PlayerAvatar :sources="[leader.photoUrl, leader.telegramPhotoUrl]" :initials="initials(leader.displayName)" :alt="leader.displayName" />
+                  </div>
+                  <span class="overlay-leader__count">{{ leader.count }} ⚽</span>
+                </div>
+              </article>
+            </div>
+          </section>
+
+          <section class="overlay-leader-board">
+            <h3>Топ ассистов</h3>
+            <div class="overlay-leader-list">
+              <article v-for="leader in topAssistants" :key="`assist-${leader.playerId}`" class="overlay-leader">
+                <strong class="overlay-leader__name">{{ leader.displayName }}</strong>
+                <div class="overlay-leader__row">
+                  <div class="overlay-leader__photo" :style="leaderPhotoStyle(leader.team)">
+                    <PlayerAvatar :sources="[leader.photoUrl, leader.telegramPhotoUrl]" :initials="initials(leader.displayName)" :alt="leader.displayName" />
+                  </div>
+                  <span class="overlay-leader__count">{{ leader.count }} 👟</span>
+                </div>
+              </article>
+            </div>
+          </section>
+        </div>
       </div>
 
       <div class="overlay-intermission__side">
@@ -242,6 +273,15 @@ interface OverlayStandingRow {
   goalsAgainst: number;
   goalDifference: number;
   points: number;
+}
+
+interface OverlayLeaderRow {
+  playerId: number;
+  displayName: string;
+  photoUrl: string | null;
+  telegramPhotoUrl: string | null;
+  team: OverlayTeam | null;
+  count: number;
 }
 
 const props = defineProps<{
@@ -450,6 +490,9 @@ const standingsRows = computed<OverlayStandingRow[]>(() => {
     }));
 });
 
+const topScorers = computed(() => buildTopLeaders('GOAL'));
+const topAssistants = computed(() => buildTopLeaders('ASSIST'));
+
 onMounted(async () => {
   document.documentElement.classList.add('overlay-root');
   await loadState();
@@ -621,6 +664,53 @@ function playerNameLines(player: SessionTeamPlayer): string[] {
   return words.length === 2 ? words : [name];
 }
 
+function buildTopLeaders(eventType: 'GOAL' | 'ASSIST'): OverlayLeaderRow[] {
+  const leaders = new Map<number, OverlayLeaderRow>();
+
+  for (const event of state.value?.sessionEvents ?? []) {
+    if (event.eventType !== eventType || !event.playerId) {
+      continue;
+    }
+
+    const teamPlayer = findTeamPlayer(event.playerId);
+    const player = teamPlayer?.player ?? null;
+    const team = teamPlayer?.team ?? findTeam(event.teamId);
+    const displayName = player ? displayPlayerName(player) : eventDisplayName(event);
+    const existing = leaders.get(event.playerId);
+
+    if (existing) {
+      existing.count += 1;
+      continue;
+    }
+
+    leaders.set(event.playerId, {
+      playerId: event.playerId,
+      displayName,
+      photoUrl: player?.photoUrl ?? event.playerPhotoUrl,
+      telegramPhotoUrl: player?.telegramPhotoUrl ?? event.playerTelegramPhotoUrl,
+      team,
+      count: 1
+    });
+  }
+
+  return [...leaders.values()]
+    .sort((first, second) => {
+      return second.count - first.count
+        || first.displayName.localeCompare(second.displayName, 'ru');
+    })
+    .slice(0, 2);
+}
+
+function findTeamPlayer(playerId: number): { team: OverlayTeam; player: SessionTeamPlayer } | null {
+  for (const team of state.value?.teams ?? []) {
+    const player = team.players.find((candidate) => candidate.playerId === playerId);
+    if (player) {
+      return { team, player };
+    }
+  }
+  return null;
+}
+
 function eventDisplayName(event: MatchEvent): string {
   return event.playerDisplayName?.trim() || formatUsername(event.playerUsername) || (event.playerName ? shortName(event.playerName) : 'Игрок');
 }
@@ -689,6 +779,10 @@ function playerCardStyle(team: OverlayTeam | null): Record<string, string> {
     '--team-color': color,
     '--team-color-soft': `${color}55`
   };
+}
+
+function leaderPhotoStyle(team: OverlayTeam | null): Record<string, string> {
+  return playerCardStyle(team);
 }
 
 function teamLogo(team: OverlayTeam | null): string {
@@ -1127,6 +1221,10 @@ function initials(name: string): string {
   min-width: 0;
 }
 
+.overlay-standings {
+  overflow: hidden;
+}
+
 .overlay-standings h2,
 .overlay-match-card h2 {
   margin: 0;
@@ -1202,6 +1300,93 @@ function initials(name: string): string {
   text-overflow: ellipsis;
   text-transform: uppercase;
   white-space: nowrap;
+}
+
+.overlay-leaders {
+  min-width: 0;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  margin-top: 14px;
+  padding-top: 12px;
+  overflow: hidden;
+  border-top: 1px solid rgba(255, 255, 255, 0.14);
+}
+
+.overlay-leader-board {
+  min-width: 0;
+  overflow: hidden;
+}
+
+.overlay-leader-board h3 {
+  margin: 0 0 8px;
+  color: rgba(255, 255, 255, 0.9);
+  font-size: 13px;
+  font-weight: 950;
+  line-height: 1;
+  text-transform: uppercase;
+}
+
+.overlay-leader-list {
+  display: grid;
+  gap: 8px;
+}
+
+.overlay-leader {
+  min-width: 0;
+  display: grid;
+  gap: 4px;
+}
+
+.overlay-leader__name {
+  min-width: 0;
+  overflow: hidden;
+  color: #ffffff;
+  font-size: 13px;
+  font-weight: 950;
+  line-height: 1;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  text-shadow: 0 2px 6px rgba(0, 0, 0, 0.62);
+}
+
+.overlay-leader__row {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.overlay-leader__photo {
+  width: 44px;
+  height: 44px;
+  flex: 0 0 auto;
+  overflow: hidden;
+  border: 3px solid var(--team-color, #087a2f);
+  border-radius: 50%;
+  opacity: 0.95;
+  background: radial-gradient(circle at 30% 20%, #ffffff, #b7c4c9);
+  box-shadow:
+    0 0 12px var(--team-color-soft, rgba(46, 242, 122, 0.34)),
+    0 8px 16px rgba(0, 0, 0, 0.28);
+}
+
+.overlay-leader__photo img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.overlay-leader__count {
+  min-width: 0;
+  overflow: hidden;
+  color: #ffffff;
+  font-size: 18px;
+  font-weight: 950;
+  line-height: 1;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  text-shadow: 0 2px 7px rgba(0, 0, 0, 0.68);
 }
 
 .overlay-intermission__side {
