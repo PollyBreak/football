@@ -818,20 +818,20 @@ function initials(name: string): string {
 }
 
 .overlay-score {
-  min-width: 88px;
+  min-width: 70px;
   display: inline-flex;
   align-items: baseline;
   justify-content: center;
-  gap: 8px;
-  padding: 4px 10px 6px;
+  gap: 6px;
+  padding: 3px 8px 4px;
   border: 2px solid rgba(255, 255, 255, 0.72);
   border-radius: 8px;
   color: #ffffff;
   background: linear-gradient(180deg, rgba(255, 255, 255, 0.12), rgba(255, 255, 255, 0.03));
   box-shadow: inset 0 0 18px rgba(255, 255, 255, 0.12), 0 0 22px rgba(255, 210, 64, 0.42);
-  font-size: clamp(24px, 3vw, 36px);
+  font-size: clamp(20px, 2.2vw, 25px);
   font-weight: 950;
-  line-height: 0.9;
+  line-height: 0.92;
 }
 
 .overlay-score span {
@@ -1066,7 +1066,7 @@ function initials(name: string): string {
     0 3px 8px rgba(0, 0, 0, 0.55);
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
-  -webkit-text-stroke: 1px rgba(0, 0, 0, 0.82);
+  -webkit-text-stroke: 0.5px rgba(0, 0, 0, 0.82);
   transform: translateX(-50%);
 }
 
