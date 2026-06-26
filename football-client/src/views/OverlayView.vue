@@ -54,7 +54,9 @@
               class="overlay-player-card"
               :style="playerCardStyle(leftTeam)"
             >
-              <strong class="overlay-player-card__name">{{ displayPlayerName(player) }}</strong>
+              <strong class="overlay-player-card__name">
+                <span v-for="nameLine in playerNameLines(player)" :key="nameLine" class="overlay-player-card__name-line">{{ nameLine }}</span>
+              </strong>
               <div class="overlay-player-card__photo">
                 <PlayerAvatar :sources="[player.photoUrl, player.telegramPhotoUrl]" :initials="initials(displayPlayerName(player))" :alt="displayPlayerName(player)" />
               </div>
@@ -82,7 +84,9 @@
               class="overlay-player-card"
               :style="playerCardStyle(rightTeam)"
             >
-              <strong class="overlay-player-card__name">{{ displayPlayerName(player) }}</strong>
+              <strong class="overlay-player-card__name">
+                <span v-for="nameLine in playerNameLines(player)" :key="nameLine" class="overlay-player-card__name-line">{{ nameLine }}</span>
+              </strong>
               <div class="overlay-player-card__photo">
                 <PlayerAvatar :sources="[player.photoUrl, player.telegramPhotoUrl]" :initials="initials(displayPlayerName(player))" :alt="displayPlayerName(player)" />
               </div>
@@ -611,6 +615,12 @@ function displayPlayerName(player: SessionTeamPlayer): string {
   return player.playerDisplayName?.trim() || formatUsername(player.playerUsername) || shortName(player.playerName);
 }
 
+function playerNameLines(player: SessionTeamPlayer): string[] {
+  const name = displayPlayerName(player);
+  const words = name.split(/\s+/).filter(Boolean);
+  return words.length === 2 ? words : [name];
+}
+
 function eventDisplayName(event: MatchEvent): string {
   return event.playerDisplayName?.trim() || formatUsername(event.playerUsername) || (event.playerName ? shortName(event.playerName) : 'Игрок');
 }
@@ -762,7 +772,7 @@ function initials(name: string): string {
   padding: 8px 14px 13px;
   border-radius: 8px;
   opacity: 0.9;
-  transform: translateX(-50%) scale(1.6);
+  transform: translateX(-50%) scale(1.25);
   transform-origin: top center;
 }
 
@@ -954,8 +964,12 @@ function initials(name: string): string {
   display: flex;
   flex-direction: column;
   justify-content: flex-end;
+  border: 0;
   border-radius: 8px;
   padding: 0 6px 8px;
+  background: transparent;
+  box-shadow: none;
+  backdrop-filter: none;
 }
 
 .overlay-lineups__players {
@@ -981,7 +995,7 @@ function initials(name: string): string {
   place-items: center;
   align-self: center;
   filter: drop-shadow(0 0 16px rgba(46, 242, 122, 0.64)) drop-shadow(0 8px 22px rgba(0, 0, 0, 0.42));
-  transform: translateY(-20%);
+  transform: translateY(18%);
 }
 
 .overlay-lineups__divider img {
@@ -995,7 +1009,7 @@ function initials(name: string): string {
   width: 100%;
   min-width: 0;
   max-width: clamp(142px, 26cqw, 270px);
-  height: clamp(126px, 136cqw, 260px);
+  aspect-ratio: 1 / 1.08;
   position: relative;
   display: flex;
   align-items: flex-end;
@@ -1037,9 +1051,9 @@ function initials(name: string): string {
   display: -webkit-box;
   overflow: hidden;
   color: #ffffff;
-  font-size: clamp(12px, 14cqw, 22px);
+  font-size: clamp(15px, 17cqw, 28px);
   font-weight: 950;
-  line-height: 1.04;
+  line-height: 0.98;
   text-align: center;
   text-wrap: balance;
   overflow-wrap: anywhere;
@@ -1054,6 +1068,10 @@ function initials(name: string): string {
   -webkit-box-orient: vertical;
   -webkit-text-stroke: 1px rgba(0, 0, 0, 0.82);
   transform: translateX(-50%);
+}
+
+.overlay-player-card__name-line {
+  display: block;
 }
 
 .overlay-player-card__stat-badge {
