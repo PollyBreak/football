@@ -995,7 +995,7 @@ function initials(name: string): string {
   place-items: center;
   align-self: center;
   filter: drop-shadow(0 0 16px rgba(46, 242, 122, 0.64)) drop-shadow(0 8px 22px rgba(0, 0, 0, 0.42));
-  transform: translateY(18%);
+  transform: translateY(-12%);
 }
 
 .overlay-lineups__divider img {
@@ -1100,12 +1100,12 @@ function initials(name: string): string {
 
 .overlay-player-card__stat-badge--goals {
   left: clamp(0px, 4cqw, 8px);
-  transform: translateX(-24%);
+  transform: translate(-12%, 50%);
 }
 
 .overlay-player-card__stat-badge--assists {
   right: clamp(0px, 4cqw, 8px);
-  transform: translateX(24%);
+  transform: translate(12%, 50%);
 }
 
 .overlay-intermission {
