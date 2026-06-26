@@ -1066,7 +1066,7 @@ function initials(name: string): string {
     0 3px 8px rgba(0, 0, 0, 0.55);
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
-  -webkit-text-stroke: 0.5px rgba(0, 0, 0, 0.82);
+  -webkit-text-stroke: 0.25px rgba(0, 0, 0, 0.82);
   transform: translateX(-50%);
 }
 
