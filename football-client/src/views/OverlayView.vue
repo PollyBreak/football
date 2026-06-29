@@ -912,20 +912,22 @@ function initials(name: string): string {
 }
 
 .overlay-score {
-  min-width: 70px;
+  min-width: 84px;
   display: inline-flex;
   align-items: baseline;
   justify-content: center;
-  gap: 6px;
-  padding: 3px 8px 4px;
+  gap: 7px;
+  padding: 4px 10px 5px;
   border: 2px solid rgba(255, 255, 255, 0.72);
   border-radius: 8px;
   color: #ffffff;
   background: linear-gradient(180deg, rgba(255, 255, 255, 0.12), rgba(255, 255, 255, 0.03));
   box-shadow: inset 0 0 18px rgba(255, 255, 255, 0.12), 0 0 22px rgba(255, 210, 64, 0.42);
-  font-size: clamp(20px, 2.2vw, 25px);
+  font-size: clamp(24px, 2.64vw, 30px);
   font-weight: 950;
   line-height: 0.92;
+  transform: translateY(-8px) scale(1.29);
+  transform-origin: bottom center;
 }
 
 .overlay-score span {
@@ -962,14 +964,14 @@ function initials(name: string): string {
   top: calc(100% + 6px);
   left: 50%;
   transform: translateX(-50%);
-  min-width: 72px;
-  padding: 2px 9px 3px;
+  min-width: 101px;
+  padding: 3px 13px 4px;
   border: 1.5px solid rgba(255, 255, 255, 0.78);
   border-radius: 6px;
   color: #ffffff;
   background: rgba(255, 255, 255, 0.08);
   box-shadow: inset 0 0 12px rgba(255, 255, 255, 0.1);
-  font-size: 15px;
+  font-size: 21px;
   line-height: 1;
   text-align: center;
 }
@@ -1010,7 +1012,7 @@ function initials(name: string): string {
 
 .overlay-goal-list__column--right {
   grid-column: 3;
-  align-items: flex-end;
+  align-items: start;
   justify-items: end;
   text-align: right;
 }
