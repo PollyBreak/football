@@ -139,6 +139,45 @@ public class TelegramContributionService {
                 .toList();
     }
 
+    @Transactional
+    public List<ContributionStatusResponse> updateContributionStatuses(
+            Long sessionId,
+            Long userId,
+            List<Long> playerIds,
+            Boolean paid
+    ) {
+        if (userId == null) {
+            throw new IllegalArgumentException("userId is required");
+        }
+        if (playerIds == null || playerIds.isEmpty()) {
+            throw new IllegalArgumentException("playerIds must not be empty");
+        }
+        boolean paidValue = Boolean.TRUE.equals(paid);
+        Player currentPlayer = playerRepository.findByUserId(userId)
+                .orElseThrow(() -> new IllegalArgumentException("Player profile not found for user: " + userId));
+        if (sessionPlayerRepository.findBySessionIdAndPlayerIdAndActiveTrue(sessionId, currentPlayer.getId()).isEmpty()) {
+            throw new IllegalArgumentException("Only session players can update contribution statuses");
+        }
+
+        List<Long> uniquePlayerIds = playerIds.stream()
+                .distinct()
+                .toList();
+        if (!paidValue && (uniquePlayerIds.size() != 1 || !uniquePlayerIds.get(0).equals(currentPlayer.getId()))) {
+            throw new IllegalArgumentException("Players can only cancel their own contribution status");
+        }
+        for (Long playerId : uniquePlayerIds) {
+            Player player = playerRepository.findById(playerId)
+                    .orElseThrow(() -> new IllegalArgumentException("Player not found: " + playerId));
+            if (sessionPlayerRepository.findBySessionIdAndPlayerIdAndActiveTrue(sessionId, playerId).isEmpty()) {
+                throw new IllegalArgumentException("Player is not registered for this session: " + playerId);
+            }
+            applyContributionStatus(sessionId, player, paidValue);
+        }
+
+        refreshContributionMessageSafely(sessionId);
+        return getContributionStatuses(sessionId);
+    }
+
     @Transactional(readOnly = true)
     public void sendContributionReminder(Long sessionId, Integer hoursBefore) {
         GameSession session = getSession(sessionId);

@@ -175,6 +175,9 @@ export const api = {
   getContributionStatuses(sessionId: number): Promise<ContributionStatus[]> {
     return request(`/api/sessions/${sessionId}/contributions/statuses`);
   },
+  updateContributionStatuses(sessionId: number, payload: Record<string, unknown>): Promise<ContributionStatus[]> {
+    return request(`/api/sessions/${sessionId}/contributions/statuses`, { method: 'POST', body: JSON.stringify(payload) });
+  },
   getContributionReminders(sessionId: number): Promise<ContributionReminder[]> {
     return request(`/api/sessions/${sessionId}/contribution-reminders`);
   },

@@ -1252,7 +1252,8 @@ textarea {
 }
 
 .create-session-link,
-.join-session-button {
+.join-session-button,
+.contribution-button {
   display: flex;
   align-items: center;
   justify-content: center;
@@ -1276,8 +1277,17 @@ textarea {
   background: linear-gradient(135deg, #d95d5d, #9f3030);
 }
 
+.contribution-button.is-unpaid {
+  background: linear-gradient(135deg, var(--success), color-mix(in srgb, var(--success) 72%, #123021));
+}
+
+.contribution-button.is-paid {
+  background: linear-gradient(135deg, var(--accent), var(--accent-dark));
+}
+
 .join-session-button:disabled,
-.join-session-button.is-danger:disabled {
+.join-session-button.is-danger:disabled,
+.contribution-button:disabled {
   color: #6d7a84;
   background: #d7e1e8;
   cursor: not-allowed;
@@ -1406,6 +1416,43 @@ textarea {
 .contribution-status-chip.is-paid {
   background: color-mix(in srgb, var(--success) 12%, var(--surface-bg));
   color: var(--text);
+}
+
+.contribution-dialog {
+  gap: 14px;
+}
+
+.contribution-payment-card {
+  display: grid;
+  gap: 6px;
+  padding: 12px 14px;
+  border: 1px solid var(--card-border);
+  border-radius: 14px;
+  background: var(--surface-bg);
+}
+
+.contribution-payment-card p {
+  margin: 0;
+  line-height: 1.35;
+}
+
+.contribution-options,
+.contribution-player-list {
+  display: grid;
+  gap: 8px;
+}
+
+.contribution-option,
+.contribution-player-option {
+  min-height: 44px;
+  justify-content: space-between;
+  border-radius: 14px;
+}
+
+.contribution-player-list {
+  max-height: min(320px, 42vh);
+  overflow: auto;
+  padding-right: 2px;
 }
 
 .primary-button,

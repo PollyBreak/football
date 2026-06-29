@@ -579,6 +579,84 @@
       {{ membershipButtonLabel }}
     </button>
 
+    <button
+      v-if="showContributionButton"
+      class="primary-button contribution-button"
+      :class="{ 'is-paid': currentUserContributionPaid, 'is-unpaid': !currentUserContributionPaid }"
+      type="button"
+      :disabled="pendingContributionSave"
+      @click="openContributionDialog"
+    >
+      {{ contributionButtonLabel }}
+    </button>
+
+    <div v-if="contributionDialogOpen" class="settings-overlay" @click.self="closeContributionDialog">
+      <form class="settings-window stack-sm contribution-dialog" @submit.prevent="saveContributionDialog">
+        <div class="section-header">
+          <div>
+            <p class="eyebrow">Взнос</p>
+            <h3 class="section-title">{{ currentUserContributionPaid ? 'Отменить/сдать взнос' : 'Сдать взнос' }}</h3>
+          </div>
+          <button class="ghost-button" type="button" @click="closeContributionDialog" :disabled="pendingContributionSave">Закрыть</button>
+        </div>
+
+        <div class="contribution-payment-card">
+          <p>{{ currentUserContributionPaid ? 'Взнос' : 'Переведите оплату за игру.' }}</p>
+          <p v-if="session.feeAmount">💰 {{ session.feeAmount }} тенге</p>
+          <p v-if="session.feeRecipient">💸 {{ session.feeRecipient }}</p>
+        </div>
+
+        <div class="contribution-options">
+          <label v-if="currentUserContributionPaid" class="reminder-checkbox contribution-option">
+            <span>Отменить взнос</span>
+            <input
+              type="radio"
+              name="contribution-action"
+              value="cancel"
+              :checked="contributionAction === 'cancel'"
+              @change="setContributionAction('cancel')"
+            />
+          </label>
+          <label class="reminder-checkbox contribution-option">
+            <span>Сдаю за другого игрока</span>
+            <input
+              :type="currentUserContributionPaid ? 'radio' : 'checkbox'"
+              name="contribution-action"
+              :checked="contributionForOther"
+              @change="currentUserContributionPaid ? setContributionAction('other') : setContributionForOther(($event.target as HTMLInputElement).checked)"
+            />
+          </label>
+        </div>
+
+        <div v-if="contributionForOther" class="contribution-player-list">
+          <label
+            v-for="status in contributionSelectableStatuses"
+            :key="`contribution-${status.playerId}`"
+            class="reminder-checkbox contribution-player-option"
+          >
+            <span>{{ status.displayName }}</span>
+            <input
+              type="checkbox"
+              :checked="contributionSelectedPlayerIds.includes(status.playerId)"
+              :disabled="status.playerId === authState.player?.playerId"
+              @change="toggleContributionPlayer(status.playerId, ($event.target as HTMLInputElement).checked)"
+            />
+          </label>
+          <p v-if="!contributionSelectableStatuses.length" class="muted">Все участники уже отметились.</p>
+        </div>
+
+        <p v-if="contributionDialogError" class="error-text">{{ contributionDialogError }}</p>
+        <div v-if="currentUserContributionPaid" class="button-row">
+          <button class="ghost-button" type="button" @click="closeContributionDialog" :disabled="pendingContributionSave">Отмена</button>
+          <button class="primary-button" type="submit" :disabled="pendingContributionSave">Сохранить</button>
+        </div>
+        <div v-else class="button-row">
+          <button class="ghost-button" type="button" @click="saveContributionStatus(false)" :disabled="pendingContributionSave">Не сдал</button>
+          <button class="primary-button" type="button" @click="saveContributionStatus(true)" :disabled="pendingContributionSave">Сдал</button>
+        </div>
+      </form>
+    </div>
+
     <div class="tabs">
       <button v-for="tab in tabs" :key="tab" class="tab-button" :class="{ 'is-active': activeTab === tab }" @click="activeTab = tab">
         {{ tabLabels[tab] }}
@@ -1081,6 +1159,7 @@ const pendingMembership = ref(false);
 const pendingSessionUpdate = ref(false);
 const pendingRegistrationStart = ref(false);
 const pendingContributionStart = ref(false);
+const pendingContributionSave = ref(false);
 const pendingReminderUpdate = ref(false);
 const pendingGuestPlayerCreate = ref(false);
 const pendingPlayerRemove = ref(false);
@@ -1104,6 +1183,11 @@ const removePlayerDialogOpen = ref(false);
 const adminDialogOpen = ref(false);
 const overlayDialogOpen = ref(false);
 const streamDialogOpen = ref(false);
+const contributionDialogOpen = ref(false);
+const contributionForOther = ref(false);
+const contributionAction = ref<'cancel' | 'other'>('other');
+const contributionSelectedPlayerIds = ref<number[]>([]);
+const contributionDialogError = ref('');
 const adminUnlocked = ref(false);
 const adminPassword = ref('');
 const playersViewLoading = ref(false);
@@ -1173,6 +1257,29 @@ const membershipButtonLabel = computed(() => {
   if (currentUserSessionPlayer.value) return 'Покинуть игру';
   if (currentUserWaitlistEntry.value) return 'Покинуть очередь';
   return sessionIsFull.value ? 'Встать в очередь' : 'Присоединиться к игре';
+});
+const contributionStatusByPlayerId = computed(() => {
+  return new Map(contributionStatuses.value.map((status) => [status.playerId, status]));
+});
+const currentUserContributionStatus = computed(() => {
+  const currentPlayerId = authState.player?.playerId;
+  return currentPlayerId ? contributionStatusByPlayerId.value.get(currentPlayerId) : undefined;
+});
+const currentUserContributionPaid = computed(() => Boolean(currentUserContributionStatus.value?.paid));
+const showContributionButton = computed(() => {
+  return Boolean(session.value?.telegramContributionMessageId && currentUserSessionPlayer.value && !sessionIsFinished.value);
+});
+const contributionButtonLabel = computed(() => {
+  return currentUserContributionPaid.value ? 'Отменить/сдать взнос' : 'Сдать взнос';
+});
+const contributionSelectableStatuses = computed(() => {
+  const currentPlayerId = authState.player?.playerId;
+  const statuses = contributionStatuses.value.filter((status) => !status.paid || status.playerId === currentPlayerId);
+  return statuses.sort((left, right) => {
+    if (left.playerId === currentPlayerId) return -1;
+    if (right.playerId === currentPlayerId) return 1;
+    return left.displayName.localeCompare(right.displayName, 'ru');
+  });
 });
 const hasContributionReminder = (hoursBefore: number) => {
   return contributionReminders.value.some((reminder) => reminder.hoursBefore === hoursBefore);
@@ -1942,6 +2049,103 @@ function syncAutoStartContributionCollectionFromReminders() {
 
 async function loadContributionStatuses() {
   contributionStatuses.value = await api.getContributionStatuses(sessionIdNumber.value);
+}
+
+function openContributionDialog() {
+  const currentPlayerId = authState.player?.playerId;
+  if (!currentPlayerId) {
+    error.value = 'Сначала заполните профиль игрока';
+    return;
+  }
+
+  contributionDialogError.value = '';
+  contributionDialogOpen.value = true;
+  contributionAction.value = currentUserContributionPaid.value ? 'cancel' : 'other';
+  contributionForOther.value = false;
+  contributionSelectedPlayerIds.value = [currentPlayerId];
+}
+
+function closeContributionDialog() {
+  if (pendingContributionSave.value) {
+    return;
+  }
+  contributionDialogOpen.value = false;
+  contributionDialogError.value = '';
+}
+
+function setContributionAction(action: 'cancel' | 'other') {
+  contributionAction.value = action;
+  contributionForOther.value = action === 'other';
+  ensureCurrentContributionSelected();
+}
+
+function setContributionForOther(enabled: boolean) {
+  contributionForOther.value = enabled;
+  ensureCurrentContributionSelected();
+}
+
+function ensureCurrentContributionSelected() {
+  const currentPlayerId = authState.player?.playerId;
+  if (!currentPlayerId) {
+    contributionSelectedPlayerIds.value = [];
+    return;
+  }
+  if (!contributionSelectedPlayerIds.value.includes(currentPlayerId)) {
+    contributionSelectedPlayerIds.value = [currentPlayerId, ...contributionSelectedPlayerIds.value];
+  }
+}
+
+function toggleContributionPlayer(playerId: number, checked: boolean) {
+  const currentPlayerId = authState.player?.playerId;
+  if (playerId === currentPlayerId) {
+    ensureCurrentContributionSelected();
+    return;
+  }
+  contributionSelectedPlayerIds.value = checked
+    ? [...new Set([...contributionSelectedPlayerIds.value, playerId])]
+    : contributionSelectedPlayerIds.value.filter((id) => id !== playerId);
+}
+
+async function saveContributionDialog() {
+  if (currentUserContributionPaid.value && contributionAction.value === 'cancel') {
+    await saveContributionStatus(false);
+    return;
+  }
+  await saveContributionStatus(true);
+}
+
+async function saveContributionStatus(paid: boolean) {
+  const currentPlayerId = authState.player?.playerId;
+  const userId = authState.user?.id;
+  if (!currentPlayerId || !userId) {
+    contributionDialogError.value = 'Сначала откройте приложение через Telegram и заполните профиль игрока';
+    return;
+  }
+
+  const playerIds = paid && contributionForOther.value
+    ? contributionSelectedPlayerIds.value
+    : [currentPlayerId];
+  const uniquePlayerIds = [...new Set(playerIds)];
+  if (!uniquePlayerIds.length) {
+    contributionDialogError.value = 'Выберите хотя бы одного игрока';
+    return;
+  }
+
+  pendingContributionSave.value = true;
+  contributionDialogError.value = '';
+  error.value = '';
+  try {
+    contributionStatuses.value = await api.updateContributionStatuses(sessionIdNumber.value, {
+      userId,
+      playerIds: uniquePlayerIds,
+      paid
+    });
+    contributionDialogOpen.value = false;
+  } catch (err) {
+    contributionDialogError.value = err instanceof Error ? err.message : 'Не удалось обновить статус взноса';
+  } finally {
+    pendingContributionSave.value = false;
+  }
 }
 
 async function loadMatches() {

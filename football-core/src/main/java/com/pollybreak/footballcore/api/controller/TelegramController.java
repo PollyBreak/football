@@ -7,6 +7,7 @@ import com.pollybreak.footballcore.api.dto.telegram.ContributionStatusResponse;
 import com.pollybreak.footballcore.api.dto.telegram.StartRegistrationRequest;
 import com.pollybreak.footballcore.api.dto.telegram.StartRegistrationResponse;
 import com.pollybreak.footballcore.api.dto.telegram.TelegramKnownChatResponse;
+import com.pollybreak.footballcore.api.dto.telegram.UpdateContributionStatusRequest;
 import com.pollybreak.footballcore.api.dto.telegram.ValidateTelegramChatRequest;
 import com.pollybreak.footballcore.api.dto.telegram.ValidateTelegramChatResponse;
 import com.pollybreak.footballcore.service.SessionContributionReminderService;
@@ -68,6 +69,19 @@ public class TelegramController {
     @GetMapping("/api/sessions/{sessionId}/contributions/statuses")
     public List<ContributionStatusResponse> getContributionStatuses(@PathVariable Long sessionId) {
         return telegramContributionService.getContributionStatuses(sessionId);
+    }
+
+    @PostMapping("/api/sessions/{sessionId}/contributions/statuses")
+    public List<ContributionStatusResponse> updateContributionStatuses(
+            @PathVariable Long sessionId,
+            @Valid @RequestBody UpdateContributionStatusRequest request
+    ) {
+        return telegramContributionService.updateContributionStatuses(
+                sessionId,
+                request.userId(),
+                request.playerIds(),
+                request.paid()
+        );
     }
 
     @GetMapping("/api/sessions/{sessionId}/contribution-reminders")
