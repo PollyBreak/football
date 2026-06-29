@@ -289,7 +289,7 @@ public class TelegramContributionService {
         }
         lines.add("");
         lines.add("Просим всех оперативно сдавать взносы!");
-        lines.add("Проголосуйте ниже, если уже сдали. Если кнопок нет, то <a href=\""
+        lines.add("❗ Проголосуйте ниже, если уже сдали. Если кнопок нет, то <a href=\""
                 + escapeAttribute(sessionAppUrl(session.getId()))
                 + "\">отметьтесь в приложении</a> (можно сдать за себя/других игроков)");
         lines.add("Опрос работает только для тех, кто <a href=\"" + escapeAttribute(sessionAppUrl(session.getId())) + "\">зарегистрирован на игру</a>.");
