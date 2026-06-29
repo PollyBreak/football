@@ -100,17 +100,36 @@ public class TelegramBotApiClient {
             throw new IllegalStateException("Telegram bot token is not configured");
         }
 
-        JsonNode response = RestClient.create()
-                .post()
-                .uri("https://api.telegram.org/bot" + properties.getToken() + "/" + method)
-                .body(payload)
-                .retrieve()
-                .body(JsonNode.class);
+        JsonNode response;
+        try {
+            response = RestClient.create()
+                    .post()
+                    .uri("https://api.telegram.org/bot" + properties.getToken() + "/" + method)
+                    .body(payload)
+                    .retrieve()
+                    .body(JsonNode.class);
+        } catch (HttpClientErrorException exception) {
+            Long migratedChatId = migratedChatId(exception);
+            if (migratedChatId != null) {
+                throw new TelegramChatMigratedException(migratedChatId);
+            }
+            throw exception;
+        }
 
         if (response == null || !response.path("ok").asBoolean(false)) {
             throw new IllegalStateException("Telegram Bot API error: " + objectMapper.valueToTree(response));
         }
         return response.path("result");
+    }
+
+    private Long migratedChatId(HttpClientErrorException exception) {
+        try {
+            JsonNode body = objectMapper.readTree(exception.getResponseBodyAsString());
+            JsonNode migratedChatId = body.path("parameters").path("migrate_to_chat_id");
+            return migratedChatId.canConvertToLong() ? migratedChatId.asLong() : null;
+        } catch (Exception ignored) {
+            return null;
+        }
     }
 
     private boolean isMessageNotModified(HttpClientErrorException exception) {

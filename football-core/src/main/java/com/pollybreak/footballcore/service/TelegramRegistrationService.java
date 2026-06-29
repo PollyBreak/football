@@ -75,13 +75,22 @@ public class TelegramRegistrationService {
         return new ValidateTelegramChatResponse(chatId, title, true);
     }
 
+    public ValidateTelegramChatResponse validateSessionChat(GameSession session, Long userId) {
+        try {
+            return validateChat(session.getTelegramChatId(), userId);
+        } catch (TelegramChatMigratedException exception) {
+            session.setTelegramChatId(exception.getMigratedChatId());
+            return validateChat(exception.getMigratedChatId(), userId);
+        }
+    }
+
     @Transactional
     public StartRegistrationResponse startRegistration(Long sessionId, Long userId) {
         GameSession session = getSession(sessionId);
         if (session.getTelegramChatId() == null) {
             throw new IllegalArgumentException("Telegram chat is not linked to this session");
         }
-        validateChat(session.getTelegramChatId(), userId);
+        validateSessionChat(session, userId);
 
         String text = buildAnnouncement(session);
         JsonNode result = telegramBotApiClient.sendMessage(session.getTelegramChatId(), text, registrationKeyboard(session.getId()));
@@ -169,12 +178,22 @@ public class TelegramRegistrationService {
         if (session.getTelegramChatId() == null || session.getTelegramRegistrationMessageId() == null) {
             return;
         }
-        telegramBotApiClient.editMessageTextIgnoringNotModified(
-                session.getTelegramChatId(),
-                session.getTelegramRegistrationMessageId(),
-                buildAnnouncement(session),
-                registrationKeyboard(session.getId())
-        );
+        try {
+            telegramBotApiClient.editMessageTextIgnoringNotModified(
+                    session.getTelegramChatId(),
+                    session.getTelegramRegistrationMessageId(),
+                    buildAnnouncement(session),
+                    registrationKeyboard(session.getId())
+            );
+        } catch (TelegramChatMigratedException exception) {
+            session.setTelegramChatId(exception.getMigratedChatId());
+            telegramBotApiClient.editMessageTextIgnoringNotModified(
+                    session.getTelegramChatId(),
+                    session.getTelegramRegistrationMessageId(),
+                    buildAnnouncement(session),
+                    registrationKeyboard(session.getId())
+            );
+        }
     }
 
     private void refreshRegistrationMessageSafely(Long sessionId) {

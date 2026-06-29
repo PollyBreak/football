@@ -36,7 +36,7 @@ import org.springframework.transaction.event.TransactionalEventListener;
 public class TelegramContributionService {
 
     private static final DateTimeFormatter TIME_FORMAT = DateTimeFormatter.ofPattern("HH:mm");
-    private static final String DEFAULT_APP_URL = "https://t.me/football_pozitiv_bot/join";
+    private static final String DEFAULT_APP_URL = "https://t.me/football_pozitiv_bot";
 
     private final TelegramBotApiClient telegramBotApiClient;
     private final TelegramBotProperties telegramBotProperties;
@@ -53,7 +53,7 @@ public class TelegramContributionService {
         if (session.getTelegramChatId() == null) {
             throw new IllegalArgumentException("Telegram chat is not linked to this session");
         }
-        telegramRegistrationService.validateChat(session.getTelegramChatId(), userId);
+        telegramRegistrationService.validateSessionChat(session, userId);
 
         String text = buildContributionMessage(session);
         JsonNode result;
@@ -114,12 +114,22 @@ public class TelegramContributionService {
         if (session.getTelegramChatId() == null || session.getTelegramContributionMessageId() == null) {
             return;
         }
-        telegramBotApiClient.editMessageTextIgnoringNotModified(
-                session.getTelegramChatId(),
-                session.getTelegramContributionMessageId(),
-                buildContributionMessage(session),
-                contributionKeyboard(session.getId())
-        );
+        try {
+            telegramBotApiClient.editMessageTextIgnoringNotModified(
+                    session.getTelegramChatId(),
+                    session.getTelegramContributionMessageId(),
+                    buildContributionMessage(session),
+                    contributionKeyboard(session.getId())
+            );
+        } catch (TelegramChatMigratedException exception) {
+            session.setTelegramChatId(exception.getMigratedChatId());
+            telegramBotApiClient.editMessageTextIgnoringNotModified(
+                    session.getTelegramChatId(),
+                    session.getTelegramContributionMessageId(),
+                    buildContributionMessage(session),
+                    contributionKeyboard(session.getId())
+            );
+        }
     }
 
     @Transactional(readOnly = true)
@@ -279,6 +289,7 @@ public class TelegramContributionService {
         }
         lines.add("");
         lines.add("Просим всех оперативно сдавать взносы!");
+        lines.add("<a href=\"" + escapeAttribute(sessionAppUrl(session.getId())) + "\">Сдать взнос в приложении (можно сдать за себя/других игроков)</a>");
         lines.add("Опрос работает только для тех, кто <a href=\"" + escapeAttribute(sessionAppUrl(session.getId())) + "\">зарегистрирован на игру</a>.");
         lines.add("");
         lines.add("✅ Сдали (" + paidPlayers.size() + "/" + maxPlayersLabel(session) + "): " + code(names(paidPlayers)));
