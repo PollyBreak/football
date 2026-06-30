@@ -11,6 +11,7 @@ import com.pollybreak.footballcore.domain.entity.SessionTeam;
 import com.pollybreak.footballcore.domain.enums.MatchStatus;
 import com.pollybreak.footballcore.repository.GameSessionRepository;
 import com.pollybreak.footballcore.repository.MatchEventRepository;
+import com.pollybreak.footballcore.repository.MatchPlayerRepository;
 import com.pollybreak.footballcore.repository.SessionMatchRepository;
 import com.pollybreak.footballcore.repository.SessionTeamPlayerRepository;
 import com.pollybreak.footballcore.repository.SessionTeamRepository;
@@ -33,6 +34,7 @@ public class OverlayStateService {
     private final SessionTeamRepository sessionTeamRepository;
     private final SessionTeamPlayerRepository sessionTeamPlayerRepository;
     private final MatchEventRepository matchEventRepository;
+    private final MatchPlayerRepository matchPlayerRepository;
 
     public OverlayStateResponse getState(Long sessionId, Long preferredMatchId) {
         if (!gameSessionRepository.existsById(sessionId)) {
@@ -72,7 +74,7 @@ public class OverlayStateService {
                 currentMatch,
                 inProgressMatches,
                 matchResponses,
-                getTeams(sessionId),
+                getTeams(sessionId, currentMatch),
                 currentMatchEvents,
                 sessionEvents,
                 standings,
@@ -155,18 +157,36 @@ public class OverlayStateService {
         return score == null ? 0 : score;
     }
 
-    private List<OverlayTeamResponse> getTeams(Long sessionId) {
+    private List<OverlayTeamResponse> getTeams(Long sessionId, SessionMatchResponse currentMatch) {
+        Map<Long, List<SessionTeamPlayerResponse>> matchPlayersByTeam = activeMatchPlayersByTeam(currentMatch);
         return sessionTeamRepository.findAllBySessionIdOrderByDisplayOrderAsc(sessionId).stream()
-                .map(this::toOverlayTeam)
+                .map(team -> toOverlayTeam(team, matchPlayersByTeam))
                 .toList();
     }
 
-    private OverlayTeamResponse toOverlayTeam(SessionTeam team) {
-        List<SessionTeamPlayerResponse> players = sessionTeamPlayerRepository
-                .findAllBySessionTeamIdAndActiveTrue(team.getId())
+    private Map<Long, List<SessionTeamPlayerResponse>> activeMatchPlayersByTeam(SessionMatchResponse currentMatch) {
+        if (currentMatch == null) {
+            return Map.of();
+        }
+        return matchPlayerRepository.findActiveByMatchIdForOverlay(currentMatch.id())
                 .stream()
-                .map(SessionTeamPlayerResponse::fromEntity)
-                .toList();
+                .map(SessionTeamPlayerResponse::fromMatchPlayer)
+                .collect(java.util.stream.Collectors.groupingBy(
+                        SessionTeamPlayerResponse::sessionTeamId,
+                        LinkedHashMap::new,
+                        java.util.stream.Collectors.toList()
+                ));
+    }
+
+    private OverlayTeamResponse toOverlayTeam(SessionTeam team, Map<Long, List<SessionTeamPlayerResponse>> matchPlayersByTeam) {
+        List<SessionTeamPlayerResponse> players = matchPlayersByTeam.get(team.getId());
+        if (players == null) {
+            players = sessionTeamPlayerRepository
+                    .findAllBySessionTeamIdAndActiveTrue(team.getId())
+                    .stream()
+                    .map(SessionTeamPlayerResponse::fromEntity)
+                    .toList();
+        }
 
         return new OverlayTeamResponse(
                 team.getId(),

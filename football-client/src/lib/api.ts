@@ -5,6 +5,7 @@ import type {
   FileUploadResponse,
   GameSession,
   MatchEvent,
+  MatchPlayer,
   OverlayState,
   PlayerProfile,
   SessionMatch,
@@ -281,8 +282,14 @@ export const api = {
   getMatchEvents(matchId: number): Promise<MatchEvent[]> {
     return request(`/api/session-matches/${matchId}/events`);
   },
+  getMatchPlayers(matchId: number): Promise<MatchPlayer[]> {
+    return request(`/api/session-matches/${matchId}/players`);
+  },
   addGoal(matchId: number, payload: Record<string, unknown>): Promise<unknown> {
     return request(`/api/session-matches/${matchId}/events/goals`, { method: 'POST', body: JSON.stringify(payload) });
+  },
+  addSubstitution(matchId: number, payload: Record<string, unknown>): Promise<MatchEvent> {
+    return request(`/api/session-matches/${matchId}/events/substitutions`, { method: 'POST', body: JSON.stringify(payload) });
   },
   deleteEvent(matchId: number, eventId: number): Promise<void> {
     return request(`/api/session-matches/${matchId}/events/${eventId}`, { method: 'DELETE' });

@@ -9,6 +9,7 @@ public enum MatchEventType {
     MATCH_FINISHED,
     MATCH_PAUSED,
     MATCH_RESUMED,
+    SUBSTITUTION,
     SUBSTITUTION_IN,
     SUBSTITUTION_OUT,
     OWN_GOAL,

@@ -251,6 +251,29 @@
       </section>
     </Transition>
 
+    <Transition name="goal-toast">
+      <section v-if="substitutionToast" class="overlay-goal-toast overlay-substitution-toast">
+        <p>Замена</p>
+        <div class="overlay-goal-person">
+          <span>Ушел</span>
+          <div class="overlay-goal-photo" :style="substitutionPhotoStyle(substitutionToast.team)">
+            <PlayerAvatar :sources="[substitutionToast.outPhotoUrl, substitutionToast.outTelegramPhotoUrl]" :initials="initials(substitutionToast.outPlayer)" :alt="substitutionToast.outPlayer" />
+          </div>
+          <strong>{{ substitutionToast.outPlayer }}</strong>
+        </div>
+
+        <div class="overlay-goal-arrow">→</div>
+
+        <div class="overlay-goal-person">
+          <span>Вышел</span>
+          <div class="overlay-goal-photo" :style="substitutionPhotoStyle(substitutionToast.team)">
+            <PlayerAvatar :sources="[substitutionToast.inPhotoUrl, substitutionToast.inTelegramPhotoUrl]" :initials="initials(substitutionToast.inPlayer)" :alt="substitutionToast.inPlayer" />
+          </div>
+          <strong>{{ substitutionToast.inPlayer }}</strong>
+        </div>
+      </section>
+    </Transition>
+
     <section v-if="error" class="overlay-error">{{ error }}</section>
   </main>
 </template>
@@ -302,6 +325,15 @@ const goalToast = ref<{
   assistTelegramPhotoUrl: string | null;
   ownGoal: boolean;
   cancelled: boolean;
+} | null>(null);
+const substitutionToast = ref<{
+  inPlayer: string;
+  inPhotoUrl: string | null;
+  inTelegramPhotoUrl: string | null;
+  outPlayer: string;
+  outPhotoUrl: string | null;
+  outTelegramPhotoUrl: string | null;
+  team: OverlayTeam | null;
 } | null>(null);
 
 let events: EventSource | null = null;
@@ -555,6 +587,7 @@ function connectStream() {
   events.addEventListener('MATCH_PAUSED', handleOverlayEvent);
   events.addEventListener('MATCH_RESUMED', handleOverlayEvent);
   events.addEventListener('GOAL_RECORDED', handleOverlayEvent);
+  events.addEventListener('SUBSTITUTION_RECORDED', handleOverlayEvent);
   events.addEventListener('GOAL_CANCELLED', handleOverlayEvent);
 
   events.onopen = () => {
@@ -586,9 +619,13 @@ function handleOverlayEvent(message: MessageEvent<string>) {
   if (payload.type === 'GOAL_CANCELLED' && payload.event) {
     showGoalToast(payload.event, null, true);
   }
+  if (payload.type === 'SUBSTITUTION_RECORDED' && payload.event) {
+    showSubstitutionToast(payload.event);
+  }
 }
 
 function showGoalToast(event: MatchEvent, assist: MatchEvent | null, cancelled: boolean) {
+  substitutionToast.value = null;
   goalToast.value = {
     scorer: eventDisplayName(event),
     scorerPhotoUrl: event.playerPhotoUrl,
@@ -605,6 +642,25 @@ function showGoalToast(event: MatchEvent, assist: MatchEvent | null, cancelled: 
   toastTimer = window.setTimeout(() => {
     goalToast.value = null;
   }, cancelled ? 3200 : 5200);
+}
+
+function showSubstitutionToast(event: MatchEvent) {
+  goalToast.value = null;
+  substitutionToast.value = {
+    inPlayer: eventDisplayName(event),
+    inPhotoUrl: event.playerPhotoUrl,
+    inTelegramPhotoUrl: event.playerTelegramPhotoUrl,
+    outPlayer: relatedEventDisplayName(event),
+    outPhotoUrl: event.relatedPlayerPhotoUrl,
+    outTelegramPhotoUrl: event.relatedPlayerTelegramPhotoUrl,
+    team: findTeam(event.teamId)
+  };
+  if (toastTimer) {
+    window.clearTimeout(toastTimer);
+  }
+  toastTimer = window.setTimeout(() => {
+    substitutionToast.value = null;
+  }, 5200);
 }
 
 function matchSortValue(match: SessionMatch): number {
@@ -715,6 +771,12 @@ function eventDisplayName(event: MatchEvent): string {
   return event.playerDisplayName?.trim() || formatUsername(event.playerUsername) || (event.playerName ? shortName(event.playerName) : 'Игрок');
 }
 
+function relatedEventDisplayName(event: MatchEvent): string {
+  return event.relatedPlayerDisplayName?.trim()
+    || formatUsername(event.relatedPlayerUsername)
+    || (event.relatedPlayerName ? shortName(event.relatedPlayerName) : 'Игрок');
+}
+
 function formatUsername(username: string | null | undefined): string | null {
   const value = username?.trim();
   if (!value) {
@@ -783,6 +845,14 @@ function playerCardStyle(team: OverlayTeam | null): Record<string, string> {
 
 function leaderPhotoStyle(team: OverlayTeam | null): Record<string, string> {
   return playerCardStyle(team);
+}
+
+function substitutionPhotoStyle(team: OverlayTeam | null): Record<string, string> {
+  const color = playerBorderColor(team);
+  return {
+    '--substitution-team-color': color,
+    '--substitution-team-color-soft': `${color}66`
+  };
 }
 
 function teamLogo(team: OverlayTeam | null): string {
@@ -1543,6 +1613,30 @@ function initials(name: string): string {
   gap: 12px;
 }
 
+.overlay-goal-toast.overlay-substitution-toast {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 92px minmax(0, 1fr);
+  grid-template-areas:
+    "title title title"
+    "out arrow in";
+}
+
+.overlay-substitution-toast p {
+  grid-area: title;
+}
+
+.overlay-substitution-toast .overlay-goal-person:first-of-type {
+  grid-area: out;
+}
+
+.overlay-substitution-toast .overlay-goal-person:last-of-type {
+  grid-area: in;
+}
+
+.overlay-substitution-toast .overlay-goal-arrow {
+  grid-area: arrow;
+}
+
 .overlay-goal-toast p,
 .overlay-goal-toast strong,
 .overlay-goal-toast span {
@@ -1604,6 +1698,13 @@ function initials(name: string): string {
   box-shadow: 0 0 0 3px rgba(255, 210, 64, 0.42), 0 16px 28px rgba(0, 0, 0, 0.36);
   font-size: 34px;
   font-weight: 950;
+}
+
+.overlay-substitution-toast .overlay-goal-photo {
+  border-color: var(--substitution-team-color, rgba(255, 255, 255, 0.82));
+  box-shadow:
+    0 0 0 3px var(--substitution-team-color-soft, rgba(46, 242, 122, 0.4)),
+    0 16px 28px rgba(0, 0, 0, 0.36);
 }
 
 .overlay-goal-toast.is-cancelled .overlay-goal-photo {

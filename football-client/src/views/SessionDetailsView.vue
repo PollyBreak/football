@@ -324,14 +324,6 @@
                 <input v-model="sessionSettings.mvpVotingTelegramEnabled" type="checkbox" :disabled="!sessionSettings.telegramChatId" />
                 <span>Делать рассылку в чате</span>
               </label>
-              <button
-                class="ghost-button"
-                type="button"
-                :disabled="pendingMvpMessageSend || pendingSessionUpdate || !sessionSettings.telegramChatId"
-                @click="sendMvpVotingMessageAgain"
-              >
-                {{ pendingMvpMessageSend ? 'Отправляем...' : 'Отправить сообщение о голосовании' }}
-              </button>
             </template>
             <label class="field-label">
               <span>Заметки</span>
@@ -487,6 +479,9 @@
             </button>
             <button class="ghost-button" type="button" :disabled="pendingContributionStart || pendingSessionUpdate || sessionIsFinished" @click="startContributionCollection">
               Начать сбор взносов
+            </button>
+            <button class="ghost-button" type="button" :disabled="pendingMvpMessageSend || pendingSessionUpdate || !sessionSettings.telegramChatId" @click="sendMvpVotingMessageAgain">
+              {{ pendingMvpMessageSend ? 'Отправляем...' : 'Отправить сообщение о голосовании MVP вручную' }}
             </button>
           </div>
           <div class="contribution-status-strip" v-if="contributionStatuses.length">
@@ -2766,7 +2761,6 @@ async function sendMvpVotingMessageAgain() {
     }
     await api.sendSessionMvpVotingMessage(sessionIdNumber.value);
     await loadMvpVoting();
-    settingsOpen.value = true;
   } catch (err) {
     error.value = err instanceof Error ? err.message : 'Не удалось отправить сообщение о голосовании';
   } finally {

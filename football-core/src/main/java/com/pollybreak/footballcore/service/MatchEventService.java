@@ -5,17 +5,20 @@ import com.pollybreak.footballcore.api.dto.match.MatchEventResponse;
 import com.pollybreak.footballcore.api.dto.match.RecordAssistRequest;
 import com.pollybreak.footballcore.api.dto.match.RecordGoalRequest;
 import com.pollybreak.footballcore.api.dto.match.RecordPenaltyRequest;
+import com.pollybreak.footballcore.api.dto.match.RecordSubstitutionRequest;
 import com.pollybreak.footballcore.domain.entity.AppUser;
 import com.pollybreak.footballcore.domain.entity.MatchEvent;
 import com.pollybreak.footballcore.domain.entity.Player;
 import com.pollybreak.footballcore.domain.entity.SessionMatch;
 import com.pollybreak.footballcore.domain.entity.SessionTeam;
 import com.pollybreak.footballcore.domain.enums.MatchEventType;
+import com.pollybreak.footballcore.domain.enums.MatchStatus;
 import com.pollybreak.footballcore.repository.AppUserRepository;
 import com.pollybreak.footballcore.repository.MatchEventRepository;
 import com.pollybreak.footballcore.repository.PlayerRepository;
 import com.pollybreak.footballcore.repository.SessionMatchRepository;
 import com.pollybreak.footballcore.repository.SessionTeamRepository;
+import java.time.OffsetDateTime;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -33,6 +36,7 @@ public class MatchEventService {
     private final AppUserRepository appUserRepository;
     private final OverlayEventService overlayEventService;
     private final StreamBroadcastService streamBroadcastService;
+    private final MatchPlayerService matchPlayerService;
 
     public List<MatchEvent> findByMatchId(Long matchId) {
         return matchEventRepository.findAllByMatchIdOrderByEventTimeAscIdAsc(matchId);
@@ -150,10 +154,60 @@ public class MatchEventService {
     }
 
     @Transactional
+    public MatchEventResponse recordSubstitution(Long matchId, RecordSubstitutionRequest request) {
+        SessionMatch match = getMatch(matchId);
+        if (match.getStatus() != MatchStatus.IN_PROGRESS && match.getStatus() != MatchStatus.PAUSED) {
+            throw new IllegalArgumentException("Substitutions can only be recorded for active or paused matches");
+        }
+        if (request.playerInId().equals(request.playerOutId())) {
+            throw new IllegalArgumentException("Incoming and outgoing players must be different");
+        }
+
+        SessionTeam team = getTeamForMatch(match, request.teamId());
+        Player playerIn = getPlayer(request.playerInId());
+        Player playerOut = getPlayer(request.playerOutId());
+        OffsetDateTime substitutedAt = OffsetDateTime.now();
+
+        MatchEvent substitutionEvent = new MatchEvent();
+        substitutionEvent.setMatch(match);
+        substitutionEvent.setEventType(MatchEventType.SUBSTITUTION);
+        substitutionEvent.setTeam(team);
+        substitutionEvent.setPlayer(playerIn);
+        substitutionEvent.setRelatedPlayer(playerOut);
+        substitutionEvent.setMinuteInMatch(request.minuteInMatch());
+        substitutionEvent.setSecondInMatch(request.secondInMatch());
+        substitutionEvent.setCreatedBy(getUserOrNull(request.createdByUserId()));
+        substitutionEvent.setPayload(request.payload());
+        streamBroadcastService.attachActiveStreamTimecode(substitutionEvent, match.getSession().getId());
+        MatchEvent savedEvent = matchEventRepository.save(substitutionEvent);
+
+        matchPlayerService.applySubstitution(
+                match,
+                team,
+                playerIn,
+                playerOut,
+                substitutedAt
+        );
+
+        MatchEventResponse response = MatchEventResponse.fromEntity(savedEvent);
+        overlayEventService.publishAfterCommit(
+                OverlayEventService.SUBSTITUTION_RECORDED,
+                match.getSession().getId(),
+                match.getId(),
+                response,
+                null
+        );
+        return response;
+    }
+
+    @Transactional
     public void deleteEvent(Long matchId, Long eventId) {
         SessionMatch match = getMatch(matchId);
         MatchEvent event = matchEventRepository.findByIdAndMatchId(eventId, matchId)
                 .orElseThrow(() -> new IllegalArgumentException("Match event not found for this match"));
+        if (event.getEventType() == MatchEventType.SUBSTITUTION) {
+            throw new IllegalArgumentException("Substitution events cannot be deleted because they define match participation intervals");
+        }
         MatchEventResponse deletedEvent = MatchEventResponse.fromEntity(event);
         boolean deletedGoal = event.getEventType() == MatchEventType.GOAL || event.getEventType() == MatchEventType.OWN_GOAL;
 

@@ -279,6 +279,23 @@ export interface MatchEvent {
   createdAt: string;
 }
 
+export interface MatchPlayer {
+  id: number;
+  matchId: number;
+  teamId: number;
+  teamName: string;
+  playerId: number;
+  playerName: string;
+  playerDisplayName: string | null;
+  playerUsername: string | null;
+  playerPhotoUrl: string | null;
+  playerTelegramPhotoUrl: string | null;
+  startedAt: string;
+  endedAt: string | null;
+  source: string;
+  createdAt: string;
+}
+
 export interface SessionStandingsRow {
   teamId: number;
   teamName: string;
@@ -365,6 +382,7 @@ export type OverlayEventType =
   | 'MATCH_PAUSED'
   | 'MATCH_RESUMED'
   | 'GOAL_RECORDED'
+  | 'SUBSTITUTION_RECORDED'
   | 'GOAL_CANCELLED';
 
 export interface OverlayEvent {

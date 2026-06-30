@@ -63,7 +63,8 @@ export function matchEventLabel(type: string): string {
     MATCH_STARTED: 'Начало матча',
     MATCH_FINISHED: 'Завершение матча',
     MATCH_PAUSED: 'Пауза',
-    MATCH_RESUMED: 'Возобновление'
+    MATCH_RESUMED: 'Возобновление',
+    SUBSTITUTION: 'Замена'
   };
 
   return labels[type] ?? type;

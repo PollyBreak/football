@@ -46,6 +46,7 @@ public class SessionMatchService {
     private final OverlayEventService overlayEventService;
     private final MatchEventRepository matchEventRepository;
     private final StreamBroadcastService streamBroadcastService;
+    private final MatchPlayerService matchPlayerService;
 
     public List<SessionMatch> findBySessionId(Long sessionId) {
         return sessionMatchRepository.findAllBySessionIdOrderByMatchNumberAsc(sessionId);
@@ -213,6 +214,7 @@ public class SessionMatchService {
         match.setStartedAt(startedAt);
         match.setEndedAt(null);
         markSessionInProgress(match.getSession(), startedAt);
+        matchPlayerService.snapshotStartingLineups(match, startedAt);
         saveSystemEvent(match, MatchEventType.MATCH_STARTED);
         SessionMatchResponse response = SessionMatchResponse.fromEntity(match);
         overlayEventService.publishAfterCommit(

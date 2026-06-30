@@ -1397,6 +1397,11 @@ textarea {
   gap: 6px;
 }
 
+.admin-actions .ghost-button {
+  justify-content: flex-start;
+  text-align: left;
+}
+
 .admin-panel__muted {
   font-size: 0.82rem;
 }

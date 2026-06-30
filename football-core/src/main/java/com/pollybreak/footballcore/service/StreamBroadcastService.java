@@ -36,7 +36,8 @@ public class StreamBroadcastService {
             MatchEventType.GOAL,
             MatchEventType.OWN_GOAL,
             MatchEventType.GOAL_CANCELLED,
-            MatchEventType.PENALTY
+            MatchEventType.PENALTY,
+            MatchEventType.SUBSTITUTION
     );
 
     private final StreamBroadcastRepository streamBroadcastRepository;
@@ -247,6 +248,7 @@ public class StreamBroadcastService {
             case MATCH_RESUMED -> matchLabel + "возобновление";
             case ASSIST -> matchLabel + playerNameOrFallback(event) + ", ассист";
             case PENALTY -> "⚠️ ПЕНАЛЬТИ";
+            case SUBSTITUTION -> "🔄 Замена: " + playerNameOrFallback(event) + " вместо " + relatedPlayerNameOrFallback(event);
             case GOAL_CANCELLED -> "❌ Отмена гола" + scoreSuffix;
             case OWN_GOAL -> "⚽ АВТОГОЛ, " + playerNameOrFallback(event) + scoreSuffix;
             case GOAL -> "⚽ ГОЛ, " + playerNameOrFallback(event) + scoreSuffix;
@@ -289,6 +291,11 @@ public class StreamBroadcastService {
         String firstName = event.getRelatedPlayer().getFirstName();
         String lastName = event.getRelatedPlayer().getLastName();
         return lastName == null || lastName.isBlank() ? firstName : firstName + " " + lastName;
+    }
+
+    private String relatedPlayerNameOrFallback(MatchEvent event) {
+        String name = relatedPlayerName(event);
+        return name == null || name.isBlank() ? "игрока" : name;
     }
 
     private String formatTimecode(int offsetSeconds) {

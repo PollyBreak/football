@@ -23,6 +23,7 @@ public class OverlayEventService {
     public static final String MATCH_PAUSED = "MATCH_PAUSED";
     public static final String MATCH_RESUMED = "MATCH_RESUMED";
     public static final String GOAL_RECORDED = "GOAL_RECORDED";
+    public static final String SUBSTITUTION_RECORDED = "SUBSTITUTION_RECORDED";
     public static final String GOAL_CANCELLED = "GOAL_CANCELLED";
 
     private static final long STREAM_TIMEOUT_MILLIS = 6 * 60 * 60 * 1000L;

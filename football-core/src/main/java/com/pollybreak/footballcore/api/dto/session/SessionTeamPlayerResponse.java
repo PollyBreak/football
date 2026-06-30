@@ -1,5 +1,6 @@
 package com.pollybreak.footballcore.api.dto.session;
 
+import com.pollybreak.footballcore.domain.entity.MatchPlayer;
 import com.pollybreak.footballcore.domain.entity.SessionTeamPlayer;
 import com.pollybreak.footballcore.domain.enums.PlayerPosition;
 import java.time.OffsetDateTime;
@@ -35,6 +36,26 @@ public record SessionTeamPlayerResponse(
                 teamPlayer.isActive(),
                 teamPlayer.getJoinedAt(),
                 teamPlayer.getLeftAt()
+        );
+    }
+
+    public static SessionTeamPlayerResponse fromMatchPlayer(MatchPlayer matchPlayer) {
+        String playerName = matchPlayer.getPlayer().getFirstName()
+                + (matchPlayer.getPlayer().getLastName() != null ? " " + matchPlayer.getPlayer().getLastName() : "");
+
+        return new SessionTeamPlayerResponse(
+                matchPlayer.getId(),
+                matchPlayer.getTeam().getId(),
+                matchPlayer.getPlayer().getId(),
+                playerName,
+                matchPlayer.getPlayer().getUser() != null ? matchPlayer.getPlayer().getUser().getDisplayName() : null,
+                matchPlayer.getPlayer().getUser() != null ? matchPlayer.getPlayer().getUser().getUsername() : null,
+                matchPlayer.getPlayer().getEffectivePhotoUrl(),
+                matchPlayer.getPlayer().getTelegramPhotoUrl(),
+                null,
+                matchPlayer.getEndedAt() == null,
+                matchPlayer.getStartedAt(),
+                matchPlayer.getEndedAt()
         );
     }
 }

@@ -103,6 +103,37 @@
       </div>
     </div>
 
+    <div v-if="!sessionIsFinished" class="card stack-sm">
+      <div class="section-header">
+        <h3 class="section-title">Замена</h3>
+        <button class="ghost-button" type="button" @click="toggleSubstitutionPanel">
+          {{ substitutionPanelOpen ? 'Скрыть' : 'Выбрать' }}
+        </button>
+      </div>
+      <div v-if="substitutionPanelOpen" class="grid-form">
+        <select v-model.number="substitutionForm.teamId" class="input" :disabled="!substitutionAvailable">
+          <option :value="match.teamAId">{{ teamColorEmoji(match.teamAId) }} {{ match.teamAName }}</option>
+          <option :value="match.teamBId">{{ teamColorEmoji(match.teamBId) }} {{ match.teamBName }}</option>
+        </select>
+        <select v-model.number="substitutionForm.playerOutId" class="input" :disabled="!substitutionAvailable">
+          <option :value="undefined">Кого заменить</option>
+          <option v-for="player in substitutionPlayerOutOptions" :key="`out-${player.playerId}`" :value="player.playerId">
+            {{ player.label }}
+          </option>
+        </select>
+        <select v-model.number="substitutionForm.playerInId" class="input" :disabled="!substitutionAvailable">
+          <option :value="undefined">Кто выходит</option>
+          <option v-for="player in substitutionPlayerInOptions" :key="`in-${player.playerId}`" :value="player.playerId">
+            {{ player.label }}
+          </option>
+        </select>
+        <button class="primary-button" type="button" @click="addSubstitution" :disabled="!canSubmitSubstitution">
+          Заменить
+        </button>
+      </div>
+      <p v-if="substitutionPanelOpen && !substitutionAvailable" class="muted">Замены доступны во время матча или паузы.</p>
+    </div>
+
     <div class="card stack-sm">
       <div class="section-header">
         <h3 class="section-title">События матча</h3>
@@ -171,18 +202,22 @@ import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
 import { RouterLink, useRouter } from 'vue-router';
 import { api } from '../lib/api';
 import { matchEventLabel, matchStatusLabel } from '../lib/labels';
-import type { GameSession, MatchEvent, SessionMatch, SessionTeamPlayer } from '../types';
+import type { GameSession, MatchEvent, MatchPlayer, SessionMatch, SessionPlayer, SessionTeamPlayer } from '../types';
 import PlayerAvatar from '../components/PlayerAvatar.vue';
 
 const props = defineProps<{ sessionId: string; matchId: string }>();
 const router = useRouter();
+type SubstitutionPlayerOption = { playerId: number; label: string };
 
 const session = ref<GameSession | null>(null);
 const match = ref<SessionMatch | null>(null);
 const sessionMatches = ref<SessionMatch[]>([]);
 const events = ref<MatchEvent[]>([]);
+const matchPlayers = ref<MatchPlayer[]>([]);
+const sessionPlayers = ref<SessionPlayer[]>([]);
 const teamPlayers = ref<Record<number, SessionTeamPlayer[]>>({});
 const deleteDialogEvent = ref<MatchEvent | null>(null);
+const substitutionPanelOpen = ref(false);
 const error = ref('');
 const now = ref(Date.now());
 const localStartedAt = ref<number | null>(null);
@@ -200,6 +235,12 @@ const goalForm = reactive({
   assistPlayerId: undefined as number | undefined
 });
 
+const substitutionForm = reactive({
+  teamId: undefined as number | undefined,
+  playerOutId: undefined as number | undefined,
+  playerInId: undefined as number | undefined
+});
+
 const selectedTeamPlayers = computed(() => {
   if (!goalForm.teamId) return [];
   return teamPlayers.value[goalForm.teamId] ?? [];
@@ -210,6 +251,57 @@ const oppositeTeamPlayers = computed(() => {
   return teamPlayers.value[oppositeTeamId] ?? [];
 });
 const scorerOptions = computed(() => goalForm.ownGoal ? oppositeTeamPlayers.value : selectedTeamPlayers.value);
+const substitutionAvailable = computed(() => match.value?.status === 'IN_PROGRESS' || match.value?.status === 'PAUSED');
+const activeMatchPlayers = computed(() => matchPlayers.value.filter((player) => !player.endedAt));
+const substitutionPlayerOutOptions = computed<SubstitutionPlayerOption[]>(() => {
+  if (!substitutionForm.teamId) return [];
+  const activePlayers = activeMatchPlayers.value
+    .filter((player) => player.teamId === substitutionForm.teamId)
+    .map((player) => ({
+      playerId: player.playerId,
+      label: player.playerDisplayName || player.playerName
+    }));
+  if (activePlayers.length) {
+    return activePlayers;
+  }
+  return (teamPlayers.value[substitutionForm.teamId] ?? []).map((player) => ({
+    playerId: player.playerId,
+    label: player.playerDisplayName || player.playerName
+  }));
+});
+const substitutionCandidatePlayers = computed<SubstitutionPlayerOption[]>(() => {
+  const candidates = new Map<number, SubstitutionPlayerOption>();
+  sessionPlayers.value.forEach((player) => {
+    candidates.set(player.playerId, {
+      playerId: player.playerId,
+      label: sessionPlayerLabel(player)
+    });
+  });
+  Object.values(teamPlayers.value).flat().forEach((player) => {
+    if (!candidates.has(player.playerId)) {
+      candidates.set(player.playerId, {
+        playerId: player.playerId,
+        label: player.playerDisplayName || player.playerName
+      });
+    }
+  });
+  return [...candidates.values()].sort((left, right) => left.label.localeCompare(right.label, 'ru'));
+});
+const substitutionPlayerInOptions = computed<SubstitutionPlayerOption[]>(() => {
+  const activePlayerIds = new Set(activeMatchPlayers.value.map((player) => player.playerId));
+  return substitutionCandidatePlayers.value
+    .filter((player) => !activePlayerIds.has(player.playerId))
+    .filter((player) => player.playerId !== substitutionForm.playerOutId);
+});
+const canSubmitSubstitution = computed(() => {
+  return Boolean(
+    substitutionAvailable.value
+    && substitutionForm.teamId
+    && substitutionForm.playerOutId
+    && substitutionForm.playerInId
+    && substitutionForm.playerOutId !== substitutionForm.playerInId
+  );
+});
 
 const elapsedSeconds = computed(() => {
   if (!match.value?.startedAt) {
@@ -318,6 +410,16 @@ function ownGoalEventLabel(event: MatchEvent): string {
   return event.eventType === 'OWN_GOAL' ? `${playerName} (А)` : playerName;
 }
 
+function sessionPlayerLabel(player: SessionPlayer): string {
+  if (player.displayName?.trim()) {
+    return player.displayName;
+  }
+  if (player.nickname?.trim()) {
+    return player.nickname;
+  }
+  return [player.firstName, player.lastName].filter(Boolean).join(' ');
+}
+
 function eventMetaVisible(event: MatchEvent): boolean {
   return Boolean(
     eventTimeLabel(event)
@@ -405,6 +507,7 @@ function persistMatchStart(timestamp: number | null) {
 async function loadSession() {
   session.value = await api.getSession(sessionIdNumber.value);
   sessionMatches.value = await api.getMatches(sessionIdNumber.value);
+  sessionPlayers.value = await api.getSessionPlayers(sessionIdNumber.value);
   const entries = await Promise.all(
     session.value.teams.map(async (team) => [team.id, await api.getTeamPlayers(team.id)] as const)
   );
@@ -420,6 +523,7 @@ async function loadMatch() {
     localStartedAt.value = readStoredMatchStart();
   }
   goalForm.teamId = goalForm.teamId ?? match.value.teamAId;
+  substitutionForm.teamId = substitutionForm.teamId ?? match.value.teamAId;
 }
 
 async function loadSessionMatches() {
@@ -430,6 +534,10 @@ async function loadEvents() {
   events.value = await api.getMatchEvents(matchIdNumber.value);
 }
 
+async function loadMatchPlayers() {
+  matchPlayers.value = await api.getMatchPlayers(matchIdNumber.value);
+}
+
 async function startMatch() {
   if (sessionIsFinished.value || !match.value) return;
   const clientStartTimestamp = Date.now();
@@ -437,7 +545,7 @@ async function startMatch() {
   persistMatchStart(clientStartTimestamp);
   now.value = clientStartTimestamp;
   match.value = await api.startMatch(sessionIdNumber.value, match.value.id);
-  await loadSession();
+  await Promise.all([loadSession(), loadMatchPlayers()]);
 }
 
 async function finishMatch() {
@@ -474,6 +582,30 @@ async function addGoal() {
   goalForm.ownGoal = false;
   goalForm.assistPlayerId = undefined;
   await Promise.all([loadMatch(), loadEvents()]);
+}
+
+function toggleSubstitutionPanel() {
+  substitutionPanelOpen.value = !substitutionPanelOpen.value;
+  if (substitutionPanelOpen.value && match.value) {
+    substitutionForm.teamId = substitutionForm.teamId ?? match.value.teamAId;
+  }
+}
+
+async function addSubstitution() {
+  if (!match.value || !canSubmitSubstitution.value) return;
+  const minuteInMatch = Math.floor(elapsedSeconds.value / 60);
+  const secondInMatch = elapsedSeconds.value % 60;
+  await api.addSubstitution(match.value.id, {
+    teamId: substitutionForm.teamId,
+    playerInId: substitutionForm.playerInId,
+    playerOutId: substitutionForm.playerOutId,
+    minuteInMatch,
+    secondInMatch
+  });
+  substitutionForm.playerInId = undefined;
+  substitutionForm.playerOutId = undefined;
+  substitutionPanelOpen.value = false;
+  await Promise.all([loadEvents(), loadMatchPlayers()]);
 }
 
 function requestDeleteEvent(event: MatchEvent) {
@@ -559,6 +691,14 @@ watch(
 );
 
 watch(
+  () => substitutionForm.teamId,
+  () => {
+    substitutionForm.playerInId = undefined;
+    substitutionForm.playerOutId = undefined;
+  }
+);
+
+watch(
   () => props.matchId,
   async () => {
     try {
@@ -567,7 +707,11 @@ watch(
       goalForm.scorerPlayerId = undefined;
       goalForm.ownGoal = false;
       goalForm.assistPlayerId = undefined;
-      await Promise.all([loadMatch(), loadEvents(), loadSessionMatches()]);
+      substitutionPanelOpen.value = false;
+      substitutionForm.teamId = undefined;
+      substitutionForm.playerInId = undefined;
+      substitutionForm.playerOutId = undefined;
+      await Promise.all([loadMatch(), loadEvents(), loadMatchPlayers(), loadSessionMatches()]);
     } catch (err) {
       error.value = err instanceof Error ? err.message : 'Не удалось загрузить матч';
     }
@@ -576,7 +720,7 @@ watch(
 
 onMounted(async () => {
   try {
-    await Promise.all([loadSession(), loadMatch(), loadEvents()]);
+    await Promise.all([loadSession(), loadMatch(), loadEvents(), loadMatchPlayers()]);
     timerId = window.setInterval(() => {
       now.value = Date.now();
     }, 1000);
