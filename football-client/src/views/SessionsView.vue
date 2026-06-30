@@ -12,7 +12,8 @@
 
     <div class="card">
       <p v-if="error" class="error-text">{{ error }}</p>
-      <p v-if="!sessions.length && !error" class="muted">Пока нет сессий.</p>
+      <p v-else-if="isInitialLoading" class="muted">Загрузка сессий... Подождите</p>
+      <p v-else-if="!sessions.length" class="muted">Пока нет сессий.</p>
       <div v-else class="list">
         <RouterLink
           v-for="session in paginatedSessions"
@@ -114,6 +115,7 @@ import type { GameSession, SessionVenue } from '../types';
 const sessions = ref<GameSession[]>([]);
 const venues = ref<SessionVenue[]>([]);
 const pending = ref(false);
+const hasLoadedSessions = ref(false);
 const venuesPending = ref(false);
 const venueSavePending = ref(false);
 const venuesDialogOpen = ref(false);
@@ -131,6 +133,7 @@ const venueForm = reactive({
 });
 
 const totalPages = computed(() => Math.max(1, Math.ceil(sessions.value.length / pageSize)));
+const isInitialLoading = computed(() => pending.value && !hasLoadedSessions.value);
 const paginatedSessions = computed(() => {
   const start = (currentPage.value - 1) * pageSize;
   return sessions.value.slice(start, start + pageSize);
@@ -166,6 +169,7 @@ async function loadSessions() {
   } catch (err) {
     error.value = err instanceof Error ? err.message : 'Не удалось загрузить сессии';
   } finally {
+    hasLoadedSessions.value = true;
     pending.value = false;
   }
 }
