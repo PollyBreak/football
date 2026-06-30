@@ -29,8 +29,6 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
-import java.util.Optional;
-import java.util.concurrent.ThreadLocalRandom;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -146,10 +144,11 @@ public class SessionMatchService {
             throw new IllegalArgumentException("Automatic next match creation is only supported for round-robin and duel sessions");
         }
 
-        List<TeamPair> pairs = buildTeamPairs(teams);
+        List<TeamPair> pairs = orderRoundRobinPairs(buildTeamPairs(teams), request);
         int nextMatchNumber = getNextMatchNumber(sessionId);
         int roundNumber = resolveRoundNumber(sessionId, nextMatchNumber);
-        List<SessionMatch> currentRoundMatches = findBySessionId(sessionId).stream()
+        List<SessionMatch> existingMatches = findBySessionId(sessionId);
+        List<SessionMatch> currentRoundMatches = existingMatches.stream()
                 .filter(match -> Objects.equals(
                         match.getRoundNumber() != null ? match.getRoundNumber() : resolveRoundNumber(sessionId, match.getMatchNumber()),
                         roundNumber
@@ -160,8 +159,7 @@ public class SessionMatchService {
                 .toList();
         List<TeamPair> selectablePairs = availablePairs.isEmpty() ? pairs : availablePairs;
 
-        TeamPair pair = resolvePreferredPair(request, nextMatchNumber, selectablePairs)
-                .orElseGet(() -> randomPair(selectablePairs));
+        TeamPair pair = resolveNextRoundRobinPair(nextMatchNumber, pairs, selectablePairs, existingMatches);
 
         SessionMatch match = new SessionMatch();
         match.setSession(session);
@@ -329,18 +327,75 @@ public class SessionMatchService {
         return pairs;
     }
 
-    private Optional<TeamPair> resolvePreferredPair(CreateNextSessionMatchRequest request, int matchNumber, List<TeamPair> availablePairs) {
-        String pairKey = matchNumber == 1 ? request.firstPairKey() : matchNumber == 2 ? request.secondPairKey() : null;
-        if (pairKey == null || pairKey.isBlank()) {
-            return Optional.empty();
+    private List<TeamPair> orderRoundRobinPairs(List<TeamPair> pairs, CreateNextSessionMatchRequest request) {
+        List<TeamPair> orderedPairs = rotatePairToStart(pairs, request.firstPairKey());
+        if (request.secondPairKey() == null || request.secondPairKey().isBlank()) {
+            return orderedPairs;
         }
-        return availablePairs.stream()
-                .filter(pair -> pair.key().equals(pairKey))
-                .findFirst();
+
+        int secondPairIndex = findPairIndex(orderedPairs, request.secondPairKey());
+        if (secondPairIndex < 1) {
+            return orderedPairs;
+        }
+
+        List<TeamPair> reorderedPairs = new ArrayList<>();
+        reorderedPairs.add(orderedPairs.get(0));
+        reorderedPairs.add(orderedPairs.get(secondPairIndex));
+        for (int index = 1; index < orderedPairs.size(); index++) {
+            if (index != secondPairIndex) {
+                reorderedPairs.add(orderedPairs.get(index));
+            }
+        }
+        return reorderedPairs;
     }
 
-    private TeamPair randomPair(List<TeamPair> pairs) {
-        return pairs.get(ThreadLocalRandom.current().nextInt(pairs.size()));
+    private List<TeamPair> rotatePairToStart(List<TeamPair> pairs, String pairKey) {
+        int selectedIndex = findPairIndex(pairs, pairKey);
+        if (selectedIndex < 1) {
+            return pairs;
+        }
+
+        List<TeamPair> rotatedPairs = new ArrayList<>(pairs.size());
+        rotatedPairs.addAll(pairs.subList(selectedIndex, pairs.size()));
+        rotatedPairs.addAll(pairs.subList(0, selectedIndex));
+        return rotatedPairs;
+    }
+
+    private int findPairIndex(List<TeamPair> pairs, String pairKey) {
+        if (pairKey == null || pairKey.isBlank()) {
+            return -1;
+        }
+        for (int index = 0; index < pairs.size(); index++) {
+            if (pairs.get(index).key().equals(pairKey)) {
+                return index;
+            }
+        }
+        return -1;
+    }
+
+    private TeamPair resolveNextRoundRobinPair(
+            int nextMatchNumber,
+            List<TeamPair> orderedPairs,
+            List<TeamPair> selectablePairs,
+            List<SessionMatch> existingMatches
+    ) {
+        TeamPair scheduledPair = orderedPairs.get((nextMatchNumber - 1) % orderedPairs.size());
+        if (selectablePairs.stream().anyMatch(pair -> pair.key().equals(scheduledPair.key()))
+                && !matchesPreviousMatch(scheduledPair, existingMatches)) {
+            return scheduledPair;
+        }
+
+        return selectablePairs.stream()
+                .filter(pair -> !matchesPreviousMatch(pair, existingMatches))
+                .findFirst()
+                .orElse(selectablePairs.get(0));
+    }
+
+    private boolean matchesPreviousMatch(TeamPair pair, List<SessionMatch> existingMatches) {
+        return existingMatches.stream()
+                .max(Comparator.comparing(SessionMatch::getMatchNumber))
+                .map(pair::matches)
+                .orElse(false);
     }
 
     private void syncWinningTeam(SessionMatch match) {
