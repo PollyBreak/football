@@ -236,6 +236,7 @@ public class GameSessionService {
         if (request.recurrenceActive() != null && session.getRecurrenceRule() != null) {
             session.getRecurrenceRule().setActive(request.recurrenceActive());
         }
+        updateRecurrenceSettingsIfRequested(session, request);
         sessionPlayerService.fillAvailableSlots(sessionId);
         if (session.getStatus() == SessionStatus.FINISHED) {
             sessionRecurrenceService.createNextSessionIfDue(session);
@@ -449,6 +450,45 @@ public class GameSessionService {
         if (request.recurrenceIntervalDays() != null) {
             throw new IllegalArgumentException("recurrenceIntervalDays must be empty for MONTHLY recurrence");
         }
+    }
+
+    private void updateRecurrenceSettingsIfRequested(GameSession session, UpdateGameSessionRequest request) {
+        if (request.recurrenceType() == null
+                && request.recurrenceIntervalDays() == null
+                && request.recurrenceDayOfMonth() == null) {
+            return;
+        }
+        if (session.getRecurrenceRule() == null) {
+            throw new IllegalArgumentException("Session is not recurring");
+        }
+
+        SessionRecurrenceRule rule = session.getRecurrenceRule();
+        SessionRecurrenceType recurrenceType = request.recurrenceType() != null
+                ? request.recurrenceType()
+                : rule.getRecurrenceType();
+        Integer intervalDays = request.recurrenceIntervalDays() != null
+                ? request.recurrenceIntervalDays()
+                : rule.getIntervalDays();
+        Integer dayOfMonth = request.recurrenceDayOfMonth() != null
+                ? request.recurrenceDayOfMonth()
+                : rule.getDayOfMonth();
+
+        if (recurrenceType == SessionRecurrenceType.DAYS) {
+            if (intervalDays == null || intervalDays < 1) {
+                throw new IllegalArgumentException("recurrenceIntervalDays must be greater than zero");
+            }
+            rule.setRecurrenceType(SessionRecurrenceType.DAYS);
+            rule.setIntervalDays(intervalDays);
+            rule.setDayOfMonth(null);
+            return;
+        }
+
+        if (dayOfMonth == null || dayOfMonth < 1 || dayOfMonth > 31) {
+            throw new IllegalArgumentException("recurrenceDayOfMonth must be between 1 and 31");
+        }
+        rule.setRecurrenceType(SessionRecurrenceType.MONTHLY);
+        rule.setIntervalDays(null);
+        rule.setDayOfMonth(dayOfMonth);
     }
 
     private Integer resolveRegistrationOpenHoursBefore(CreateGameSessionRequest request) {

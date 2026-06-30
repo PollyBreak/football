@@ -373,9 +373,52 @@
               <span>Повторяющееся</span>
             </label>
 
+            <template v-if="sessionSettings.recurrenceActive">
+              <label class="reminder-checkbox">
+                <span>Повторяется раз в днях</span>
+                <input type="radio" name="session-recurring-mode" :checked="sessionSettings.recurrenceMode === 'days'" @change="setSessionRecurrenceMode('days')" />
+              </label>
+
+              <label class="field-label" :class="{ 'is-disabled': sessionSettings.recurrenceMode !== 'days' }">
+                <span>Повторяется раз в</span>
+                <div class="reminder-form recurring-event-form">
+                  <input
+                    v-model.number="sessionSettings.recurrenceEveryDays"
+                    class="input"
+                    type="number"
+                    min="1"
+                    placeholder="1"
+                    :disabled="sessionSettings.recurrenceMode !== 'days'"
+                  />
+                  <span class="muted recurring-event-form__suffix">дня / дней</span>
+                </div>
+              </label>
+
+              <label class="reminder-checkbox">
+                <span>Повторяется раз в месяц</span>
+                <input type="radio" name="session-recurring-mode" :checked="sessionSettings.recurrenceMode === 'month'" @change="setSessionRecurrenceMode('month')" />
+              </label>
+
+              <label class="field-label" :class="{ 'is-disabled': sessionSettings.recurrenceMode !== 'month' }">
+                <span>Повторяется раз в месяц</span>
+                <div class="reminder-form recurring-event-form">
+                  <input
+                    v-model.number="sessionSettings.recurrenceDayOfMonth"
+                    class="input"
+                    type="number"
+                    min="1"
+                    max="31"
+                    placeholder="15"
+                    :disabled="sessionSettings.recurrenceMode !== 'month'"
+                  />
+                  <span class="muted recurring-event-form__suffix">числа</span>
+                </div>
+              </label>
+            </template>
+
             <p class="muted recurring-event-hint">
               {{ sessionSettings.recurrenceActive
-                ? 'После завершения этой сессии будет создана следующая сессия с такими же настройками.'
+                ? recurringSessionHint
                 : 'После завершения текущей сессии новая сессия с такими же настройками больше не создастся.' }}
             </p>
           </div>
@@ -1297,6 +1340,82 @@ function capitalizeFirst(value: string): string {
   return value ? value.charAt(0).toUpperCase() + value.slice(1) : value;
 }
 
+function setSessionRecurrenceMode(mode: 'days' | 'month') {
+  sessionSettings.recurrenceMode = mode;
+  if (mode === 'days') {
+    sessionSettings.recurrenceDayOfMonth = null;
+    if (!sessionSettings.recurrenceEveryDays) {
+      sessionSettings.recurrenceEveryDays = session.value?.recurrenceIntervalDays ?? 7;
+    }
+    return;
+  }
+
+  sessionSettings.recurrenceEveryDays = null;
+  if (!sessionSettings.recurrenceDayOfMonth) {
+    sessionSettings.recurrenceDayOfMonth = session.value?.recurrenceDayOfMonth ?? sessionDateDayOfMonth(sessionSettings.sessionDate);
+  }
+}
+
+function sessionDateDayOfMonth(value: string): number {
+  const parsed = new Date(`${value}T00:00:00`);
+  return Number.isFinite(parsed.getTime()) ? parsed.getDate() : 1;
+}
+
+function nextDateForRecurrence(sourceDate: string): Date | null {
+  const source = new Date(`${sourceDate}T00:00:00`);
+  if (!Number.isFinite(source.getTime())) {
+    return null;
+  }
+  if (sessionSettings.recurrenceMode === 'days') {
+    const intervalDays = Number(sessionSettings.recurrenceEveryDays);
+    if (!Number.isFinite(intervalDays) || intervalDays < 1) {
+      return null;
+    }
+    const next = new Date(source);
+    next.setDate(next.getDate() + intervalDays);
+    return next;
+  }
+  if (sessionSettings.recurrenceMode === 'month') {
+    const dayOfMonth = Number(sessionSettings.recurrenceDayOfMonth);
+    if (!Number.isFinite(dayOfMonth) || dayOfMonth < 1 || dayOfMonth > 31) {
+      return null;
+    }
+    const next = new Date(source);
+    next.setMonth(next.getMonth() + 1, 1);
+    next.setDate(Math.min(dayOfMonth, daysInMonth(next)));
+    return next;
+  }
+  return null;
+}
+
+function daysInMonth(date: Date): number {
+  return new Date(date.getFullYear(), date.getMonth() + 1, 0).getDate();
+}
+
+function dateToInputValue(date: Date): string {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
+function sessionDateTime(date: Date, time: string): Date {
+  const [hours, minutes] = time.split(':').map(Number);
+  const value = new Date(date);
+  value.setHours(Number.isFinite(hours) ? hours : 0, Number.isFinite(minutes) ? minutes : 0, 0, 0);
+  return value;
+}
+
+function formatRecurringNextDate(date: Date): string {
+  const dateText = new Intl.DateTimeFormat('ru-RU', {
+    day: 'numeric',
+    month: 'long',
+    year: 'numeric'
+  }).format(date);
+  const time = sessionSettings.sessionTime?.slice(0, 5);
+  return time ? `${dateText}, ${time}` : dateText;
+}
+
 const sessionPlayerForm = reactive({
   playerId: undefined as number | undefined,
   position: null as PlayerPosition | null
@@ -1344,7 +1463,10 @@ const sessionSettings = reactive({
   maxPlayers: 15 as number | null,
   teamCount: 3 as number | null,
   playerFormat: '6x6',
-  recurrenceActive: true
+  recurrenceActive: true,
+  recurrenceMode: null as 'days' | 'month' | null,
+  recurrenceEveryDays: null as number | null,
+  recurrenceDayOfMonth: null as number | null
 });
 const duelTeamAColor = ref('red');
 const duelTeamBColor = ref('blue');
@@ -1358,6 +1480,32 @@ const availableSessionFormatOptions = computed<SessionFormatType[]>(() => {
   return ['ROUND_ROBIN', 'DUEL', 'KNOCKOUT'];
 });
 const sessionSettingsTeamCount = computed(() => sessionSettings.formatType === 'DUEL' ? 2 : 3);
+const recurringSessionHint = computed(() => {
+  const nextDate = nextRecurringSessionDate.value;
+  if (!nextDate) {
+    return 'После завершения этой сессии будет создана следующая сессия с такими же настройками.';
+  }
+  return `После завершения этой сессии будет создана следующая сессия: ${formatRecurringNextDate(nextDate)}.`;
+});
+const nextRecurringSessionDate = computed(() => {
+  if (!sessionSettings.recurrenceActive || !sessionSettings.sessionDate || !sessionSettings.sessionTime) {
+    return null;
+  }
+  let candidate = nextDateForRecurrence(sessionSettings.sessionDate);
+  if (!candidate) {
+    return null;
+  }
+
+  const now = new Date();
+  while (sessionDateTime(candidate, sessionSettings.sessionTime) <= now) {
+    const nextCandidate = nextDateForRecurrence(dateToInputValue(candidate));
+    if (!nextCandidate || nextCandidate.getTime() === candidate.getTime()) {
+      return null;
+    }
+    candidate = nextCandidate;
+  }
+  return candidate;
+});
 const reminderForm = reactive({
   hoursBefore: 10 as number | null
 });
@@ -1963,6 +2111,11 @@ function fillSessionSettings() {
   sessionSettings.teamCount = session.value.teamCount ?? session.value.teams.length;
   sessionSettings.playerFormat = session.value.playerFormat ?? '';
   sessionSettings.recurrenceActive = session.value.recurrenceActive ?? true;
+  sessionSettings.recurrenceMode = session.value.recurrenceType === 'DAYS'
+    ? 'days'
+    : session.value.recurrenceType === 'MONTHLY' ? 'month' : null;
+  sessionSettings.recurrenceEveryDays = session.value.recurrenceIntervalDays ?? null;
+  sessionSettings.recurrenceDayOfMonth = session.value.recurrenceDayOfMonth ?? null;
   const firstTeam = session.value.teams[0];
   const secondTeam = session.value.teams[1];
   duelTeamAColor.value = resolveDuelTeamColor(firstTeam?.color);
@@ -2448,6 +2601,23 @@ async function saveSessionSettings() {
     error.value = 'Укажите, за сколько дней до игры начинать регистрацию';
     return false;
   }
+  if (session.value?.recurrenceRuleId && sessionSettings.recurrenceActive) {
+    if (!sessionSettings.recurrenceMode) {
+      error.value = 'Выберите вариант повторения';
+      return false;
+    }
+    if (sessionSettings.recurrenceMode === 'days' && (!sessionSettings.recurrenceEveryDays || sessionSettings.recurrenceEveryDays < 1)) {
+      error.value = 'Укажите, через сколько дней повторять событие';
+      return false;
+    }
+    if (
+      sessionSettings.recurrenceMode === 'month'
+      && (!sessionSettings.recurrenceDayOfMonth || sessionSettings.recurrenceDayOfMonth < 1 || sessionSettings.recurrenceDayOfMonth > 31)
+    ) {
+      error.value = 'Укажите число месяца от 1 до 31';
+      return false;
+    }
+  }
   if (sessionSettings.formatType === 'DUEL' && duelTeamAColor.value === duelTeamBColor.value) {
     error.value = 'Выберите разные цвета команд для дуэли';
     return false;
@@ -2492,6 +2662,15 @@ async function saveSessionSettings() {
       teamCount: sessionSettingsTeamCount.value,
       playerFormat: sessionSettings.playerFormat.trim() || null,
       recurrenceActive: session.value?.recurrenceRuleId ? sessionSettings.recurrenceActive : null,
+      recurrenceType: session.value?.recurrenceRuleId && sessionSettings.recurrenceActive
+        ? (sessionSettings.recurrenceMode === 'days' ? 'DAYS' : 'MONTHLY')
+        : null,
+      recurrenceIntervalDays: session.value?.recurrenceRuleId && sessionSettings.recurrenceActive && sessionSettings.recurrenceMode === 'days'
+        ? sessionSettings.recurrenceEveryDays || null
+        : null,
+      recurrenceDayOfMonth: session.value?.recurrenceRuleId && sessionSettings.recurrenceActive && sessionSettings.recurrenceMode === 'month'
+        ? sessionSettings.recurrenceDayOfMonth || null
+        : null,
       teams: shouldUpdateSessionTeams() ? selectedSessionTeamsForSettings() : null
     });
     fillSessionSettings();

@@ -2,6 +2,7 @@ package com.pollybreak.footballcore.api.dto.session;
 
 import com.pollybreak.footballcore.domain.enums.MvpVotingParticipantScope;
 import com.pollybreak.footballcore.domain.enums.SessionFormatType;
+import com.pollybreak.footballcore.domain.enums.SessionRecurrenceType;
 import com.pollybreak.footballcore.domain.enums.SessionStatus;
 import jakarta.validation.Valid;
 import java.time.LocalDate;
@@ -36,6 +37,9 @@ public record UpdateGameSessionRequest(
         Integer teamCount,
         String playerFormat,
         Boolean recurrenceActive,
+        SessionRecurrenceType recurrenceType,
+        Integer recurrenceIntervalDays,
+        Integer recurrenceDayOfMonth,
         @Valid List<CreateSessionTeamRequest> teams
 ) {
 }
