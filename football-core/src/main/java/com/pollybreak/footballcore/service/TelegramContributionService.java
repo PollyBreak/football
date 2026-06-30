@@ -99,7 +99,7 @@ public class TelegramContributionService {
         if (player.isEmpty() || sessionPlayerRepository
                 .findBySessionIdAndPlayerIdAndActiveTrue(callbackData.sessionId(), player.get().getId())
                 .isEmpty()) {
-            telegramBotApiClient.answerCallbackQuery(callbackId, "Сначала зарегистрируйтесь на эту игру", false, null);
+            telegramBotApiClient.answerCallbackQuery(callbackId, "Опрос работает только для тех, кто зарегистрирован на игру", false, null);
             return;
         }
 
@@ -292,7 +292,6 @@ public class TelegramContributionService {
         lines.add("❗ Проголосуйте ниже, если уже сдали. Если кнопок нет, то <a href=\""
                 + escapeAttribute(sessionAppUrl(session.getId()))
                 + "\">отметьтесь в приложении</a> (можно сдать за себя/других игроков)");
-        lines.add("Опрос работает только для тех, кто <a href=\"" + escapeAttribute(sessionAppUrl(session.getId())) + "\">зарегистрирован на игру</a>.");
         lines.add("");
         lines.add("✅ Сдали (" + paidPlayers.size() + "/" + maxPlayersLabel(session) + "): " + code(names(paidPlayers)));
         lines.add("❌ Не сдали: " + code(names(unpaidPlayers)));
