@@ -59,7 +59,7 @@ public class TelegramContributionService {
             throw new IllegalArgumentException("Telegram chat is not linked to this session");
         }
         telegramRegistrationService.validateSessionChat(session, userId);
-        return startContributionCollection(session);
+        return startContributionCollectionForSession(session);
     }
 
     @Transactional
@@ -68,6 +68,10 @@ public class TelegramContributionService {
         if (session.getTelegramChatId() == null) {
             throw new IllegalArgumentException("Telegram chat is not linked to this session");
         }
+        return startContributionCollectionForSession(session);
+    }
+
+    private StartRegistrationResponse startContributionCollectionForSession(GameSession session) {
         String text = buildContributionMessage(session);
         JsonNode result;
         if (session.getTelegramContributionMessageId() != null) {
