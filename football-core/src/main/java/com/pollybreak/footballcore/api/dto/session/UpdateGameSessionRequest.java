@@ -28,6 +28,7 @@ public record UpdateGameSessionRequest(
         Integer mvpVotingDurationHours,
         MvpVotingParticipantScope mvpVotingParticipantScope,
         Boolean mvpVotingTelegramEnabled,
+        Boolean sessionRatingPollEnabled,
         SessionFormatType formatType,
         SessionStatus status,
         Integer plannedMatchDurationMinutes,

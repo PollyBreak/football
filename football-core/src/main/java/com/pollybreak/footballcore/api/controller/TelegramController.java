@@ -14,6 +14,7 @@ import com.pollybreak.footballcore.service.SessionContributionReminderService;
 import com.pollybreak.footballcore.service.TelegramContributionService;
 import com.pollybreak.footballcore.service.TelegramKnownChatService;
 import com.pollybreak.footballcore.service.TelegramRegistrationService;
+import com.pollybreak.footballcore.service.SessionRatingPollService;
 import jakarta.validation.Valid;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
@@ -36,6 +37,7 @@ public class TelegramController {
     private final TelegramContributionService telegramContributionService;
     private final SessionContributionReminderService sessionContributionReminderService;
     private final TelegramKnownChatService telegramKnownChatService;
+    private final SessionRatingPollService sessionRatingPollService;
 
     @GetMapping("/api/telegram/chats")
     public List<TelegramKnownChatResponse> getAvailableChats(@RequestParam Long userId) {
@@ -136,6 +138,11 @@ public class TelegramController {
             } else {
                 telegramRegistrationService.handleCallback(callbackQuery);
             }
+        }
+
+        JsonNode pollAnswer = update.path("poll_answer");
+        if (!pollAnswer.isMissingNode() && !pollAnswer.isNull()) {
+            sessionRatingPollService.handlePollAnswer(pollAnswer);
         }
     }
 }

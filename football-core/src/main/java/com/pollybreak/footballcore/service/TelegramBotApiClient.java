@@ -49,6 +49,16 @@ public class TelegramBotApiClient {
         ));
     }
 
+    public JsonNode sendPoll(Long chatId, String question, List<String> options) {
+        return call("sendPoll", Map.of(
+                "chat_id", chatId,
+                "question", question,
+                "options", options,
+                "is_anonymous", false,
+                "allows_multiple_answers", false
+        ));
+    }
+
     public JsonNode editMessageText(Long chatId, Long messageId, String text, List<List<Map<String, String>>> inlineKeyboard) {
         return call("editMessageText", Map.of(
                 "chat_id", chatId,
@@ -57,6 +67,16 @@ public class TelegramBotApiClient {
                 "parse_mode", "HTML",
                 "disable_web_page_preview", true,
                 "reply_markup", Map.of("inline_keyboard", inlineKeyboard)
+        ));
+    }
+
+    public JsonNode editMessageText(Long chatId, Long messageId, String text) {
+        return call("editMessageText", Map.of(
+                "chat_id", chatId,
+                "message_id", messageId,
+                "text", text,
+                "parse_mode", "HTML",
+                "disable_web_page_preview", true
         ));
     }
 

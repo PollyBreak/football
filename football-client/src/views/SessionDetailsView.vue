@@ -325,6 +325,10 @@
                 <span>Делать рассылку в чате</span>
               </label>
             </template>
+            <label class="reminder-checkbox" :class="{ 'is-disabled': !sessionSettings.telegramChatId }">
+              <input v-model="sessionSettings.sessionRatingPollEnabled" type="checkbox" :disabled="!sessionSettings.telegramChatId" />
+              <span>Запустить голосование об оценке сессии после ее завершения</span>
+            </label>
             <label class="field-label">
               <span>Заметки</span>
               <textarea v-model="sessionSettings.notes" class="input textarea" placeholder="Заметки" :disabled="sessionIsFinished"></textarea>
@@ -1449,6 +1453,7 @@ const sessionSettings = reactive({
   mvpVotingDurationHours: 24 as number | null,
   mvpVotingParticipantScope: 'ALL' as 'ALL' | 'PLAYERS_ONLY',
   mvpVotingTelegramEnabled: false,
+  sessionRatingPollEnabled: false,
   feeAmount: null as number | null,
   feeRecipient: '',
   formatType: 'ROUND_ROBIN' as SessionFormatType,
@@ -2096,6 +2101,7 @@ function fillSessionSettings() {
   sessionSettings.mvpVotingDurationHours = session.value.mvpVotingDurationHours ?? 24;
   sessionSettings.mvpVotingParticipantScope = session.value.mvpVotingParticipantScope ?? 'ALL';
   sessionSettings.mvpVotingTelegramEnabled = session.value.mvpVotingTelegramEnabled;
+  sessionSettings.sessionRatingPollEnabled = session.value.sessionRatingPollEnabled;
   sessionSettings.feeAmount = session.value.feeAmount ?? null;
   sessionSettings.feeRecipient = session.value.feeRecipient ?? '';
   sessionSettings.formatType = session.value.formatType;
@@ -2585,6 +2591,10 @@ async function saveSessionSettings() {
     error.value = 'Укажите Telegram chat ID для рассылки голосования за MVP';
     return false;
   }
+  if (sessionSettings.sessionRatingPollEnabled && !sessionSettings.telegramChatId) {
+    error.value = 'Укажите Telegram chat ID для голосования об оценке сессии';
+    return false;
+  }
   if ((sessionSettings.autoStartRegistration || sessionSettings.autoStartContributionCollection) && !sessionSettings.telegramChatId) {
     error.value = 'Укажите Telegram chat ID для автоматической регистрации или сбора оплаты';
     return false;
@@ -2646,6 +2656,7 @@ async function saveSessionSettings() {
       mvpVotingDurationHours: sessionSettings.mvpVotingEnabled ? sessionSettings.mvpVotingDurationHours : null,
       mvpVotingParticipantScope: sessionSettings.mvpVotingParticipantScope,
       mvpVotingTelegramEnabled: sessionSettings.mvpVotingEnabled && sessionSettings.mvpVotingTelegramEnabled,
+      sessionRatingPollEnabled: sessionSettings.sessionRatingPollEnabled,
       feeAmount: sessionSettings.feeAmount || null,
       feeRecipient: sessionSettings.feeRecipient.trim() || null,
       formatType: sessionSettings.formatType,
@@ -3255,6 +3266,7 @@ watch(
   (chatId) => {
     if (!chatId) {
       sessionSettings.mvpVotingTelegramEnabled = false;
+      sessionSettings.sessionRatingPollEnabled = false;
       telegramChatSelection.value = '';
       return;
     }

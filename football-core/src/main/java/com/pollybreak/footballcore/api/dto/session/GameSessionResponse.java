@@ -6,6 +6,7 @@ import com.pollybreak.footballcore.domain.enums.SessionFormatType;
 import com.pollybreak.footballcore.domain.enums.MvpVotingParticipantScope;
 import com.pollybreak.footballcore.domain.enums.SessionRecurrenceType;
 import com.pollybreak.footballcore.domain.enums.SessionStatus;
+import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalTime;
 import java.time.OffsetDateTime;
@@ -36,6 +37,12 @@ public record GameSessionResponse(
         OffsetDateTime mvpVotingEndsAt,
         Long telegramMvpVotingMessageId,
         OffsetDateTime telegramMvpResultSentAt,
+        Boolean sessionRatingPollEnabled,
+        BigDecimal sessionRatingAverage,
+        Integer sessionRatingVoteCount,
+        Long telegramSessionRatingSummaryMessageId,
+        Long telegramSessionRatingPollMessageId,
+        String telegramSessionRatingPollId,
         Long recurrenceRuleId,
         SessionRecurrenceType recurrenceType,
         Integer recurrenceIntervalDays,
@@ -83,6 +90,12 @@ public record GameSessionResponse(
                 session.getMvpVotingEndsAt(),
                 session.getTelegramMvpVotingMessageId(),
                 session.getTelegramMvpResultSentAt(),
+                session.isSessionRatingPollEnabled(),
+                session.getSessionRatingAverage(),
+                session.getSessionRatingVoteCount(),
+                session.getTelegramSessionRatingSummaryMessageId(),
+                session.getTelegramSessionRatingPollMessageId(),
+                session.getTelegramSessionRatingPollId(),
                 session.getRecurrenceRule() != null ? session.getRecurrenceRule().getId() : null,
                 session.getRecurrenceRule() != null ? session.getRecurrenceRule().getRecurrenceType() : null,
                 session.getRecurrenceRule() != null ? session.getRecurrenceRule().getIntervalDays() : null,

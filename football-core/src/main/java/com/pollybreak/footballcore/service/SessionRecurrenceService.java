@@ -141,6 +141,7 @@ public class SessionRecurrenceService {
         nextSession.setRegistrationOpenHoursBefore(rule.getRegistrationOpenHoursBefore());
         nextSession.setFeeAmount(source.getFeeAmount());
         nextSession.setFeeRecipient(source.getFeeRecipient());
+        nextSession.setSessionRatingPollEnabled(source.isSessionRatingPollEnabled());
         nextSession.setFormatType(source.getFormatType());
         nextSession.setStatus(SessionStatus.PLANNED);
         nextSession.setPlannedMatchDurationMinutes(source.getPlannedMatchDurationMinutes());

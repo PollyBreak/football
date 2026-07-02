@@ -31,6 +31,7 @@ public record CreateGameSessionRequest(
         Integer mvpVotingDurationHours,
         MvpVotingParticipantScope mvpVotingParticipantScope,
         Boolean mvpVotingTelegramEnabled,
+        Boolean sessionRatingPollEnabled,
         SessionRecurrenceType recurrenceType,
         Integer recurrenceIntervalDays,
         Integer recurrenceDayOfMonth,

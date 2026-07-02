@@ -14,6 +14,7 @@ import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
+import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalTime;
 import java.time.OffsetDateTime;
@@ -99,6 +100,24 @@ public class GameSession {
 
     @Column(name = "telegram_mvp_result_sent_at")
     private OffsetDateTime telegramMvpResultSentAt;
+
+    @Column(name = "session_rating_poll_enabled", nullable = false)
+    private boolean sessionRatingPollEnabled;
+
+    @Column(name = "session_rating_average")
+    private BigDecimal sessionRatingAverage;
+
+    @Column(name = "session_rating_vote_count", nullable = false)
+    private Integer sessionRatingVoteCount = 0;
+
+    @Column(name = "telegram_session_rating_summary_message_id")
+    private Long telegramSessionRatingSummaryMessageId;
+
+    @Column(name = "telegram_session_rating_poll_message_id")
+    private Long telegramSessionRatingPollMessageId;
+
+    @Column(name = "telegram_session_rating_poll_id", length = 200)
+    private String telegramSessionRatingPollId;
 
     @Column(name = "fee_amount")
     private Integer feeAmount;

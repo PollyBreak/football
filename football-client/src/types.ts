@@ -99,6 +99,12 @@ export interface GameSession {
   mvpVotingEndsAt: string | null;
   telegramMvpVotingMessageId: number | null;
   telegramMvpResultSentAt: string | null;
+  sessionRatingPollEnabled: boolean;
+  sessionRatingAverage: number | null;
+  sessionRatingVoteCount: number;
+  telegramSessionRatingSummaryMessageId: number | null;
+  telegramSessionRatingPollMessageId: number | null;
+  telegramSessionRatingPollId: string | null;
   recurrenceRuleId: number | null;
   recurrenceType: SessionRecurrenceType | null;
   recurrenceIntervalDays: number | null;

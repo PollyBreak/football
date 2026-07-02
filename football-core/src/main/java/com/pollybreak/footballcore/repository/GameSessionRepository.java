@@ -19,6 +19,8 @@ public interface GameSessionRepository extends JpaRepository<GameSession, Long> 
 
     Optional<GameSession> findFirstByRecurrenceRuleIdOrderBySessionDateDescSessionTimeDescCreatedAtDesc(Long recurrenceRuleId);
 
+    Optional<GameSession> findByTelegramSessionRatingPollId(String telegramSessionRatingPollId);
+
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("""
             select session

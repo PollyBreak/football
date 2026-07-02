@@ -236,6 +236,11 @@
               <span>Делать рассылку в чате</span>
             </label>
           </template>
+
+          <label class="reminder-checkbox" :class="{ 'is-disabled': !form.telegramChatId }">
+            <input v-model="form.sessionRatingPollEnabled" type="checkbox" :disabled="!form.telegramChatId" />
+            <span>Запустить голосование об оценке сессии после ее завершения</span>
+          </label>
         </div>
 
         <div class="settings-group">
@@ -405,6 +410,7 @@ const form = reactive({
   mvpVotingDurationHours: 24,
   mvpVotingParticipantScope: 'ALL' as 'ALL' | 'PLAYERS_ONLY',
   mvpVotingTelegramEnabled: false,
+  sessionRatingPollEnabled: false,
   recurringEnabled: false,
   recurringMode: null as 'days' | 'month' | null,
   recurringEveryDays: null as number | null,
@@ -559,6 +565,7 @@ watch(
   (chatId) => {
     if (!chatId) {
       form.mvpVotingTelegramEnabled = false;
+      form.sessionRatingPollEnabled = false;
     }
   }
 );
@@ -717,6 +724,11 @@ async function createSession() {
     return;
   }
 
+  if (form.sessionRatingPollEnabled && !form.telegramChatId) {
+    error.value = 'Укажите Telegram чат для голосования об оценке сессии';
+    return;
+  }
+
   pending.value = true;
   error.value = '';
   try {
@@ -740,6 +752,7 @@ async function createSession() {
       mvpVotingDurationHours: form.mvpVotingEnabled ? form.mvpVotingDurationHours : null,
       mvpVotingParticipantScope: form.mvpVotingParticipantScope,
       mvpVotingTelegramEnabled: form.mvpVotingEnabled && form.mvpVotingTelegramEnabled,
+      sessionRatingPollEnabled: form.sessionRatingPollEnabled,
       recurrenceType: form.recurringEnabled ? (form.recurringMode === 'days' ? 'DAYS' : 'MONTHLY') : null,
       recurrenceIntervalDays: form.recurringEnabled && form.recurringMode === 'days' ? form.recurringEveryDays || null : null,
       recurrenceDayOfMonth: form.recurringEnabled && form.recurringMode === 'month' ? form.recurringDayOfMonth || null : null,

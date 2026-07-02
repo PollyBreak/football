@@ -45,6 +45,7 @@ public class GameSessionService {
     private final SessionRecurrenceService sessionRecurrenceService;
     private final SessionRegistrationScheduleService sessionRegistrationScheduleService;
     private final SessionMvpVotingService sessionMvpVotingService;
+    private final SessionRatingPollService sessionRatingPollService;
 
     public List<GameSession> findAll() {
         return gameSessionRepository.findAllByOrderBySessionDateDescSessionTimeDescCreatedAtDesc();
@@ -86,6 +87,7 @@ public class GameSessionService {
                 request.mvpVotingTelegramEnabled(),
                 request.telegramChatId()
         );
+        validateSessionRatingPollSettings(request.sessionRatingPollEnabled(), request.telegramChatId());
 
         GameSession session = new GameSession();
         session.setTitle(request.title());
@@ -106,6 +108,7 @@ public class GameSessionService {
                 request.mvpVotingParticipantScope(),
                 request.mvpVotingTelegramEnabled()
         );
+        session.setSessionRatingPollEnabled(Boolean.TRUE.equals(request.sessionRatingPollEnabled()));
         session.setFormatType(request.formatType());
         session.setStatus(request.status() != null ? request.status() : SessionStatus.PLANNED);
         session.setPlannedMatchDurationMinutes(request.plannedMatchDurationMinutes());
@@ -177,6 +180,10 @@ public class GameSessionService {
                 request.mvpVotingTelegramEnabled(),
                 targetTelegramChatId
         );
+        boolean targetSessionRatingPollEnabled = request.sessionRatingPollEnabled() != null
+                ? request.sessionRatingPollEnabled()
+                : session.isSessionRatingPollEnabled();
+        validateSessionRatingPollSettings(targetSessionRatingPollEnabled, targetTelegramChatId);
 
         if (request.title() != null) {
             session.setTitle(request.title());
@@ -215,6 +222,9 @@ public class GameSessionService {
                 request.mvpVotingParticipantScope(),
                 request.mvpVotingTelegramEnabled()
         );
+        if (request.sessionRatingPollEnabled() != null) {
+            session.setSessionRatingPollEnabled(request.sessionRatingPollEnabled());
+        }
         recalculateMvpVotingEndsAtIfStarted(session, previousMvpVotingEndsAt);
         if (request.formatType() != null) {
             session.setFormatType(request.formatType());
@@ -242,6 +252,7 @@ public class GameSessionService {
             sessionRecurrenceService.createNextSessionIfDue(session);
             sessionMvpVotingService.startVotingIfNeeded(session);
             sessionMvpVotingService.refreshVotingMessageIfNeeded(session);
+            sessionRatingPollService.startPollIfNeeded(session);
         }
         sessionRegistrationScheduleService.startRegistrationIfDue(session);
         return GameSessionResponse.fromEntity(session, teams != null ? teams : sessionTeamRepository.findAllBySessionIdOrderByDisplayOrderAsc(sessionId));
@@ -378,6 +389,9 @@ public class GameSessionService {
         session.setTelegramContributionMessageId(null);
         session.setTelegramMvpVotingMessageId(null);
         session.setTelegramMvpResultSentAt(null);
+        session.setTelegramSessionRatingSummaryMessageId(null);
+        session.setTelegramSessionRatingPollMessageId(null);
+        session.setTelegramSessionRatingPollId(null);
     }
 
     private void validateMvpVotingSettings(Boolean enabled, Integer durationHours, Boolean telegramEnabled, Long telegramChatId) {
@@ -389,6 +403,12 @@ public class GameSessionService {
         }
         if (Boolean.TRUE.equals(telegramEnabled) && telegramChatId == null) {
             throw new IllegalArgumentException("telegramChatId is required for MVP voting announcements");
+        }
+    }
+
+    private void validateSessionRatingPollSettings(Boolean enabled, Long telegramChatId) {
+        if (Boolean.TRUE.equals(enabled) && telegramChatId == null) {
+            throw new IllegalArgumentException("telegramChatId is required for session rating poll");
         }
     }
 
