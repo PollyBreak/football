@@ -153,8 +153,10 @@ public class GameSessionService {
     @Transactional
     public GameSessionResponse update(Long sessionId, UpdateGameSessionRequest request) {
         GameSession session = getById(sessionId);
+        SessionStatus previousStatus = session.getStatus();
         Long previousTelegramChatId = session.getTelegramChatId();
         OffsetDateTime previousMvpVotingEndsAt = session.getMvpVotingEndsAt();
+        boolean previousMvpVotingEnabled = session.isMvpVotingEnabled();
         if (request.title() != null && request.title().isBlank()) {
             throw new IllegalArgumentException("title must not be blank");
         }
@@ -222,6 +224,9 @@ public class GameSessionService {
                 request.mvpVotingParticipantScope(),
                 request.mvpVotingTelegramEnabled()
         );
+        if (previousMvpVotingEnabled && Boolean.FALSE.equals(request.mvpVotingEnabled())) {
+            sessionMvpVotingService.cancelVoting(session);
+        }
         if (request.sessionRatingPollEnabled() != null) {
             session.setSessionRatingPollEnabled(request.sessionRatingPollEnabled());
         }
@@ -233,6 +238,10 @@ public class GameSessionService {
             session.setStatus(request.status());
             if (request.status() == SessionStatus.FINISHED && session.getEndedAt() == null) {
                 session.setEndedAt(OffsetDateTime.now());
+            }
+            if (previousStatus == SessionStatus.FINISHED && request.status() != SessionStatus.FINISHED) {
+                session.setEndedAt(null);
+                sessionMvpVotingService.cancelVoting(session);
             }
         }
         session.setPlannedMatchDurationMinutes(request.plannedMatchDurationMinutes());

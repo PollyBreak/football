@@ -1159,6 +1159,7 @@ import type {
   SessionMvpVoting,
   SessionPlayer,
   SessionStandingsRow,
+  SessionStatus,
   SessionTeamPlayer,
   StreamBroadcast,
   SessionWaitlistEntry,
@@ -3207,7 +3208,7 @@ async function resumeSession() {
       telegramChatTitle: session.value.telegramChatTitle,
       feeAmount: session.value.feeAmount,
       feeRecipient: session.value.feeRecipient,
-      status: 'IN_PROGRESS',
+      status: resumeSessionStatus(),
       plannedMatchDurationMinutes: session.value.plannedMatchDurationMinutes,
       sessionDurationMinutes: session.value.sessionDurationMinutes,
       notes: session.value.notes,
@@ -3222,6 +3223,10 @@ async function resumeSession() {
   } finally {
     pendingSessionUpdate.value = false;
   }
+}
+
+function resumeSessionStatus(): SessionStatus {
+  return matches.value.some((match) => match.status !== 'PLANNED') ? 'IN_PROGRESS' : 'PLANNED';
 }
 
 async function openMatch(matchId: number) {

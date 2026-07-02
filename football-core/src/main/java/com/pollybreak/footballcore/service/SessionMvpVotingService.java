@@ -105,6 +105,32 @@ public class SessionMvpVotingService {
         gameSessionRepository.save(session);
     }
 
+    @Transactional
+    public void cancelVoting(GameSession session) {
+        if (session.getMvpVotingStartedAt() == null && session.getTelegramMvpVotingMessageId() == null) {
+            return;
+        }
+
+        sessionMvpVoteRepository.deleteAllBySessionId(session.getId());
+        if (session.getTelegramChatId() != null && session.getTelegramMvpVotingMessageId() != null) {
+            try {
+                telegramBotApiClient.editMessageText(
+                        session.getTelegramChatId(),
+                        session.getTelegramMvpVotingMessageId(),
+                        "Голосование за <b>MVP</b> отменено: сессия снова открыта."
+                );
+            } catch (RuntimeException ignored) {
+                // Local MVP state should still be cancelled even if Telegram cannot edit the old message.
+            }
+        }
+
+        session.setMvpVotingStartedAt(null);
+        session.setMvpVotingEndsAt(null);
+        session.setTelegramMvpVotingMessageId(null);
+        session.setTelegramMvpResultSentAt(null);
+        gameSessionRepository.save(session);
+    }
+
     public SessionMvpVotingResponse getVoting(Long sessionId, Long userId) {
         GameSession session = getSession(sessionId);
         List<SessionMvpCandidateResponse> candidates = candidates(session);
