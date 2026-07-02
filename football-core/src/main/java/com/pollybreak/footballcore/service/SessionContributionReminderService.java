@@ -78,7 +78,7 @@ public class SessionContributionReminderService {
                 reminder.setSentAt(now);
                 continue;
             }
-            if (session.getTelegramChatId() == null || session.getTelegramContributionMessageId() == null) {
+            if (session.getTelegramChatId() == null) {
                 continue;
             }
 
@@ -93,7 +93,11 @@ public class SessionContributionReminderService {
             }
 
             try {
-                telegramContributionService.sendContributionReminder(session.getId(), reminder.getHoursBefore());
+                if (session.getTelegramContributionMessageId() == null) {
+                    telegramContributionService.startContributionCollection(session.getId());
+                } else {
+                    telegramContributionService.sendContributionReminder(session.getId(), reminder.getHoursBefore());
+                }
                 reminder.setSentAt(now);
             } catch (RuntimeException exception) {
                 log.warn(

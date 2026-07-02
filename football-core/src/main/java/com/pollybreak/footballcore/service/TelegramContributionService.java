@@ -59,7 +59,15 @@ public class TelegramContributionService {
             throw new IllegalArgumentException("Telegram chat is not linked to this session");
         }
         telegramRegistrationService.validateSessionChat(session, userId);
+        return startContributionCollection(session);
+    }
 
+    @Transactional
+    public StartRegistrationResponse startContributionCollection(Long sessionId) {
+        GameSession session = getSession(sessionId);
+        if (session.getTelegramChatId() == null) {
+            throw new IllegalArgumentException("Telegram chat is not linked to this session");
+        }
         String text = buildContributionMessage(session);
         JsonNode result;
         if (session.getTelegramContributionMessageId() != null) {
@@ -408,7 +416,7 @@ public class TelegramContributionService {
         if (session.getFeeAmount() != null || (session.getFeeRecipient() != null && !session.getFeeRecipient().isBlank())) {
             StringBuilder payment = new StringBuilder("❗ ");
             if (session.getFeeAmount() != null) {
-                payment.append(session.getFeeAmount()).append(" Тг / чел");
+                payment.append(session.getFeeAmount()).append(" Тг");
             }
             if (session.getFeeRecipient() != null && !session.getFeeRecipient().isBlank()) {
                 if (session.getFeeAmount() != null) {
