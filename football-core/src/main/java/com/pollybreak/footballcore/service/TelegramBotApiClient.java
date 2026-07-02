@@ -76,8 +76,33 @@ public class TelegramBotApiClient {
                 "message_id", messageId,
                 "text", text,
                 "parse_mode", "HTML",
-                "disable_web_page_preview", true
+                "disable_web_page_preview", true,
+                "reply_markup", Map.of("inline_keyboard", List.of())
         ));
+    }
+
+    public JsonNode editMessageTextIgnoringNotModified(Long chatId, Long messageId, String text) {
+        try {
+            return editMessageText(chatId, messageId, text);
+        } catch (HttpClientErrorException exception) {
+            if (isMessageNotModified(exception)) {
+                return objectMapper.createObjectNode();
+            }
+            throw exception;
+        }
+    }
+
+    public @Nullable JsonNode tryEditMessageText(Long chatId, Long messageId, String text) {
+        try {
+            return editMessageText(chatId, messageId, text);
+        } catch (HttpClientErrorException exception) {
+            if (isMessageNotModified(exception)) {
+                return objectMapper.createObjectNode();
+            }
+            return null;
+        } catch (RuntimeException exception) {
+            return null;
+        }
     }
 
     public JsonNode editMessageTextIgnoringNotModified(Long chatId, Long messageId, String text, List<List<Map<String, String>>> inlineKeyboard) {

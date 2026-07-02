@@ -14,9 +14,12 @@ import com.pollybreak.footballcore.repository.GameSessionRepository;
 import com.pollybreak.footballcore.repository.PlayerRepository;
 import com.pollybreak.footballcore.repository.SessionContributionRepository;
 import com.pollybreak.footballcore.repository.SessionPlayerRepository;
+import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
+import java.time.format.TextStyle;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
@@ -35,8 +38,10 @@ import org.springframework.transaction.event.TransactionalEventListener;
 @Transactional(readOnly = true)
 public class TelegramContributionService {
 
+    private static final Locale RU = Locale.forLanguageTag("ru-RU");
     private static final DateTimeFormatter TIME_FORMAT = DateTimeFormatter.ofPattern("HH:mm");
     private static final String DEFAULT_APP_URL = "https://t.me/football_pozitiv_bot";
+    private static final List<String> CONTRIBUTION_OPTIONS = List.of("✅ Сдал", "❌ Не сдал", "Тык, не играю сегодня");
 
     private final TelegramBotApiClient telegramBotApiClient;
     private final TelegramBotProperties telegramBotProperties;
@@ -61,10 +66,10 @@ public class TelegramContributionService {
             result = telegramBotApiClient.tryEditMessageText(
                     session.getTelegramChatId(),
                     session.getTelegramContributionMessageId(),
-                    text,
-                    contributionKeyboard(session.getId())
+                    text
             );
             if (result != null) {
+                startContributionPollIfNeeded(session);
                 return new StartRegistrationResponse(
                         session.getTelegramChatId(),
                         session.getTelegramContributionMessageId(),
@@ -74,14 +79,56 @@ public class TelegramContributionService {
         }
 
         {
-            result = telegramBotApiClient.sendMessage(session.getTelegramChatId(), text, contributionKeyboard(session.getId()));
+            result = telegramBotApiClient.sendMessage(session.getTelegramChatId(), text);
             session.setTelegramContributionMessageId(result.path("message_id").asLong());
         }
+        startContributionPollIfNeeded(session);
         return new StartRegistrationResponse(
                 session.getTelegramChatId(),
                 session.getTelegramContributionMessageId(),
                 buildMessageUrl(session)
         );
+    }
+
+    @Transactional
+    public void handlePollAnswer(JsonNode pollAnswer) {
+        String pollId = pollAnswer.path("poll_id").asText("");
+        if (pollId.isBlank()) {
+            return;
+        }
+
+        GameSession session = gameSessionRepository.findByTelegramContributionPollId(pollId)
+                .orElse(null);
+        if (session == null) {
+            return;
+        }
+
+        Long telegramId = pollAnswer.path("user").path("id").canConvertToLong()
+                ? pollAnswer.path("user").path("id").asLong()
+                : null;
+        if (telegramId == null) {
+            return;
+        }
+
+        JsonNode optionIds = pollAnswer.path("option_ids");
+        if (!optionIds.isArray() || optionIds.size() == 0) {
+            return;
+        }
+        int optionId = optionIds.get(0).asInt(-1);
+        if (optionId < 0 || optionId >= CONTRIBUTION_OPTIONS.size() || optionId == CONTRIBUTION_OPTIONS.size() - 1) {
+            return;
+        }
+
+        Optional<Player> player = appUserRepository.findByTelegramId(telegramId)
+                .flatMap(user -> playerRepository.findByUserId(user.getId()));
+        if (player.isEmpty() || sessionPlayerRepository
+                .findBySessionIdAndPlayerIdAndActiveTrue(session.getId(), player.get().getId())
+                .isEmpty()) {
+            return;
+        }
+
+        applyContributionStatus(session.getId(), player.get(), optionId == 0);
+        refreshContributionMessageSafely(session.getId());
     }
 
     @Transactional
@@ -118,16 +165,14 @@ public class TelegramContributionService {
             telegramBotApiClient.editMessageTextIgnoringNotModified(
                     session.getTelegramChatId(),
                     session.getTelegramContributionMessageId(),
-                    buildContributionMessage(session),
-                    contributionKeyboard(session.getId())
+                    buildContributionMessage(session)
             );
         } catch (TelegramChatMigratedException exception) {
             session.setTelegramChatId(exception.getMigratedChatId());
             telegramBotApiClient.editMessageTextIgnoringNotModified(
                     session.getTelegramChatId(),
                     session.getTelegramContributionMessageId(),
-                    buildContributionMessage(session),
-                    contributionKeyboard(session.getId())
+                    buildContributionMessage(session)
             );
         }
     }
@@ -289,13 +334,37 @@ public class TelegramContributionService {
         }
         lines.add("");
         lines.add("Просим всех оперативно сдавать взносы!");
-        lines.add("❗ Проголосуйте ниже, если уже сдали. Если кнопок нет, то <a href=\""
+        lines.add("❗ Проголосуйте в опросе ниже, если уже сдали. Если опроса нет, то <a href=\""
                 + escapeAttribute(sessionAppUrl(session.getId()))
                 + "\">отметьтесь в приложении</a> (можно сдать за себя/других игроков)");
         lines.add("");
         lines.add("✅ Сдали (" + paidPlayers.size() + "/" + maxPlayersLabel(session) + "): " + code(names(paidPlayers)));
         lines.add("❌ Не сдали: " + code(names(unpaidPlayers)));
         return String.join("\n", lines);
+    }
+
+    private void startContributionPollIfNeeded(GameSession session) {
+        if (session.getTelegramContributionPollId() != null) {
+            return;
+        }
+        try {
+            JsonNode result = telegramBotApiClient.sendPoll(
+                    session.getTelegramChatId(),
+                    buildContributionPollQuestion(session),
+                    CONTRIBUTION_OPTIONS
+            );
+            session.setTelegramContributionPollMessageId(result.path("message_id").asLong());
+            session.setTelegramContributionPollId(result.path("poll").path("id").asText(null));
+        } catch (TelegramChatMigratedException exception) {
+            session.setTelegramChatId(exception.getMigratedChatId());
+            JsonNode result = telegramBotApiClient.sendPoll(
+                    session.getTelegramChatId(),
+                    buildContributionPollQuestion(session),
+                    CONTRIBUTION_OPTIONS
+            );
+            session.setTelegramContributionPollMessageId(result.path("message_id").asLong());
+            session.setTelegramContributionPollId(result.path("poll").path("id").asText(null));
+        }
     }
 
     private ContributionRoster contributionRoster(Long sessionId) {
@@ -315,13 +384,6 @@ public class TelegramContributionService {
         return new ContributionRoster(paidPlayers, unpaidPlayers);
     }
 
-    private List<List<Map<String, String>>> contributionKeyboard(Long sessionId) {
-        return List.of(
-                List.of(Map.of("text", "✅ Сдал", "callback_data", "c:" + sessionId + ":PAID")),
-                List.of(Map.of("text", "❌ Не сдал", "callback_data", "c:" + sessionId + ":UNPAID"))
-        );
-    }
-
     private String headerLine(GameSession session) {
         List<String> parts = new ArrayList<>();
         parts.add(session.getSessionDate().toString());
@@ -334,6 +396,79 @@ public class TelegramContributionService {
         }
         parts.add(session.getTitle());
         return escape(String.join(" | ", parts));
+    }
+
+    private String buildContributionPollQuestion(GameSession session) {
+        List<String> parts = new ArrayList<>();
+        String format = contributionFormatLine(session);
+        parts.add("Считаем, кто уже сдал взнос на " + contributionDateLine(session)
+                + " ❗ " + contributionTimeLine(session)
+                + " ❗ " + contributionLocationLine(session)
+                + (format.isBlank() ? "" : ". " + format));
+        if (session.getFeeAmount() != null || (session.getFeeRecipient() != null && !session.getFeeRecipient().isBlank())) {
+            StringBuilder payment = new StringBuilder("❗ ");
+            if (session.getFeeAmount() != null) {
+                payment.append(session.getFeeAmount()).append(" Тг / чел");
+            }
+            if (session.getFeeRecipient() != null && !session.getFeeRecipient().isBlank()) {
+                if (session.getFeeAmount() != null) {
+                    payment.append(" на ");
+                }
+                payment.append(session.getFeeRecipient());
+            }
+            parts.add(payment.toString());
+        }
+        return String.join("\n", parts);
+    }
+
+    private String contributionDateLine(GameSession session) {
+        String dayOfWeek = session.getSessionDate().getDayOfWeek().getDisplayName(TextStyle.SHORT, RU)
+                .replace(".", "");
+        String capitalizedDayOfWeek = dayOfWeek.substring(0, 1).toUpperCase(RU) + dayOfWeek.substring(1);
+        String month = session.getSessionDate().getMonth().getDisplayName(TextStyle.FULL, RU);
+        return capitalizedDayOfWeek + ", " + session.getSessionDate().getDayOfMonth() + " " + month;
+    }
+
+    private String contributionTimeLine(GameSession session) {
+        if (session.getSessionDurationMinutes() == null) {
+            return session.getSessionTime().format(TIME_FORMAT);
+        }
+        LocalTime endTime = session.getSessionTime().plusMinutes(session.getSessionDurationMinutes());
+        return session.getSessionTime().format(TIME_FORMAT) + " - " + endTime.format(TIME_FORMAT);
+    }
+
+    private String contributionLocationLine(GameSession session) {
+        String location = session.getLocation() == null || session.getLocation().isBlank() ? "-" : session.getLocation();
+        if (session.getLocationAddress() == null || session.getLocationAddress().isBlank()) {
+            return location;
+        }
+        return location + " (" + session.getLocationAddress() + ")";
+    }
+
+    private String contributionFormatLine(GameSession session) {
+        List<String> parts = new ArrayList<>();
+        if (session.getTeamCount() != null) {
+            parts.add(session.getTeamCount() + " " + teamsWord(session.getTeamCount()));
+        }
+        if (session.getPlayerFormat() != null && !session.getPlayerFormat().isBlank()) {
+            parts.add(session.getPlayerFormat());
+        }
+        return String.join(" ", parts);
+    }
+
+    private String teamsWord(int count) {
+        int mod100 = Math.abs(count) % 100;
+        int mod10 = Math.abs(count) % 10;
+        if (mod100 >= 11 && mod100 <= 14) {
+            return "команд";
+        }
+        if (mod10 == 1) {
+            return "команда";
+        }
+        if (mod10 >= 2 && mod10 <= 4) {
+            return "команды";
+        }
+        return "команд";
     }
 
     private String names(List<Player> players) {

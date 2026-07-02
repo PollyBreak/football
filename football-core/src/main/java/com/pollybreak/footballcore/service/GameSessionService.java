@@ -387,6 +387,8 @@ public class GameSessionService {
         }
         session.setTelegramRegistrationMessageId(null);
         session.setTelegramContributionMessageId(null);
+        session.setTelegramContributionPollMessageId(null);
+        session.setTelegramContributionPollId(null);
         session.setTelegramMvpVotingMessageId(null);
         session.setTelegramMvpResultSentAt(null);
         session.setTelegramSessionRatingSummaryMessageId(null);

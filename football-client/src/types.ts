@@ -91,6 +91,8 @@ export interface GameSession {
   autoStartRegistration: boolean;
   registrationOpenHoursBefore: number | null;
   telegramContributionMessageId: number | null;
+  telegramContributionPollMessageId: number | null;
+  telegramContributionPollId: string | null;
   mvpVotingEnabled: boolean;
   mvpVotingDurationHours: number | null;
   mvpVotingParticipantScope: MvpVotingParticipantScope;

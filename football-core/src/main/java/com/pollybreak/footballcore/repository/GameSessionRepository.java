@@ -21,6 +21,8 @@ public interface GameSessionRepository extends JpaRepository<GameSession, Long> 
 
     Optional<GameSession> findByTelegramSessionRatingPollId(String telegramSessionRatingPollId);
 
+    Optional<GameSession> findByTelegramContributionPollId(String telegramContributionPollId);
+
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("""
             select session

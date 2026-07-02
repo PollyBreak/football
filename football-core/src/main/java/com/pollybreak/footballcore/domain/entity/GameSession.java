@@ -76,6 +76,12 @@ public class GameSession {
     @Column(name = "telegram_contribution_message_id")
     private Long telegramContributionMessageId;
 
+    @Column(name = "telegram_contribution_poll_message_id")
+    private Long telegramContributionPollMessageId;
+
+    @Column(name = "telegram_contribution_poll_id", length = 200)
+    private String telegramContributionPollId;
+
     @Column(name = "mvp_voting_enabled", nullable = false)
     private boolean mvpVotingEnabled;
 

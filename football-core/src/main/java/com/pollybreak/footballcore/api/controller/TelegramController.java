@@ -142,6 +142,7 @@ public class TelegramController {
 
         JsonNode pollAnswer = update.path("poll_answer");
         if (!pollAnswer.isMissingNode() && !pollAnswer.isNull()) {
+            telegramContributionService.handlePollAnswer(pollAnswer);
             sessionRatingPollService.handlePollAnswer(pollAnswer);
         }
     }
