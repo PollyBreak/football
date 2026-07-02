@@ -168,8 +168,7 @@ public class SessionRatingPollService {
 
     private String buildSummaryMessage(GameSession session) {
         return escape(sessionSummary(session))
-                + "\nСредний рейтинг: " + averageLabel(session)
-                + "\n<b>Опрос \"На сколько мне понравился позитивный футбол?\"</b>";
+                + "\nСредний рейтинг: " + averageLabel(session);
     }
 
     private String sessionSummary(GameSession session) {
