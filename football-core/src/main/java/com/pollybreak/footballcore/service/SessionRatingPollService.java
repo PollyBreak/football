@@ -24,7 +24,7 @@ public class SessionRatingPollService {
 
     private static final Locale RU = Locale.forLanguageTag("ru-RU");
     private static final DateTimeFormatter TIME_FORMAT = DateTimeFormatter.ofPattern("HH:mm");
-    private static final List<String> RATING_OPTIONS = List.of("5️⃣", "4️⃣", "3️⃣", "2️⃣", "1️⃣");
+    private static final List<String> RATING_OPTIONS = List.of("5️⃣", "4️⃣", "3️⃣", "2️⃣", "1️⃣", "Тык, не играл");
 
     private final GameSessionRepository gameSessionRepository;
     private final SessionRatingVoteRepository sessionRatingVoteRepository;
@@ -104,6 +104,13 @@ public class SessionRatingPollService {
 
         int optionId = optionIds.get(0).asInt(-1);
         if (optionId < 0 || optionId >= RATING_OPTIONS.size()) {
+            return;
+        }
+        if (optionId == RATING_OPTIONS.size() - 1) {
+            sessionRatingVoteRepository.findBySessionIdAndTelegramUserId(session.getId(), telegramUserId)
+                    .ifPresent(sessionRatingVoteRepository::delete);
+            recalculateAverage(session);
+            refreshSummaryMessage(session);
             return;
         }
         int rating = 5 - optionId;
