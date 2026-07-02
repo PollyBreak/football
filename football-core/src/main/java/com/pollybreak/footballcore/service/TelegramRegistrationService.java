@@ -286,10 +286,10 @@ public class TelegramRegistrationService {
         lines.add("❕Перед регистрацией необходимо зарегистрироваться в <a href=\"" + escapeAttribute(registrationAppUrl()) + "\">приложении</a>. Если вы зарегистрированы, просто нажмите на одну из кнопок.");
         lines.add("");
         lines.add("Участники (" + activePlayersCount + "/" + maxPlayersLabel(session) + "):");
-        lines.add("✅ <i>Записался, иду 100%</i>: " + code(namesPlain(groups.get(SessionRegistrationStatus.GOING), activePlayersWithoutRegistration, waitlistPlayerIds)));
-        lines.add("❓ <i>Записался, но под вопросом</i>: " + code(namesPlain(groups.get(SessionRegistrationStatus.MAYBE), waitlistPlayerIds)));
-        lines.add("❌ <i>В этот раз без меня</i>: " + code(namesPlain(groups.get(SessionRegistrationStatus.OUT))));
-        lines.add("⌛ <i>Записался, в очереди</i>: " + code(waitlistNamesPlain(waitlist)));
+        lines.add("✅ <i>Записался, иду 100%</i>: " + playerLinks(groups.get(SessionRegistrationStatus.GOING), activePlayersWithoutRegistration, waitlistPlayerIds));
+        lines.add("❓ <i>Записался, но под вопросом</i>: " + playerLinks(groups.get(SessionRegistrationStatus.MAYBE), waitlistPlayerIds));
+        lines.add("❌ <i>В этот раз без меня</i>: " + playerLinks(groups.get(SessionRegistrationStatus.OUT)));
+        lines.add("⌛ <i>Записался, в очереди</i>: " + waitlistPlayerLinks(waitlist));
         return String.join("\n", lines);
     }
 
@@ -375,80 +375,75 @@ public class TelegramRegistrationService {
         return safeAppUrl + separator + "startapp=session_" + sessionId;
     }
 
-    private String names(List<SessionRegistration> registrations) {
+    private String playerLinks(List<SessionRegistration> registrations) {
         if (registrations == null || registrations.isEmpty()) {
             return "-";
         }
-        return registrations.stream()
-                .map(item -> escape(playerName(item.getPlayer())))
-                .collect(Collectors.joining(", "));
+        return joinPlayerLinks(registrations.stream()
+                .map(SessionRegistration::getPlayer)
+                .toList());
     }
 
-    private String namesPlain(List<SessionRegistration> registrations) {
+    private String playerLinks(List<SessionRegistration> registrations, Set<Long> excludedPlayerIds) {
         if (registrations == null || registrations.isEmpty()) {
             return "-";
         }
-        return registrations.stream()
-                .map(item -> playerNameWithPosition(item.getPlayer()))
-                .collect(Collectors.joining(", "));
+        return joinPlayerLinks(registrations.stream()
+                .map(SessionRegistration::getPlayer)
+                .filter(player -> !excludedPlayerIds.contains(player.getId()))
+                .toList());
     }
 
-    private String names(List<SessionRegistration> registrations, Set<Long> excludedPlayerIds) {
-        if (registrations == null || registrations.isEmpty()) {
-            return "-";
-        }
-        String value = registrations.stream()
-                .filter(item -> !excludedPlayerIds.contains(item.getPlayer().getId()))
-                .map(item -> escape(playerName(item.getPlayer())))
-                .collect(Collectors.joining(", "));
-        return value.isBlank() ? "-" : value;
-    }
-
-    private String namesPlain(List<SessionRegistration> registrations, Set<Long> excludedPlayerIds) {
-        if (registrations == null || registrations.isEmpty()) {
-            return "-";
-        }
-        String value = registrations.stream()
-                .filter(item -> !excludedPlayerIds.contains(item.getPlayer().getId()))
-                .map(item -> playerNameWithPosition(item.getPlayer()))
-                .collect(Collectors.joining(", "));
-        return value.isBlank() ? "-" : value;
-    }
-
-    private String namesPlain(List<SessionRegistration> registrations, List<Player> fallbackPlayers, Set<Long> excludedPlayerIds) {
-        List<String> values = new ArrayList<>();
+    private String playerLinks(List<SessionRegistration> registrations, List<Player> fallbackPlayers, Set<Long> excludedPlayerIds) {
+        List<Player> players = new ArrayList<>();
         if (registrations != null) {
-            values.addAll(registrations.stream()
-                    .filter(item -> !excludedPlayerIds.contains(item.getPlayer().getId()))
-                    .map(item -> playerNameWithPosition(item.getPlayer()))
+            players.addAll(registrations.stream()
+                    .map(SessionRegistration::getPlayer)
+                    .filter(player -> !excludedPlayerIds.contains(player.getId()))
                     .toList());
         }
         if (fallbackPlayers != null) {
-            values.addAll(fallbackPlayers.stream()
+            players.addAll(fallbackPlayers.stream()
                     .filter(player -> !excludedPlayerIds.contains(player.getId()))
-                    .map(this::playerNameWithPosition)
                     .toList());
         }
-        String value = String.join(", ", values);
+        return joinPlayerLinks(players);
+    }
+
+    private String waitlistPlayerLinks(List<SessionWaitlistEntry> entries) {
+        if (entries == null || entries.isEmpty()) {
+            return "-";
+        }
+        return joinPlayerLinks(entries.stream()
+                .map(SessionWaitlistEntry::getPlayer)
+                .toList());
+    }
+
+    private String joinPlayerLinks(List<Player> players) {
+        if (players == null || players.isEmpty()) {
+            return "-";
+        }
+        String value = players.stream()
+                .map(this::playerLinkWithPosition)
+                .collect(Collectors.joining(", "));
         return value.isBlank() ? "-" : value;
     }
 
-    private String waitlistNames(List<SessionWaitlistEntry> entries) {
-        if (entries == null || entries.isEmpty()) {
-            return "-";
-        }
-        return entries.stream()
-                .map(entry -> escape(playerName(entry.getPlayer())))
-                .collect(Collectors.joining(", "));
-    }
+    private String playerLinkWithPosition(Player player) {
+        String label = escape(playerNameWithPosition(player));
+        AppUser user = player.getUser();
+        String username = user == null ? null : user.getUsername();
 
-    private String waitlistNamesPlain(List<SessionWaitlistEntry> entries) {
-        if (entries == null || entries.isEmpty()) {
-            return "-";
+        String normalizedUsername = username == null ? null : username.startsWith("@") ? username.substring(1) : username;
+        if (normalizedUsername != null && !normalizedUsername.isBlank()) {
+            return "<a href=\"https://t.me/" + escapeAttribute(normalizedUsername) + "\">" + label + "</a>";
         }
-        return entries.stream()
-                .map(entry -> playerNameWithPosition(entry.getPlayer()))
-                .collect(Collectors.joining(", "));
+
+        Long telegramId = user == null ? null : user.getTelegramId();
+        if (telegramId == null) {
+            return label;
+        }
+        return "<a href=\"tg://openmessage?user_id=" + telegramId + "\">" + label + "</a>";
     }
 
     private String playerName(Player player) {
@@ -575,10 +570,6 @@ public class TelegramRegistrationService {
 
     private String escapeAttribute(String value) {
         return escape(value).replace("\"", "&quot;");
-    }
-
-    private String code(String value) {
-        return "<code>" + escape(value) + "</code>";
     }
 
     private record CallbackData(Long sessionId, SessionRegistrationStatus status) {
